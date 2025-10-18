@@ -1,4 +1,4 @@
-import { ElementVisibilityTool, ElementPositionTool } from '../../../tools/browser/elementInspection.js';
+import { ElementVisibilityTool } from '../../../tools/browser/elementVisibility.js';
 import { ToolContext } from '../../../tools/common/types.js';
 import { Page, Browser, Locator } from 'playwright';
 import { jest } from '@jest/globals';
@@ -7,13 +7,11 @@ import { jest } from '@jest/globals';
 const mockLocatorCount = jest.fn() as jest.MockedFunction<() => Promise<number>>;
 const mockLocatorIsVisible = jest.fn() as jest.MockedFunction<() => Promise<boolean>>;
 const mockLocatorEvaluate = jest.fn() as jest.MockedFunction<(pageFunction: any) => Promise<any>>;
-const mockLocatorBoundingBox = jest.fn() as jest.MockedFunction<() => Promise<{ x: number; y: number; width: number; height: number } | null>>;
 
 const mockLocator = {
   count: mockLocatorCount,
   isVisible: mockLocatorIsVisible,
   evaluate: mockLocatorEvaluate,
-  boundingBox: mockLocatorBoundingBox,
 } as unknown as Locator;
 
 // Mock Page
@@ -195,118 +193,83 @@ describe('ElementVisibilityTool', () => {
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('Browser page not initialized');
   });
-});
 
-describe('ElementPositionTool', () => {
-  let positionTool: ElementPositionTool;
-
-  beforeEach(() => {
-    jest.clearAllMocks();
-    positionTool = new ElementPositionTool(mockServer);
-    mockIsConnected.mockReturnValue(true);
-    mockIsClosed.mockReturnValue(false);
-  });
-
-  test('should get element position successfully', async () => {
-    const args = { selector: '#test-element' };
+  test('should detect element partially visible in viewport', async () => {
+    const args = { selector: '#partial-element' };
 
     mockLocatorCount.mockResolvedValue(1);
-    mockLocatorBoundingBox.mockResolvedValue({
-      x: 100,
-      y: 200,
-      width: 300,
-      height: 50,
+    mockLocatorIsVisible.mockResolvedValue(true);
+    mockLocatorEvaluate.mockResolvedValue({
+      viewportRatio: 0.3,
+      isInViewport: true,
+      opacity: 1,
+      display: 'block',
+      visibility: 'visible',
+      isClipped: false,
+      isCovered: false,
     });
-    mockLocatorEvaluate.mockResolvedValue(true);
 
-    const result = await positionTool.execute(args, mockContext);
+    const result = await visibilityTool.execute(args, mockContext);
 
-    expect(mockPageLocator).toHaveBeenCalledWith('#test-element');
-    expect(mockLocatorCount).toHaveBeenCalled();
-    expect(mockLocatorBoundingBox).toHaveBeenCalled();
     expect(result.isError).toBe(false);
-
     const response = JSON.parse(result.content[0].text as string);
-    expect(response.x).toBe(100);
-    expect(response.y).toBe(200);
-    expect(response.width).toBe(300);
-    expect(response.height).toBe(50);
-    expect(response.inViewport).toBe(true);
+    expect(response.viewportRatio).toBe(0.3);
+    expect(response.isInViewport).toBe(true);
+    expect(response.needsScroll).toBe(false);
   });
 
-  test('should handle testid selector shorthand', async () => {
-    const args = { selector: 'data-test:login-form' };
+  test('should handle element with low opacity', async () => {
+    const args = { selector: '#faded-element' };
 
     mockLocatorCount.mockResolvedValue(1);
-    mockLocatorBoundingBox.mockResolvedValue({
-      x: 0,
-      y: 0,
-      width: 100,
-      height: 100,
+    mockLocatorIsVisible.mockResolvedValue(true);
+    mockLocatorEvaluate.mockResolvedValue({
+      viewportRatio: 1.0,
+      isInViewport: true,
+      opacity: 0.5,
+      display: 'block',
+      visibility: 'visible',
+      isClipped: false,
+      isCovered: false,
     });
-    mockLocatorEvaluate.mockResolvedValue(true);
 
-    const result = await positionTool.execute(args, mockContext);
+    const result = await visibilityTool.execute(args, mockContext);
 
-    expect(mockPageLocator).toHaveBeenCalledWith('[data-test="login-form"]');
     expect(result.isError).toBe(false);
+    const response = JSON.parse(result.content[0].text as string);
+    expect(response.opacity).toBe(0.5);
   });
 
-  test('should return error when element not found', async () => {
-    const args = { selector: '#missing' };
-
-    mockLocatorCount.mockResolvedValue(0);
-
-    const result = await positionTool.execute(args, mockContext);
-
-    expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('Element not found');
-  });
-
-  test('should return error when element has no bounding box', async () => {
-    const args = { selector: '#hidden' };
-
-    mockLocatorCount.mockResolvedValue(1);
-    mockLocatorBoundingBox.mockResolvedValue(null);
-
-    const result = await positionTool.execute(args, mockContext);
-
-    expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('no bounding box');
-  });
-
-  test('should handle missing page', async () => {
+  test('should handle disconnected browser', async () => {
     const args = { selector: '#test' };
-    const contextWithoutPage = {
-      browser: mockBrowser,
-      server: mockServer,
-    } as unknown as ToolContext;
+    mockIsConnected.mockReturnValue(false);
 
-    const result = await positionTool.execute(args, contextWithoutPage);
+    const result = await visibilityTool.execute(args, mockContext);
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('Browser page not initialized');
+    expect(result.content[0].text).toContain('disconnected');
   });
 
-  test('should round coordinates to integers', async () => {
-    const args = { selector: '#decimal-coords' };
+  test('should handle closed page', async () => {
+    const args = { selector: '#test' };
+    mockIsClosed.mockReturnValue(true);
+
+    const result = await visibilityTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('closed');
+  });
+
+  test('should handle evaluation error', async () => {
+    const args = { selector: '#test' };
 
     mockLocatorCount.mockResolvedValue(1);
-    mockLocatorBoundingBox.mockResolvedValue({
-      x: 123.456,
-      y: 789.012,
-      width: 345.678,
-      height: 90.123,
-    });
-    mockLocatorEvaluate.mockResolvedValue(false);
+    mockLocatorIsVisible.mockResolvedValue(true);
+    mockLocatorEvaluate.mockRejectedValue(new Error('Evaluation failed'));
 
-    const result = await positionTool.execute(args, mockContext);
+    const result = await visibilityTool.execute(args, mockContext);
 
-    expect(result.isError).toBe(false);
-    const response = JSON.parse(result.content[0].text as string);
-    expect(response.x).toBe(123);
-    expect(response.y).toBe(789);
-    expect(response.width).toBe(346);
-    expect(response.height).toBe(90);
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('Failed to check visibility');
   });
 });

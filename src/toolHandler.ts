@@ -33,10 +33,9 @@ import {
   VisibleTextTool,
   VisibleHtmlTool
 } from './tools/browser/visiblePage.js';
-import {
-  ElementVisibilityTool,
-  ElementPositionTool
-} from './tools/browser/elementInspection.js';
+import { ElementVisibilityTool } from './tools/browser/elementVisibility.js';
+import { ElementPositionTool } from './tools/browser/elementPosition.js';
+import { InspectDomTool } from './tools/browser/inspectDom.js';
 import {
   GetRequestTool,
   PostRequestTool,
@@ -106,6 +105,7 @@ let saveAsPdfTool: SaveAsPdfTool;
 let clickAndSwitchTabTool: ClickAndSwitchTabTool;
 let elementVisibilityTool: ElementVisibilityTool;
 let elementPositionTool: ElementPositionTool;
+let inspectDomTool: InspectDomTool;
 
 
 interface BrowserSettings {
@@ -354,6 +354,7 @@ function initializeTools(server: any) {
   if (!clickAndSwitchTabTool) clickAndSwitchTabTool = new ClickAndSwitchTabTool(server);
   if (!elementVisibilityTool) elementVisibilityTool = new ElementVisibilityTool(server);
   if (!elementPositionTool) elementPositionTool = new ElementPositionTool(server);
+  if (!inspectDomTool) inspectDomTool = new InspectDomTool(server);
 }
 
 /**
@@ -563,6 +564,9 @@ export async function handleToolCall(
 
       case "playwright_element_position":
         return await elementPositionTool.execute(args, context);
+
+      case "playwright_inspect_dom":
+        return await inspectDomTool.execute(args, context);
 
       default:
         return {
