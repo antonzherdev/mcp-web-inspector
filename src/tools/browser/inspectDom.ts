@@ -182,8 +182,39 @@ export class InspectDomTool extends BrowserToolBase {
             const semanticChildren: any[] = [];
             let skippedWrappers = 0;
 
+            // Count elements for summary
+            const elementCounts: { [key: string]: number } = {};
+            const interactiveCounts: { [key: string]: number } = {};
+
+            // Helper to count elements in entire subtree (for overview)
+            const countElementsInTree = (root: Element) => {
+              const counts: { [key: string]: number } = {};
+              const interactiveCounts: { [key: string]: number } = {};
+
+              const traverse = (el: Element) => {
+                const tag = el.tagName.toLowerCase();
+                counts[tag] = (counts[tag] || 0) + 1;
+
+                if (isInteractive(el)) {
+                  interactiveCounts[tag] = (interactiveCounts[tag] || 0) + 1;
+                }
+
+                Array.from(el.children).forEach(traverse);
+              };
+
+              traverse(root);
+              return { counts, interactiveCounts };
+            };
+
             for (const child of allChildren) {
               const childInfo = getElementInfo(child);
+              const tag = child.tagName.toLowerCase();
+
+              // Count all children for summary (even hidden/non-semantic)
+              elementCounts[tag] = (elementCounts[tag] || 0) + 1;
+              if (isInteractive(child)) {
+                interactiveCounts[tag] = (interactiveCounts[tag] || 0) + 1;
+              }
 
               // Skip hidden elements unless includeHidden is true
               if (!hidden && !childInfo.isVisible) {
@@ -214,6 +245,19 @@ export class InspectDomTool extends BrowserToolBase {
               } else {
                 skippedWrappers++;
               }
+            }
+
+            // For body/main containers, also count elements in entire tree
+            const targetTag = target.tagName.toLowerCase();
+            const isTopLevelContainer = targetTag === 'body' || sel.includes('main-layout') || sel.includes('main');
+            let treeCounts = null;
+            if (isTopLevelContainer) {
+              const treeData = countElementsInTree(target);
+              const testIdCount = target.querySelectorAll('[data-testid], [data-test], [data-cy]').length;
+              treeCounts = {
+                ...treeData,
+                testIdCount,
+              };
             }
 
             // Limit children shown
@@ -254,6 +298,9 @@ export class InspectDomTool extends BrowserToolBase {
                 omittedCount,
                 skippedWrappers,
               },
+              elementCounts,
+              interactiveCounts,
+              treeCounts,
               layoutPattern,
             };
           },
@@ -267,7 +314,7 @@ export class InspectDomTool extends BrowserToolBase {
 
         // Format compact text output
         const lines: string[] = [];
-        const { target, children, stats, layoutPattern } = inspectionData;
+        const { target, children, stats, layoutPattern, elementCounts, interactiveCounts, treeCounts } = inspectionData;
 
         // Header
         lines.push(`DOM Inspection: <${target.tag}${target.selector ? ' ' + target.selector : ''}>`);
@@ -276,15 +323,76 @@ export class InspectDomTool extends BrowserToolBase {
         );
         lines.push('');
 
+        // Add page/section overview for top-level containers
+        if (treeCounts) {
+          lines.push('Page Overview:');
+
+          // Show semantic structure counts
+          const semanticStructure = ['header', 'nav', 'main', 'article', 'section', 'aside', 'footer'];
+          const structureCounts = semanticStructure
+            .filter(tag => (treeCounts.counts[tag] || 0) > 0)
+            .map(tag => `${treeCounts.counts[tag]} ${tag}${treeCounts.counts[tag] > 1 ? 's' : ''}`)
+            .join(', ');
+          if (structureCounts) {
+            lines.push(`  Structure: ${structureCounts}`);
+          }
+
+          // Show interactive element counts
+          const interactiveTypes = ['button', 'a', 'input', 'select', 'textarea'];
+          const interactiveSummary = interactiveTypes
+            .filter(tag => (treeCounts.interactiveCounts[tag] || 0) > 0)
+            .map(tag => {
+              const count = treeCounts.interactiveCounts[tag];
+              const label = tag === 'a' ? 'link' : tag;
+              return `${count} ${label}${count > 1 ? 's' : ''}`;
+            })
+            .join(', ');
+          if (interactiveSummary) {
+            lines.push(`  Interactive: ${interactiveSummary}`);
+          }
+
+          // Show form counts
+          const formCount = treeCounts.counts.form || 0;
+          const inputCount = (treeCounts.counts.input || 0) + (treeCounts.counts.select || 0) + (treeCounts.counts.textarea || 0);
+          if (formCount > 0) {
+            lines.push(`  Forms: ${formCount} form${formCount > 1 ? 's' : ''} with ${inputCount} input${inputCount !== 1 ? 's' : ''}`);
+          }
+
+          // Show test coverage
+          if (treeCounts.testIdCount && treeCounts.testIdCount > 0) {
+            lines.push(`  Test Coverage: ${treeCounts.testIdCount} element${treeCounts.testIdCount > 1 ? 's' : ''} with test IDs`);
+          }
+
+          lines.push('');
+        }
+
         // Children summary
         if (stats.semanticCount === 0) {
           lines.push(`Children (0 semantic, skipped ${stats.skippedWrappers} wrapper divs):`);
           lines.push('');
-          lines.push('⚠ No semantic elements found at this level.');
-          lines.push('');
-          lines.push(
-            'The page uses generic <div> wrappers without semantic HTML, test IDs, or ARIA roles.'
-          );
+
+          // Show interactive element summary if available
+          const hasInteractive = Object.keys(interactiveCounts).length > 0;
+          if (hasInteractive) {
+            lines.push('Interactive Elements Found:');
+            const interactiveTypes = ['button', 'a', 'input', 'select', 'textarea'];
+            interactiveTypes.forEach(tag => {
+              const count = interactiveCounts[tag] || 0;
+              if (count > 0) {
+                const label = tag === 'a' ? 'link' : tag;
+                lines.push(`  • ${count} ${label}${count > 1 ? 's' : ''}`);
+              }
+            });
+            lines.push('');
+            lines.push(`💡 Tip: Use maxChildren parameter or drill down with specific selectors (e.g., "button", "a")`);
+            lines.push(`   to inspect these elements. They were skipped because they lack test IDs or semantic containers.`);
+          } else {
+            lines.push('⚠ No semantic or interactive elements found at this level.');
+            lines.push('');
+            lines.push(
+              'The page uses generic <div> wrappers without semantic HTML, test IDs, or ARIA roles.'
+            );
+          }
           lines.push('');
           lines.push('Suggestions:');
           lines.push(`1. Use playwright_get_visible_html({ selector: "${args.selector || 'body'}" }) to see raw HTML`);

@@ -24,12 +24,14 @@ export class ScreenshotTool extends BrowserToolBase {
       };
 
       if (args.selector) {
-        const element = await page.$(args.selector);
+        // Normalize selector (support testid: shorthand)
+        const selector = this.normalizeSelector(args.selector);
+        const element = await page.$(selector);
         if (!element) {
           return {
             content: [{
               type: "text",
-              text: `Element not found: ${args.selector}`,
+              text: `Element not found: ${selector}`,
             }],
             isError: true
           };

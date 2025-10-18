@@ -10,7 +10,8 @@ export class ClickTool extends BrowserToolBase {
    */
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
     return this.safeExecute(context, async (page) => {
-      await page.click(args.selector);      
+      const selector = this.normalizeSelector(args.selector);
+      await page.click(selector);
       return createSuccessResponse(`Clicked element: ${args.selector}`);
     });
   }
@@ -23,13 +24,14 @@ export class ClickAndSwitchTabTool extends BrowserToolBase {
    * Execute the click and switch tab tool
    */
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
-    
+
     return this.safeExecute(context, async (page) => {
+      const selector = this.normalizeSelector(args.selector);
       // Listen for a new tab to open
       const [newPage] = await Promise.all([
         //context.browser.waitForEvent('page'), // Wait for a new page (tab) to open
         page.context().waitForEvent('page'),// Wait for a new page (tab) to open
-        page.click(args.selector), // Click the link that opens the new tab
+        page.click(selector), // Click the link that opens the new tab
       ]);
 
       // Wait for the new page to load
@@ -54,12 +56,14 @@ export class IframeClickTool extends BrowserToolBase {
    */
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
     return this.safeExecute(context, async (page) => {
-      const frame = page.frameLocator(args.iframeSelector);
+      const iframeSelector = this.normalizeSelector(args.iframeSelector);
+      const selector = this.normalizeSelector(args.selector);
+      const frame = page.frameLocator(iframeSelector);
       if (!frame) {
         return createErrorResponse(`Iframe not found: ${args.iframeSelector}`);
       }
-      
-      await frame.locator(args.selector).click();
+
+      await frame.locator(selector).click();
       return createSuccessResponse(`Clicked element ${args.selector} inside iframe ${args.iframeSelector}`);
     });
   }
@@ -74,12 +78,14 @@ export class IframeFillTool extends BrowserToolBase {
    */
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
     return this.safeExecute(context, async (page) => {
-      const frame = page.frameLocator(args.iframeSelector);
+      const iframeSelector = this.normalizeSelector(args.iframeSelector);
+      const selector = this.normalizeSelector(args.selector);
+      const frame = page.frameLocator(iframeSelector);
       if (!frame) {
         return createErrorResponse(`Iframe not found: ${args.iframeSelector}`);
       }
-      
-      await frame.locator(args.selector).fill(args.value);
+
+      await frame.locator(selector).fill(args.value);
       return createSuccessResponse(`Filled element ${args.selector} inside iframe ${args.iframeSelector} with: ${args.value}`);
     });
   }
@@ -94,8 +100,9 @@ export class FillTool extends BrowserToolBase {
    */
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
     return this.safeExecute(context, async (page) => {
-      await page.waitForSelector(args.selector);
-      await page.fill(args.selector, args.value);
+      const selector = this.normalizeSelector(args.selector);
+      await page.waitForSelector(selector);
+      await page.fill(selector, args.value);
       return createSuccessResponse(`Filled ${args.selector} with: ${args.value}`);
     });
   }
@@ -110,8 +117,9 @@ export class SelectTool extends BrowserToolBase {
    */
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
     return this.safeExecute(context, async (page) => {
-      await page.waitForSelector(args.selector);
-      await page.selectOption(args.selector, args.value);
+      const selector = this.normalizeSelector(args.selector);
+      await page.waitForSelector(selector);
+      await page.selectOption(selector, args.value);
       return createSuccessResponse(`Selected ${args.selector} with: ${args.value}`);
     });
   }
@@ -126,8 +134,9 @@ export class HoverTool extends BrowserToolBase {
    */
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
     return this.safeExecute(context, async (page) => {
-      await page.waitForSelector(args.selector);
-      await page.hover(args.selector);
+      const selector = this.normalizeSelector(args.selector);
+      await page.waitForSelector(selector);
+      await page.hover(selector);
       return createSuccessResponse(`Hovered ${args.selector}`);
     });
   }
@@ -142,8 +151,9 @@ export class UploadFileTool extends BrowserToolBase {
    */
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
     return this.safeExecute(context, async (page) => {
-        await page.waitForSelector(args.selector);
-        await page.setInputFiles(args.selector, args.filePath);
+        const selector = this.normalizeSelector(args.selector);
+        await page.waitForSelector(selector);
+        await page.setInputFiles(selector, args.filePath);
         return createSuccessResponse(`Uploaded file '${args.filePath}' to '${args.selector}'`);
     });
   }
@@ -187,12 +197,14 @@ export class DragTool extends BrowserToolBase {
    */
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
     return this.safeExecute(context, async (page) => {
-      const sourceElement = await page.waitForSelector(args.sourceSelector);
-      const targetElement = await page.waitForSelector(args.targetSelector);
-      
+      const sourceSelector = this.normalizeSelector(args.sourceSelector);
+      const targetSelector = this.normalizeSelector(args.targetSelector);
+      const sourceElement = await page.waitForSelector(sourceSelector);
+      const targetElement = await page.waitForSelector(targetSelector);
+
       const sourceBound = await sourceElement.boundingBox();
       const targetBound = await targetElement.boundingBox();
-      
+
       if (!sourceBound || !targetBound) {
         return createErrorResponse("Could not get element positions for drag operation");
       }
@@ -207,7 +219,7 @@ export class DragTool extends BrowserToolBase {
         targetBound.y + targetBound.height / 2
       );
       await page.mouse.up();
-      
+
       return createSuccessResponse(`Dragged element from ${args.sourceSelector} to ${args.targetSelector}`);
     });
   }
@@ -223,10 +235,11 @@ export class PressKeyTool extends BrowserToolBase {
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
     return this.safeExecute(context, async (page) => {
       if (args.selector) {
-        await page.waitForSelector(args.selector);
-        await page.focus(args.selector);
+        const selector = this.normalizeSelector(args.selector);
+        await page.waitForSelector(selector);
+        await page.focus(selector);
       }
-      
+
       await page.keyboard.press(args.key);
       return createSuccessResponse(`Pressed key: ${args.key}`);
     });

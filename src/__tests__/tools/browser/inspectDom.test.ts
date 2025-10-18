@@ -109,13 +109,16 @@ describe('InspectDomTool', () => {
         omittedCount: 0,
         skippedWrappers: 12,
       },
+      elementCounts: {},
+      interactiveCounts: {},
+      treeCounts: null,
       layoutPattern: 'unknown',
     });
 
     const result = await inspectDomTool.execute(args, mockContext);
 
     expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('⚠ No semantic elements found');
+    expect(result.content[0].text).toContain('⚠ No semantic');
     expect(result.content[0].text).toContain('Suggestions:');
     expect(result.content[0].text).toContain('playwright_get_visible_html');
     expect(result.content[0].text).toContain('Adding semantic HTML');
@@ -402,5 +405,297 @@ describe('InspectDomTool', () => {
 
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('Failed to inspect DOM');
+  });
+
+  test('should show interactive element summary when no semantic elements', async () => {
+    const args = { selector: '.container' };
+
+    mockPageEvaluate.mockResolvedValue({
+      target: {
+        tag: 'div',
+        selector: 'div.container',
+        position: { x: 0, y: 0, width: 800, height: 600 },
+        isVisible: true,
+      },
+      children: [],
+      stats: {
+        totalChildren: 20,
+        semanticCount: 0,
+        shownCount: 0,
+        omittedCount: 0,
+        skippedWrappers: 20,
+      },
+      elementCounts: { div: 15, span: 5 },
+      interactiveCounts: { button: 3, a: 2, input: 1 },
+      treeCounts: null,
+      layoutPattern: 'unknown',
+    });
+
+    const result = await inspectDomTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('Interactive Elements Found:');
+    expect(result.content[0].text).toContain('3 buttons');
+    expect(result.content[0].text).toContain('2 links');
+    expect(result.content[0].text).toContain('1 input');
+    expect(result.content[0].text).toContain('💡 Tip: Use maxChildren parameter');
+  });
+
+  test('should show page overview for top-level containers', async () => {
+    const args = {};
+
+    mockPageEvaluate.mockResolvedValue({
+      target: {
+        tag: 'body',
+        selector: 'body',
+        position: { x: 0, y: 0, width: 1200, height: 800 },
+        isVisible: true,
+      },
+      children: [
+        {
+          tag: 'header',
+          selector: 'header',
+          text: 'Site Header',
+          position: { x: 0, y: 0, width: 1200, height: 60 },
+          isVisible: true,
+          isInteractive: false,
+          childCount: 3,
+        },
+      ],
+      stats: {
+        totalChildren: 10,
+        semanticCount: 1,
+        shownCount: 1,
+        omittedCount: 0,
+        skippedWrappers: 9,
+      },
+      elementCounts: { div: 9, header: 1 },
+      interactiveCounts: { button: 5, a: 3 },
+      treeCounts: {
+        counts: { header: 1, nav: 1, main: 1, button: 5, a: 3, input: 2, form: 1 },
+        interactiveCounts: { button: 5, a: 3, input: 2 },
+        testIdCount: 4,
+      },
+      layoutPattern: 'vertical',
+    });
+
+    const result = await inspectDomTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('Page Overview:');
+    expect(result.content[0].text).toContain('Structure: 1 header, 1 nav, 1 main');
+    expect(result.content[0].text).toContain('Interactive: 5 buttons, 3 links, 2 inputs');
+    expect(result.content[0].text).toContain('Forms: 1 form with 2 inputs');
+    expect(result.content[0].text).toContain('Test Coverage: 4 elements with test IDs');
+  });
+
+  test('should handle dashboard with many buttons (Test 2 from assessment)', async () => {
+    const args = { selector: 'testid:main-layout' };
+
+    mockPageEvaluate.mockResolvedValue({
+      target: {
+        tag: 'div',
+        selector: '[data-testid="main-layout"]',
+        position: { x: 256, y: 0, width: 640, height: 768 },
+        isVisible: true,
+      },
+      children: [],
+      stats: {
+        totalChildren: 76,
+        semanticCount: 0,
+        shownCount: 0,
+        omittedCount: 0,
+        skippedWrappers: 76,
+      },
+      elementCounts: { div: 19, span: 57 },
+      interactiveCounts: { button: 57, a: 12, input: 3 },
+      treeCounts: null,
+      layoutPattern: 'unknown',
+    });
+
+    const result = await inspectDomTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('Interactive Elements Found:');
+    expect(result.content[0].text).toContain('57 buttons');
+    expect(result.content[0].text).toContain('12 links');
+    expect(result.content[0].text).toContain('3 inputs');
+    expect(result.content[0].text).toContain('💡 Tip: Use maxChildren parameter');
+    // Should NOT say "No semantic or interactive elements found"
+    expect(result.content[0].text).not.toContain('⚠ No semantic or interactive elements found');
+  });
+
+  test('should handle header with buttons inside (Test 3 from assessment)', async () => {
+    const args = { selector: 'header' };
+
+    mockPageEvaluate.mockResolvedValue({
+      target: {
+        tag: 'header',
+        selector: 'header',
+        position: { x: 256, y: 0, width: 640, height: 64 },
+        isVisible: true,
+      },
+      children: [],
+      stats: {
+        totalChildren: 5,
+        semanticCount: 0,
+        shownCount: 0,
+        omittedCount: 0,
+        skippedWrappers: 5,
+      },
+      elementCounts: { div: 3, span: 2 },
+      interactiveCounts: { button: 3 },
+      treeCounts: null,
+      layoutPattern: 'unknown',
+    });
+
+    const result = await inspectDomTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('Interactive Elements Found:');
+    expect(result.content[0].text).toContain('3 buttons');
+    expect(result.content[0].text).toContain('💡 Tip:');
+  });
+
+  test('should show both semantic and interactive counts when mixed', async () => {
+    const args = { selector: '.form-container' };
+
+    mockPageEvaluate.mockResolvedValue({
+      target: {
+        tag: 'div',
+        selector: 'div.form-container',
+        position: { x: 100, y: 100, width: 600, height: 400 },
+        isVisible: true,
+      },
+      children: [
+        {
+          tag: 'form',
+          selector: 'form',
+          text: '',
+          position: { x: 100, y: 100, width: 600, height: 400 },
+          isVisible: true,
+          isInteractive: false,
+          childCount: 8,
+        },
+      ],
+      stats: {
+        totalChildren: 20,
+        semanticCount: 1,
+        shownCount: 1,
+        omittedCount: 0,
+        skippedWrappers: 19,
+      },
+      elementCounts: { div: 15, form: 1, span: 4 },
+      interactiveCounts: { button: 2, input: 5 },
+      treeCounts: null,
+      layoutPattern: 'unknown',
+    });
+
+    const result = await inspectDomTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('[0] <form');
+    expect(result.content[0].text).toContain('💡 Tip: Some elements found, but 19 wrapper divs were skipped');
+  });
+
+  test('should handle selector normalization for testid shorthand', async () => {
+    const args = { selector: 'testid:login-button' };
+
+    mockPageEvaluate.mockResolvedValue({
+      target: {
+        tag: 'button',
+        selector: '[data-testid="login-button"]',
+        position: { x: 200, y: 300, width: 120, height: 40 },
+        isVisible: true,
+      },
+      children: [],
+      stats: {
+        totalChildren: 0,
+        semanticCount: 0,
+        shownCount: 0,
+        omittedCount: 0,
+        skippedWrappers: 0,
+      },
+      elementCounts: {},
+      interactiveCounts: {},
+      treeCounts: null,
+      layoutPattern: 'unknown',
+    });
+
+    const result = await inspectDomTool.execute(args, mockContext);
+
+    expect(mockPageEvaluate).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.objectContaining({ sel: '[data-testid="login-button"]' })
+    );
+    expect(result.isError).toBe(false);
+  });
+
+  test('should count multiple element types correctly', async () => {
+    const args = {};
+
+    mockPageEvaluate.mockResolvedValue({
+      target: {
+        tag: 'body',
+        selector: 'body',
+        position: { x: 0, y: 0, width: 1200, height: 800 },
+        isVisible: true,
+      },
+      children: [
+        {
+          tag: 'header',
+          selector: 'header',
+          text: 'Header',
+          position: { x: 0, y: 0, width: 1200, height: 60 },
+          isVisible: true,
+          isInteractive: false,
+          childCount: 0,
+        },
+        {
+          tag: 'nav',
+          selector: 'nav',
+          text: 'Navigation',
+          position: { x: 0, y: 60, width: 200, height: 740 },
+          isVisible: true,
+          isInteractive: false,
+          childCount: 5,
+        },
+      ],
+      stats: {
+        totalChildren: 5,
+        semanticCount: 2,
+        shownCount: 2,
+        omittedCount: 0,
+        skippedWrappers: 3,
+      },
+      elementCounts: { div: 3, header: 1, nav: 1 },
+      interactiveCounts: { button: 10, a: 5, input: 2, select: 1 },
+      treeCounts: {
+        counts: {
+          header: 2,
+          nav: 1,
+          main: 1,
+          section: 3,
+          button: 10,
+          a: 5,
+          input: 2,
+          select: 1,
+          textarea: 1,
+        },
+        interactiveCounts: { button: 10, a: 5, input: 2, select: 1, textarea: 1 },
+        testIdCount: 8,
+      },
+      layoutPattern: 'vertical',
+    });
+
+    const result = await inspectDomTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('Page Overview:');
+    expect(result.content[0].text).toContain('2 headers');
+    expect(result.content[0].text).toContain('3 sections');
+    expect(result.content[0].text).toContain('10 buttons');
+    expect(result.content[0].text).toContain('5 links');
+    expect(result.content[0].text).toContain('Test Coverage: 8 elements');
   });
 });
