@@ -34,8 +34,9 @@ OPENAI_API_KEY=your-key npx mcp-eval src/evals/evals.ts src/tools/codegen/index.
 ## Available Tools
 
 ### Browser Tools
+
+#### Navigation & Interaction
 - `playwright_navigate` - Navigate to a URL (supports chromium/firefox/webkit, viewport config, headless mode)
-- `playwright_screenshot` - Take screenshots (full page or element, base64 or PNG file)
 - `playwright_click` - Click an element
 - `playwright_iframe_click` - Click an element inside an iframe
 - `playwright_fill` - Fill an input field
@@ -43,18 +44,31 @@ OPENAI_API_KEY=your-key npx mcp-eval src/evals/evals.ts src/tools/codegen/index.
 - `playwright_select` - Select from dropdown
 - `playwright_hover` - Hover over an element
 - `playwright_upload_file` - Upload file to input[type='file']
-- `playwright_evaluate` - Execute JavaScript in browser console
-- `playwright_console_logs` - Retrieve browser console logs (with filtering by type/search/limit)
-- `playwright_get_visible_text` - Get visible text content of page
-- `playwright_get_visible_html` - Get HTML content (with script/comment/style removal options)
 - `playwright_go_back` - Navigate back in history
 - `playwright_go_forward` - Navigate forward in history
 - `playwright_drag` - Drag element to target location
 - `playwright_press_key` - Press keyboard key
-- `playwright_save_as_pdf` - Save page as PDF
 - `playwright_click_and_switch_tab` - Click link and switch to new tab
+
+#### Element Inspection & Debugging
+- `playwright_element_visibility` - Check if element is visible with detailed diagnostics (viewport, clipping, coverage, scroll needed)
+- `playwright_element_position` - Get element position and size (x, y, width, height, viewport status)
+
+#### Content Extraction
+- `playwright_screenshot` - Take screenshots (full page or element, base64 or PNG file)
+- `playwright_get_visible_text` - Get visible text content of page
+- `playwright_get_visible_html` - Get HTML content (with script/comment/style removal options)
+- `playwright_save_as_pdf` - Save page as PDF
+
+#### JavaScript & Console
+- `playwright_evaluate` - Execute JavaScript in browser console
+- `playwright_console_logs` - Retrieve browser console logs (with filtering by type/search/limit)
+
+#### Network & Responses
 - `playwright_expect_response` - Start waiting for HTTP response
 - `playwright_assert_response` - Validate previously initiated HTTP response wait
+
+#### Configuration
 - `playwright_custom_user_agent` - Set custom User Agent
 - `playwright_close` - Close browser and release resources
 
@@ -104,6 +118,7 @@ Tools are organized into three categories defined in `src/tools.ts`:
 All browser tools extend `BrowserToolBase` (`src/tools/browser/base.ts`) which provides:
 - `safeExecute()`: Wrapper with browser connection validation and error handling
 - `ensurePage()` and `validatePageAvailable()`: Page availability checks
+- `normalizeSelector()`: Converts test ID shortcuts to full selectors (e.g., `testid:foo` → `[data-testid="foo"]`)
 - Automatic browser state reset on disconnection errors
 
 ### Tool Implementation Pattern
@@ -161,13 +176,14 @@ src/
 ├── tools/
 │   ├── common/types.ts     # Shared interfaces (ToolContext, ToolResponse)
 │   ├── browser/            # Browser automation tools
-│   │   ├── base.ts         # BrowserToolBase class
+│   │   ├── base.ts         # BrowserToolBase class with normalizeSelector()
 │   │   ├── interaction.ts  # Click, fill, select, hover, etc.
 │   │   ├── navigation.ts   # Navigate, go back/forward
 │   │   ├── screenshot.ts   # Screenshot tool
 │   │   ├── console.ts      # Console logs retrieval
 │   │   ├── visiblePage.ts  # Get visible text/HTML
 │   │   ├── output.ts       # PDF generation
+│   │   ├── elementInspection.ts  # Element visibility and position tools
 │   │   └── ...
 │   ├── api/                # HTTP request tools
 │   │   ├── base.ts         # Base API tool class
@@ -178,6 +194,10 @@ src/
 │       ├── index.ts        # Codegen tool definitions
 │       └── types.ts        # Codegen interfaces
 └── __tests__/              # Jest test suites
+    └── tools/
+        └── browser/
+            ├── elementInspection.test.ts  # Tests for visibility & position tools
+            └── ...
 ```
 
 ## Testing Notes
@@ -214,3 +234,21 @@ When adding new tools:
 4. Add case to switch statement in `handleToolCall()` in `src/toolHandler.ts`
 5. Initialize tool instance in `initializeTools()` function
 6. Add tests in `src/__tests__/tools/` matching the tool category
+
+### Tool Design Best Practices
+
+When designing new tools, follow these principles (see `TOOL_DESIGN_PRINCIPLES.md` for details):
+- **Atomic operations**: Each tool does ONE thing
+- **Minimal parameters**: Aim for 1-3 parameters, max 5
+- **Primitive types**: Use strings, numbers, booleans over nested objects
+- **Flat returns**: Minimize nesting in response structures
+- **Single selector parameter**: Use `normalizeSelector()` to support shortcuts like `testid:foo`
+- **Clear naming**: Tool name should describe what it returns
+
+### Selector Shortcuts
+
+All browser tools support test ID shortcuts via `normalizeSelector()`:
+- `testid:submit-button` → `[data-testid="submit-button"]`
+- `data-test:login-form` → `[data-test="login-form"]`
+- `data-cy:username` → `[data-cy="username"]`
+- Regular CSS selectors pass through unchanged

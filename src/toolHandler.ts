@@ -29,10 +29,14 @@ import {
   IframeFillTool,
   UploadFileTool
 } from './tools/browser/interaction.js';
-import { 
-  VisibleTextTool, 
-  VisibleHtmlTool 
+import {
+  VisibleTextTool,
+  VisibleHtmlTool
 } from './tools/browser/visiblePage.js';
+import {
+  ElementVisibilityTool,
+  ElementPositionTool
+} from './tools/browser/elementInspection.js';
 import {
   GetRequestTool,
   PostRequestTool,
@@ -100,6 +104,8 @@ let dragTool: DragTool;
 let pressKeyTool: PressKeyTool;
 let saveAsPdfTool: SaveAsPdfTool;
 let clickAndSwitchTabTool: ClickAndSwitchTabTool;
+let elementVisibilityTool: ElementVisibilityTool;
+let elementPositionTool: ElementPositionTool;
 
 
 interface BrowserSettings {
@@ -346,6 +352,8 @@ function initializeTools(server: any) {
   if (!pressKeyTool) pressKeyTool = new PressKeyTool(server);
   if (!saveAsPdfTool) saveAsPdfTool = new SaveAsPdfTool(server);
   if (!clickAndSwitchTabTool) clickAndSwitchTabTool = new ClickAndSwitchTabTool(server);
+  if (!elementVisibilityTool) elementVisibilityTool = new ElementVisibilityTool(server);
+  if (!elementPositionTool) elementPositionTool = new ElementPositionTool(server);
 }
 
 /**
@@ -549,7 +557,13 @@ export async function handleToolCall(
         return await saveAsPdfTool.execute(args, context);
       case "playwright_click_and_switch_tab":
         return await clickAndSwitchTabTool.execute(args, context);
-      
+
+      case "playwright_element_visibility":
+        return await elementVisibilityTool.execute(args, context);
+
+      case "playwright_element_position":
+        return await elementPositionTool.execute(args, context);
+
       default:
         return {
           content: [{

@@ -24,7 +24,13 @@
 
 [![smithery badge](https://smithery.ai/badge/@executeautomation/playwright-mcp-server)](https://smithery.ai/server/@executeautomation/playwright-mcp-server)
 
-A Model Context Protocol server that provides browser automation capabilities using Playwright. This server enables LLMs to interact with web pages, take screenshots, generate test code, web scraps the page and execute JavaScript in a real browser environment.
+A Model Context Protocol server that provides browser automation capabilities using Playwright. This server enables LLMs to interact with web pages, take screenshots, generate test code, web scrape pages, execute JavaScript, and debug element visibility issues in a real browser environment.
+
+## ✨ New: Element Debugging Tools
+
+- **`playwright_element_visibility`** - Debug why clicks fail with detailed visibility diagnostics (viewport intersection, clipping detection, coverage analysis)
+- **`playwright_element_position`** - Get precise element coordinates and dimensions
+- **Test ID shortcuts** - Use `testid:submit-button` instead of `[data-testid="submit-button"]` in any selector parameter
 
 <a href="https://glama.ai/mcp/servers/yh4lgtwgbe"><img width="380" height="200" src="https://glama.ai/mcp/servers/yh4lgtwgbe/badge" alt="mcp-playwright MCP server" /></a>
 

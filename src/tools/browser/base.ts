@@ -18,6 +18,32 @@ export abstract class BrowserToolBase implements ToolHandler {
   abstract execute(args: any, context: ToolContext): Promise<ToolResponse>;
 
   /**
+   * Normalize selector shortcuts to full Playwright selectors
+   * - "testid:foo" → "[data-testid='foo']"
+   * - "data-test:bar" → "[data-test='bar']"
+   * - "data-cy:baz" → "[data-cy='baz']"
+   * - Everything else → pass through
+   * @param selector The selector string
+   * @returns Normalized selector
+   */
+  protected normalizeSelector(selector: string): string {
+    const prefixMap: Record<string, string> = {
+      'testid:': 'data-testid',
+      'data-test:': 'data-test',
+      'data-cy:': 'data-cy',
+    };
+
+    for (const [prefix, attr] of Object.entries(prefixMap)) {
+      if (selector.startsWith(prefix)) {
+        const value = selector.slice(prefix.length);
+        return `[${attr}="${value}"]`;
+      }
+    }
+
+    return selector;  // CSS, text=, etc. pass through
+  }
+
+  /**
    * Ensures a page is available and returns it
    * @param context The tool context containing browser and page
    * @returns The page or null if not available

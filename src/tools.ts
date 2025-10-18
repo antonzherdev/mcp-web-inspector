@@ -443,6 +443,34 @@ export function createToolDefinitions() {
         required: ["selector"],
       },
     },
+    {
+      name: "playwright_element_visibility",
+      description: "Check if an element is visible to the user. CRITICAL for debugging click/interaction failures. Returns detailed visibility information including viewport intersection, clipping by overflow:hidden, and whether element needs scrolling. Supports testid shortcuts (e.g., 'testid:submit-button').",
+      inputSchema: {
+        type: "object",
+        properties: {
+          selector: {
+            type: "string",
+            description: "CSS selector, text selector, or testid shorthand (e.g., 'testid:login-button', '#submit', 'text=Click here')"
+          },
+        },
+        required: ["selector"],
+      },
+    },
+    {
+      name: "playwright_element_position",
+      description: "Get the position and size of an element. Returns x, y coordinates and width/height in pixels. Useful for finding where to click or checking element layout. Supports testid shortcuts (e.g., 'testid:submit-button').",
+      inputSchema: {
+        type: "object",
+        properties: {
+          selector: {
+            type: "string",
+            description: "CSS selector, text selector, or testid shorthand (e.g., 'testid:login-button', '#submit', 'text=Click here')"
+          },
+        },
+        required: ["selector"],
+      },
+    },
   ] as const satisfies Tool[];
 }
 
@@ -469,7 +497,9 @@ export const BROWSER_TOOLS = [
   "playwright_drag",
   "playwright_press_key",
   "playwright_save_as_pdf",
-  "playwright_click_and_switch_tab"
+  "playwright_click_and_switch_tab",
+  "playwright_element_visibility",
+  "playwright_element_position"
 ];
 
 // API Request tools for conditional launch
