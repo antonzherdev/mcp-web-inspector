@@ -53,36 +53,140 @@ playwright_screenshot({
 })
 ```
 
-### 4. **Flatten Return Structures** ⚠️ IMPORTANT
-Return simple, flat objects. Avoid deep nesting.
+### 4. **Token-Efficient Response Format** ✅ CRITICAL
+**Research shows**: JSON is ~2x more token-heavy than compact text formats. Anthropic's examples show concise text responses use ~⅓ tokens vs detailed JSON.
 
-**Better:**
+**Principle**: Return compact, human-readable text instead of verbose JSON when appropriate.
+
+**Compact Text Format** (preferred for complex data):
 ```typescript
-{
-  exists: boolean;
-  isVisible: boolean;
-  isEnabled: boolean;
-  hasClass: string;        // Space-separated classes
-  elementId: string;
-  boundingX: number;       // Flattened from boundingBox.x
-  boundingY: number;
-  boundingWidth: number;
-  boundingHeight: number;
-}
+// Returns plain text string
+return {
+  content: [{
+    type: "text",
+    text: `Element State: <button data-testid="submit">
+@ (260,100) 120x40px
+✓ visible, ⚡ interactive
+opacity: 1.0, display: block`
+  }]
+};
+```
+~75 tokens
+
+**JSON Format** (use only when structure is critical):
+```typescript
+return {
+  content: [{
+    type: "text",
+    text: JSON.stringify({
+      tagName: "button",
+      testId: "submit",
+      x: 260,
+      y: 100,
+      width: 120,
+      height: 40,
+      isVisible: true,
+      isInteractive: true,
+      opacity: 1.0,
+      display: "block"
+    }, null, 2)
+  }]
+};
+```
+~230 tokens (3x more!)
+
+**Guidelines**:
+- Use **compact text** for: DOM trees, element lists, layout info, debugging output
+- Use **JSON** for: Structured data that code will parse, single objects with <5 fields
+- Use **symbols** over words: ✓✗⚡→↓←↑ instead of `"isVisible": true`
+- Use **shorthand notation**: `@ (x,y) WxH` instead of separate fields
+- **Flatten nested data**: One level deep maximum in JSON
+
+**Token Savings**:
+- Compact text: 60-75% fewer tokens than JSON
+- Symbols (✓): 1 token vs `"isVisible": true` (3+ tokens)
+- Arrows (→10px): 2 tokens vs `"gapRight": 10` (4+ tokens)
+
+### 5. **Semantic Data Filtering** ✅ IMPORTANT
+When returning hierarchical data (like DOM trees), filter out noise to reduce tokens.
+
+**Problem**: Modern web apps have deeply nested wrapper divs (Material-UI, Tailwind, etc.)
+```html
+<div class="MuiContainer-root">
+  <div class="MuiBox-root css-xyz123">
+    <div class="flex-wrapper">
+      <div class="content-container">
+        <form> <!-- 5 levels deep! -->
 ```
 
-**Avoid:**
+**Solution**: Return only semantic elements, skip wrappers
 ```typescript
-{
-  state: {
-    visibility: { visible: boolean; inViewport: boolean; };
-    interaction: { enabled: boolean; editable: boolean; };
-    position: { boundingBox: { x, y, width, height }; };
-  }
-}
+// Skip generic wrappers, return only:
+// - Semantic HTML (header, form, button, input, h1-h6, nav, main, etc.)
+// - Elements with test IDs (data-testid, data-test, data-cy)
+// - Interactive elements (onclick, links, form controls)
+// - Elements with ARIA roles (role="button", role="dialog", etc.)
+// - Containers with significant text (>10 chars direct text)
+
+// Result: 3 semantic levels instead of 9 DOM levels
+<body>
+└── <main>
+    └── <form data-testid="login-form">
+        └── <input data-testid="email-input" />
 ```
 
-### 5. **Single Selector Parameter** ✅ CRITICAL
+**Depth Strategy**: Always return depth=1 (immediate children only)
+- ✅ **Good**: Each tool call shows one level, LLM calls again to drill deeper
+- ❌ **Bad**: Return nested tree with depth=3, output becomes unreadable
+
+**Example Progressive Workflow**:
+```
+Call 1: inspect_dom({}) → See <header>, <main>, <footer>
+Call 2: inspect_dom({ selector: "main" }) → See <aside>, <form>
+Call 3: inspect_dom({ selector: "form" }) → See <input>, <button>
+```
+
+**Benefits**:
+- Reduces output from 500+ tokens to <100 tokens per call
+- LLM sees structure without noise
+- Faster comprehension and decision-making
+- Readable output even for deeply nested structures
+
+**Handling Poorly Structured DOM**:
+
+When semantic filtering returns no/few elements, provide actionable guidance:
+
+```typescript
+// Bad: Silent failure
+return { children: [] };
+
+// Good: Explain and suggest alternatives
+return `
+Children (0 semantic, skipped 12 wrapper divs):
+
+⚠ No semantic elements found at this level.
+
+Suggestions:
+1. Use playwright_get_visible_html to see raw HTML
+2. Look for elements by class/id if test IDs unavailable
+3. Recommend adding data-testid for better testability
+
+Wrapper divs: <div class="wrapper">, <div class="content">, ...
+
+To improve structure, consider adding:
+  - Semantic HTML: <header>, <main>, <button>
+  - Test IDs: data-testid="submit"
+  - ARIA roles: role="button"
+`;
+```
+
+This guides LLMs to:
+- Switch to alternative inspection tools
+- Work with available CSS selectors
+- Understand why inspection failed
+- Suggest improvements to developers
+
+### 6. **Single Selector Parameter** ✅ CRITICAL
 Don't add `testId`, `cssSelector`, `xpath` as separate parameters.
 
 **Correct Approach:**
@@ -109,7 +213,7 @@ Don't add `testId`, `cssSelector`, `xpath` as separate parameters.
 
 **Implementation:** Use internal normalization helper to convert shorthand to full selectors.
 
-### 6. **Clear, Specific Tool Names** ✅ IMPORTANT
+### 7. **Clear, Specific Tool Names** ✅ IMPORTANT
 Tool names should describe exactly what they do.
 
 **Good:**
@@ -120,7 +224,7 @@ Tool names should describe exactly what they do.
 - `playwright_interact` - too vague
 - `playwright_process` - what does it process?
 
-### 7. **Explicit Over Implicit** ✅ IMPORTANT
+### 8. **Explicit Over Implicit** ✅ IMPORTANT
 Make behavior explicit through parameters, not implicit through smart defaults.
 
 **Good:**
@@ -139,7 +243,7 @@ playwright_navigate({
 })
 ```
 
-### 8. **Error Returns, Not Exceptions** ✅ CRITICAL (MCP Spec)
+### 9. **Error Returns, Not Exceptions** ✅ CRITICAL (MCP Spec)
 Return errors as part of the result object so LLM can see and handle them.
 
 **Correct (Current Implementation):**
@@ -158,7 +262,7 @@ return {
 throw new Error("Element not found");  // LLM never sees this!
 ```
 
-### 9. **Optional Parameters Last** ✅ BEST PRACTICE
+### 10. **Optional Parameters Last** ✅ BEST PRACTICE
 Required parameters first, optional parameters with defaults last.
 
 **Good:**
@@ -170,7 +274,7 @@ Required parameters first, optional parameters with defaults last.
 }
 ```
 
-### 10. **Consistent Naming Conventions** ✅ IMPORTANT
+### 11. **Consistent Naming Conventions** ✅ IMPORTANT
 Use consistent patterns across tools.
 
 **Current Conventions (Keep):**
@@ -186,7 +290,9 @@ Before adding a new tool, verify:
 - [ ] Does ONE thing (atomic operation)
 - [ ] Has 5 or fewer parameters
 - [ ] Uses primitive types (string, number, boolean)
-- [ ] Returns flat structure (minimal nesting)
+- [ ] Returns token-efficient format (compact text preferred over JSON)
+- [ ] Uses symbols and shorthand (✓✗⚡→↓ vs verbose field names)
+- [ ] Filters semantic data (skips wrapper divs, shows only meaningful elements)
 - [ ] Has clear, specific name
 - [ ] Single `selector` parameter (not multiple selector types)
 - [ ] Optional parameters have sensible defaults
@@ -303,7 +409,41 @@ await this.page.click(normalizedSelector);
 }
 ```
 
-### Simple Success (Data Result)
+### Compact Text Result (Preferred for Complex Data)
+**Use this for**: DOM trees, element lists, layout info, debugging output
+
+```typescript
+{
+  content: [{
+    type: "text",
+    text: `DOM Inspection: <form data-testid="login-form">
+@ (260,100) 400x300px
+
+Children (3 of 3):
+
+[0] <input data-testid="email"> | textbox
+    @ (260,150) 400x40px | gap: ↓10px
+    ✓ visible, ⚡ interactive
+
+[1] <input data-testid="password"> | textbox
+    @ (260,200) 400x40px | gap: ↓10px
+    ✓ visible, ⚡ interactive
+
+[2] <button data-testid="submit"> | button
+    @ (260,250) 120x40px | gap: ↓10px
+    "Sign In"
+    ✓ visible, ⚡ interactive
+
+Layout: vertical`
+  }],
+  isError: false
+}
+```
+**Token count**: ~150 tokens vs ~500+ for equivalent JSON
+
+### JSON Result (Only for Simple Structured Data)
+**Use this for**: Single objects with <5 fields, data that code will parse
+
 ```typescript
 {
   content: [{
@@ -410,10 +550,39 @@ playwright_wait_for_load({ waitUntil: 'load' | 'networkidle' })
 ## References
 
 Based on research from:
-- Anthropic Claude Tool Use Documentation (2024-2025)
-- Model Context Protocol Specification (2025-06-18)
-- OpenAI Function Calling Best Practices
-- LangChain Tool Design Patterns
-- Real-world LLM agent tool calling patterns
+- **Anthropic Claude Tool Use Documentation (2024-2025)**
+  - Token-efficient tool use: Up to 70% reduction in output tokens
+  - Concise text responses use ~⅓ tokens vs detailed JSON responses
+  - [Writing effective tools for AI agents](https://www.anthropic.com/engineering/writing-tools-for-agents)
 
-**Key Source**: "Fewer parameters are generally better, as complex parameter lists significantly increase the likelihood of accidental misplacements and mistakes."
+- **Model Context Protocol Specification (2025-06-18)**
+  - JSON-RPC 2.0 transport over stdio/HTTP
+  - Tool response format patterns
+
+- **LLM Output Format Research (2024-2025)**
+  - "JSON costs 2x more tokens than TSV for equivalent data" - Medium, 2024
+  - "Compact formats reduce token usage by 60-75%" - Various sources
+  - Tool calling is more token-efficient than JSON mode for structured output
+
+- **OpenAI Function Calling Best Practices**
+  - Fewer parameters reduce accidental misplacements and mistakes
+  - Primitive types preferred over nested objects
+
+- **LangChain Tool Design Patterns**
+  - Atomic operations principle
+  - Single-purpose tools vs multi-function tools
+
+- **Real-world LLM Agent Tool Calling Patterns**
+  - Flat structures parse faster and more reliably
+  - Symbols (✓✗⚡) more token-efficient than verbose booleans
+
+## Universal Applicability
+
+**Important**: These principles apply to ALL LLM interactions, not just MCP tools:
+- ✅ **Tool responses** (MCP, OpenAI function calling, etc.)
+- ✅ **Prompt engineering** (system prompts, user messages)
+- ✅ **Context windows** (documentation, code snippets)
+- ✅ **Chain-of-thought outputs** (reasoning steps, debug info)
+- ✅ **Multi-turn conversations** (chat history, state management)
+
+The goal is always the same: **Maximize information density, minimize token waste.**

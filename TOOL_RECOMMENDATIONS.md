@@ -19,9 +19,11 @@ See `IMPLEMENTATION_SUMMARY.md` for implementation details.
 ## Key Design Changes from Original Recommendations
 
 1. **Split complex tools** - Tools with 5+ parameters or nested returns split into focused tools
-2. **Flatten return structures** - Minimize nesting, prefer flat key-value pairs
-3. **Single selector parameter** - Use string normalization instead of multiple selector types
-4. **Primitive types** - Avoid nested objects in parameters where possible
+2. **Token-efficient responses** - Compact text format preferred over JSON (60-75% token savings)
+3. **Semantic filtering** - Skip wrapper divs, return only meaningful elements
+4. **Single selector parameter** - Use string normalization instead of multiple selector types
+5. **Primitive types** - Avoid nested objects in parameters where possible
+6. **Symbols over words** - Use ✓✗⚡→↓ instead of verbose field names
 
 ---
 
@@ -29,6 +31,146 @@ See `IMPLEMENTATION_SUMMARY.md` for implementation details.
 - 🔴 **High Priority** - Addresses critical gaps or frequently needed functionality
 - 🟡 **Medium Priority** - Valuable quality-of-life improvements
 - 🟢 **Low Priority** - Nice-to-have enhancements
+
+---
+
+## Progressive DOM Discovery Tool
+
+### 🔴 NEW: `playwright_inspect_dom`
+**Progressive DOM inspection with semantic filtering and spatial layout info.**
+
+This is the **primary tool for understanding page structure**, replacing the need for multiple separate tools. It combines:
+- Page overview (landmark elements)
+- Element zoom (progressive drill-down)
+- Spatial layout (geometry and relative positioning)
+- Semantic filtering (skips wrapper divs)
+
+**Semantic Elements** (what gets returned, non-semantic wrappers skipped):
+- Semantic HTML: `header`, `nav`, `main`, `article`, `section`, `aside`, `footer`, `form`, `button`, `input`, `select`, `textarea`, `a`, `h1-h6`, `p`, `ul`, `ol`, `li`, `table`, `img`, `video`, `dialog`
+- Elements with test IDs: `data-testid`, `data-test`, `data-cy`
+- Elements with ARIA roles: `role="button"`, `role="dialog"`, etc.
+- Interactive elements: Elements with `onclick`, `contenteditable`
+- Containers with significant text (>10 chars direct text)
+
+**Parameters:**
+```typescript
+{
+  selector?: string;        // Omit for page overview, provide to zoom into element
+  includeHidden?: boolean;  // Default: false
+  maxChildren?: number;     // Limit children shown (default: 20)
+}
+```
+
+**Note:** Depth is always 1 (immediate semantic children only). To drill deeper, call the tool again with a child's selector. This keeps output readable and token-efficient.
+
+**Handling Poorly Structured DOM:**
+
+When inspecting returns few/no semantic elements (e.g., "Found 0 semantic children, skipped 15 wrapper divs"), the page lacks semantic structure. Options:
+
+1. **Use existing tools**: Try `playwright_get_visible_html` or `playwright_get_visible_text` to see raw content
+2. **Suggest improvements**: Recommend adding test IDs, ARIA roles, or semantic HTML to make the page more inspectable
+3. **Work with what's available**: Use CSS selectors based on classes/IDs if testids aren't available
+
+The tool will suggest next steps when it encounters non-semantic DOM.
+
+**Returns:** Compact text format (token-efficient)
+
+Example 1 - Well-structured page:
+```
+DOM Inspection: <main data-testid="content">
+@ (0,80) 1200x800px
+
+Children (2 of 2, skipped 3 wrappers):
+
+[0] <aside data-testid="sidebar"> | navigation
+    @ (0,80) 250x800px | offset: 0,0 | left
+    "Navigation sidebar with 5 menu items"
+    ✓ visible, ⚡ interactive, 5 children
+
+[1] <section data-testid="content-area"> | region
+    @ (260,75) 940x600px | offset: -5,260 | right
+    gap from [0]: →10px ↑5px (horizontal layout)
+    "Main content with form"
+    ✓ visible, ⚡ interactive, 1 child
+
+Layout: horizontal (sidebar + content)
+```
+
+Example 2 - Poorly structured page (guidance provided):
+```
+DOM Inspection: <div class="container">
+@ (0,80) 1200x800px
+
+Children (0 semantic, skipped 12 wrapper divs):
+
+⚠ No semantic elements found at this level.
+
+The page uses generic <div> wrappers without semantic HTML, test IDs, or ARIA roles.
+
+Suggestions:
+1. Use playwright_get_visible_html({ selector: ".container" }) to see raw HTML
+2. Look for interactive elements by class/id (e.g., .button, #submit-btn)
+3. Recommend adding data-testid attributes for better testability
+
+Wrapper divs found (not shown):
+  <div class="wrapper">, <div class="content">, <div class="flex-row">, ...
+
+To improve this page's structure, consider:
+  - Adding semantic HTML: <header>, <main>, <nav>, <button>
+  - Adding test IDs: data-testid="submit-button"
+  - Adding ARIA roles: role="button", role="navigation"
+```
+
+Example 3 - Mixed structure (some semantic, some wrappers):
+```
+DOM Inspection: <div id="app-root">
+@ (0,0) 1200x1000px
+
+Children (3 semantic, skipped 8 wrapper divs):
+
+[0] <button class="close-btn">
+    @ (1150,10) 40x40px
+    "×"
+    ✓ visible, ⚡ interactive
+
+[1] <div class="user-info" data-testid="user-profile">
+    @ (20,20) 200x60px
+    "John Doe john@example.com"
+    ✓ visible, has test ID
+
+[2] <form class="search-form">
+    @ (240,25) 400x50px
+    ✓ visible, ⚡ interactive, 2 children
+
+💡 Tip: Some elements found, but 8 wrapper divs were skipped.
+   Consider adding test IDs to key elements for easier selection.
+```
+
+**Symbols:**
+- `✓` = visible, `✗` = hidden
+- `⚡` = interactive (clickable/editable)
+- `→` = right, `←` = left, `↓` = down, `↑` = up
+- `@ (x,y) WxH` = position and size
+
+**Token Efficiency:**
+- Page overview: ~120 tokens (vs ~300+ JSON)
+- Form with fields: ~150 tokens (vs ~500+ JSON)
+- List with 50 items (3 shown): ~190 tokens (vs ~1200+ JSON)
+
+**Workflow (Progressive Drill-Down):**
+1. **Overview**: `playwright_inspect_dom({})` → See page sections (header, main, footer)
+2. **Zoom Level 1**: `playwright_inspect_dom({ selector: "main" })` → See main content children (sidebar, form, etc.)
+3. **Zoom Level 2**: `playwright_inspect_dom({ selector: "testid:login-form" })` → See form fields (inputs, buttons)
+4. **Interact**: Use selectors from output with interaction tools (click, fill, etc.)
+
+Each call returns only immediate semantic children - this keeps responses readable and under ~200 tokens even for complex pages.
+
+**Why this tool:**
+- **Vision-like focus**: Overview → zoom → detail (mirrors LLM image analysis)
+- **Token efficient**: 60-75% fewer tokens than JSON equivalents
+- **Spatial awareness**: Geometry + relative positioning for layout understanding
+- **Smart omission**: Shows patterns without repeating similar elements
+- **Modern web apps**: Filters Material-UI/Tailwind wrapper divs automatically
 
 ---
 
@@ -40,24 +182,29 @@ Discover all test identifiers on the page (data-testid, data-test, data-cy, etc.
 **Parameters:**
 ```typescript
 {
-  attributes?: string[];   // Default: ['data-testid', 'data-test', 'data-cy']
+  attributes?: string;     // Comma-separated list (default: 'data-testid,data-test,data-cy')
 }
 ```
 
-**Returns:**
-```typescript
-{
-  testIds: string[];       // Flat array of all test ID values found
-  byAttribute: {           // Grouped by attribute name
-    'data-testid': string[];
-    'data-test': string[];
-    'data-cy': string[];
-  };
-  total: number;
-}
+**Returns:** Compact text format
+```
+Found 15 test IDs:
+
+data-testid (12):
+  submit-button, email-input, password-input, login-form,
+  header-nav, footer-links, user-menu, search-bar,
+  product-card-1, product-card-2, product-card-3, ...
+
+data-test (2):
+  legacy-form, old-button
+
+data-cy (1):
+  cypress-login
 ```
 
-**Why this tool:** Makes test-driven workflows easier. No complex nested objects, simple discovery.
+**Token efficiency:** ~100 tokens vs ~250 tokens (JSON format) = **60% savings**
+
+**Why this tool:** Makes test-driven workflows easier. Compact list format shows what's available without token waste.
 
 ---
 
@@ -74,29 +221,31 @@ Test a selector and return information about all matched elements.
 }
 ```
 
-**Returns:**
-```typescript
-{
-  count: number;
-  elements: Array<{
-    index: number;         // Use with other tools to target specific element
-    tagName: string;
-    textContent: string;   // First 100 chars
-    id: string;
-    className: string;     // Space-separated classes
-    dataTestId: string;    // data-testid attribute if present
-    isVisible: boolean;
-    // Flattened bounding box (not nested object)
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  }>;
-  limitReached: boolean;
-}
+**Returns:** Compact text format
+```
+Found 3 elements matching "button.submit":
+
+[0] <button data-testid="submit-main" class="submit primary">
+    @ (260,100) 120x40px
+    "Sign In"
+    ✓ visible, ⚡ interactive
+
+[1] <button data-testid="submit-secondary" class="submit">
+    @ (400,100) 120x40px
+    "Continue"
+    ✓ visible, ⚡ interactive
+
+[2] <button#disabled-submit class="submit disabled">
+    @ (260,200) 120x40px
+    "Submit"
+    ✗ hidden, opacity: 0.3
+
+Showing 3 of 3 matches
 ```
 
-**Design note:** ✅ Follows best practices - 2 parameters, flat return structure, primitive types.
+**Token efficiency:** ~150 tokens vs ~400 tokens (JSON format) = **62% savings**
+
+**Design note:** Compact text with symbols makes results scannable. Use index numbers with other tools to interact.
 
 ---
 
@@ -110,17 +259,19 @@ Check if element exists and get basic info.
 }
 ```
 
-**Returns:**
-```typescript
-{
-  exists: boolean;
-  tagName: string;         // Empty string if not exists
-  id: string;
-  className: string;
-}
+**Returns:** Compact text format
+```
+✓ exists: <button#login.btn-primary>
 ```
 
-**Why split:** Original `get_element_state` had 10+ return fields. This focuses on existence check.
+Or if not found:
+```
+✗ not found: button#invalid-selector
+```
+
+**Token efficiency:** ~15 tokens vs ~80 tokens (JSON format) = **81% savings**
+
+**Why split:** Original `get_element_state` had 10+ return fields. This focuses on existence check with minimal tokens.
 
 ---
 
@@ -138,31 +289,42 @@ Check if an element is visible to the user. **CRITICAL for debugging click/inter
 }
 ```
 
-**Returns:**
+**Returns (Current - JSON):**
 ```typescript
 {
-  // Playwright checks
-  isVisible: boolean;          // Has bounding box, not display:none or visibility:hidden
-  isInViewport: boolean;       // Actually intersects viewport (uses IntersectionObserver)
-  viewportRatio: number;       // 0.0-1.0: How much is in viewport (0 = none, 1 = fully)
-
-  // CSS properties
-  opacity: number;             // 0.0 to 1.0
-  display: string;             // CSS display value
-  visibility: string;          // CSS visibility value
-
-  // Common failure reasons
-  isClipped: boolean;          // Cut off by overflow:hidden on parent
-  isCovered: boolean;          // Another element is on top (if detectable)
-  needsScroll: boolean;        // Element exists but needs scrollIntoView
+  isVisible: boolean;
+  isInViewport: boolean;
+  viewportRatio: number;
+  opacity: number;
+  display: string;
+  visibility: string;
+  isClipped: boolean;
+  isCovered: boolean;
+  needsScroll: boolean;
 }
 ```
 
+**Recommended: Compact text format** (for future update)
+```
+Visibility: <button data-testid="submit">
+
+✓ visible, ✗ not in viewport (30% visible)
+opacity: 1.0, display: block, visibility: visible
+
+Issues:
+  ✗ clipped by parent overflow:hidden
+  ⚠ needs scroll to bring into view
+
+→ Call playwright_scroll_to_element before clicking
+```
+
+**Token efficiency:** ~100 tokens vs ~180 tokens (current JSON) = **44% savings**
+
 **Real-world debugging:**
-- `isVisible=true` but `isInViewport=false` → Element needs scroll
-- `isVisible=true` but `viewportRatio=0.3` → Only 30% visible, might fail click
-- `isClipped=true` → Parent has `overflow:hidden`
-- `needsScroll=true` → Call `playwright_scroll_to_element` before interacting
+- `✓ visible, ✗ not in viewport` → Element needs scroll
+- `30% visible` → Only partially in viewport, might fail click
+- `✗ clipped` → Parent has `overflow:hidden`
+- `⚠ needs scroll` → Call `playwright_scroll_to_element` before interacting
 
 **Why split:** Focused only on visibility. Provides actionable debugging info for the most common interaction failures.
 
@@ -182,18 +344,26 @@ Get the position and size of an element.
 }
 ```
 
-**Returns:**
+**Returns (Current - JSON):**
 ```typescript
 {
-  x: number;               // Distance from left edge of viewport
-  y: number;               // Distance from top edge of viewport
+  x: number;
+  y: number;
   width: number;
   height: number;
-  inViewport: boolean;     // Element is within visible viewport bounds
+  inViewport: boolean;
 }
 ```
 
-**Why split:** Focused only on layout/position. Separate from visibility concerns.
+**Recommended: Compact text format** (for future update)
+```
+Position: <button data-testid="submit">
+@ (260,100) 120x40px, ✓ in viewport
+```
+
+**Token efficiency:** ~30 tokens vs ~100 tokens (current JSON) = **70% savings**
+
+**Why split:** Focused only on layout/position. Separate from visibility concerns. Ultra-compact format ideal for simple geometry data.
 
 ---
 
@@ -207,20 +377,23 @@ Check if element can be interacted with.
 }
 ```
 
-**Returns:**
-```typescript
-{
-  isEnabled: boolean;
-  isEditable: boolean;
-  isChecked: boolean | null;    // null if not checkbox/radio
-  isFocused: boolean;
-  isDisabled: boolean;
-  readOnly: boolean;
-  ariaDisabled: boolean;
-}
+**Returns:** Compact text format
+```
+Interaction State: <button data-testid="submit">
+
+✓ enabled, ✓ editable, ✓ focused
+✗ not checked (N/A for button)
+✗ not disabled, ✗ not readOnly, ✗ not aria-disabled
 ```
 
-**Why split:** Focused on interaction capability. LLM can call specific tool for specific concern.
+Or more concisely for common cases:
+```
+✓ enabled, editable, focused
+```
+
+**Token efficiency:** ~50 tokens vs ~150 tokens (JSON format) = **67% savings**
+
+**Why split:** Focused on interaction capability. Symbols make state immediately scannable.
 
 ---
 
@@ -234,27 +407,24 @@ List all iframes on the page.
 }
 ```
 
-**Returns:**
-```typescript
-{
-  iframes: Array<{
-    index: number;         // Use with iframe tools
-    name: string;
-    src: string;
-    id: string;
-    title: string;
-    selector: string;      // CSS selector to locate iframe
-    // Flattened position
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  }>;
-  total: number;
-}
+**Returns:** Compact text format
+```
+Found 2 iframes:
+
+[0] <iframe#payment-frame name="stripe-payment">
+    src: https://checkout.stripe.com/...
+    @ (100,200) 400x300px
+    "Payment Form"
+
+[1] <iframe name="analytics">
+    src: https://www.google-analytics.com/...
+    @ (0,0) 1x1px
+    ✗ hidden (tracking pixel)
 ```
 
-**Design note:** ✅ Removed nested iframe parameter - simpler is better. Flat return structure.
+**Token efficiency:** ~80 tokens vs ~200 tokens (JSON format) = **60% savings**
+
+**Design note:** Compact format shows essential info. Use index with iframe-specific tools (playwright_iframe_click, etc.).
 
 ---
 
@@ -269,17 +439,29 @@ Get all attributes of a specific element.
 }
 ```
 
-**Returns:**
-```typescript
-{
-  tagName: string;
-  allAttributes: Record<string, string>;  // Flat key-value
-  dataAttributes: Record<string, string>; // Subset: data-* only
-  ariaAttributes: Record<string, string>; // Subset: aria-* only
-}
+**Returns:** Compact text format
+```
+Attributes: <button data-testid="submit" aria-label="Submit form">
+
+All:
+  id: submit-btn
+  class: btn btn-primary
+  type: submit
+  disabled: false
+
+Data:
+  data-testid: submit
+  data-action: login
+  data-analytics: click-submit
+
+ARIA:
+  aria-label: Submit form
+  aria-describedby: submit-help
 ```
 
-**Design note:** ✅ String filter instead of string array for simplicity.
+**Token efficiency:** ~120 tokens vs ~200 tokens (JSON format) = **40% savings**
+
+**Design note:** Grouped attributes by type for clarity. Skip empty groups to save tokens.
 
 ---
 
@@ -293,22 +475,21 @@ Get accessibility information for an element.
 }
 ```
 
-**Returns:**
-```typescript
-{
-  role: string;
-  name: string;            // Accessible name
-  value: string;
-  description: string;
-  disabled: boolean;
-  focused: boolean;
-  level: number;           // For headings, tree items
-  // Children omitted - too complex for single tool call
-  // LLM can call recursively on child selectors if needed
-}
+**Returns:** Compact text format
+```
+Accessibility: <button data-testid="submit">
+
+Role: button
+Name: "Submit form"
+Value: ""
+State: ✓ enabled, ✓ focused
+Level: 0
+Description: "Click to submit the login form"
 ```
 
-**Design note:** ⚠️ Removed recursive tree structure. Return single level only. LLM can traverse manually.
+**Token efficiency:** ~70 tokens vs ~140 tokens (JSON format) = **50% savings**
+
+**Design note:** Single level only (no children tree). Use symbols for state. LLM can call recursively on child selectors if needed.
 
 ---
 
@@ -325,24 +506,25 @@ List recent network requests.
 }
 ```
 
-**Returns:**
-```typescript
-{
-  requests: Array<{
-    index: number;         // Use with get_request_details
-    url: string;
-    method: string;
-    status: number;
-    type: string;
-    fromCache: boolean;
-    durationMs: number;
-  }>;
-  total: number;
-  limitReached: boolean;
-}
+**Returns:** Compact text format
+```
+Network Requests (15 of 50, recent first):
+
+[0] GET /api/users 200 OK | xhr | 145ms | cached
+[1] POST /api/login 200 OK | fetch | 320ms | 2.1KB
+[2] GET /styles.css 200 OK | stylesheet | 45ms | cached
+[3] GET /app.js 200 OK | script | 280ms | 125KB
+[4] GET /logo.png 200 OK | image | 80ms | cached
+[5] GET /api/profile 401 Unauthorized | xhr | 25ms
+...
+
+Omitted: 35 older requests (indexes 15-49)
+Use playwright_get_request_details(index) for full info
 ```
 
-**Why split:** Original had 6 parameters. This simple list + detail pattern is more LLM-friendly.
+**Token efficiency:** ~150 tokens vs ~600+ tokens (JSON format) = **75% savings**
+
+**Why split:** Original had 6 parameters. Compact list + detail pattern saves massive tokens for network debugging.
 
 ---
 
@@ -356,26 +538,33 @@ Get detailed information about a specific network request.
 }
 ```
 
-**Returns:**
-```typescript
-{
-  url: string;
-  method: string;
-  status: number;
-  statusText: string;
-  requestBody: string;     // Truncated if large
-  responseBody: string;    // Truncated if large
-  requestHeaders: string;  // JSON string (flattened)
-  responseHeaders: string; // JSON string (flattened)
-  startTime: number;       // Unix timestamp ms
-  endTime: number;
-  durationMs: number;
-  requestBytes: number;
-  responseBytes: number;
-}
+**Returns:** Compact text format
+```
+Request Details [1]:
+
+POST https://api.example.com/login
+Status: 200 OK (took 320ms)
+Size: 234 bytes → 1.2KB
+
+Request Headers:
+  content-type: application/json
+  authorization: Bearer eyJ...
+
+Request Body:
+  {"email":"user@example.com","password":"***"}
+
+Response Headers:
+  content-type: application/json
+  set-cookie: session=abc123; HttpOnly
+
+Response Body (truncated at 500 chars):
+  {"token":"eyJhbGc...","user":{"id":123,"name":"John Doe"}}
+  ... [700 more bytes]
 ```
 
-**Why split:** Two-step list→detail pattern. Avoids complex filtering parameters.
+**Token efficiency:** ~200 tokens vs ~400 tokens (JSON format) = **50% savings**
+
+**Why split:** Two-step list→detail pattern. Shows critical debugging info in readable format. Auto-truncates large bodies.
 
 ---
 
@@ -389,16 +578,19 @@ Wait for network activity to settle.
 }
 ```
 
-**Returns:**
-```typescript
-{
-  success: boolean;
-  waitedMs: number;
-  pendingRequests: number;
-}
+**Returns:** Compact text format
+```
+✓ Network idle after 850ms, 0 pending requests
 ```
 
-**Design note:** ✅ Simplified - removed idleDuration and maxInflight. Use sensible defaults.
+Or on timeout:
+```
+✗ Timeout after 30000ms, 3 requests still pending
+```
+
+**Token efficiency:** ~20 tokens vs ~80 tokens (JSON format) = **75% savings**
+
+**Design note:** Simplified - removed idleDuration and maxInflight params. Use sensible defaults. Ultra-compact result.
 
 ---
 
@@ -410,18 +602,21 @@ Get page load performance timing.
 {} // No parameters
 ```
 
-**Returns:**
-```typescript
-{
-  domContentLoadedMs: number;
-  loadEventMs: number;
-  firstPaintMs: number;
-  firstContentfulPaintMs: number;
-  // All values relative to navigation start
-}
+**Returns:** Compact text format
+```
+Performance Timing:
+
+DOMContentLoaded: 450ms
+Load: 1200ms
+First Paint: 380ms
+First Contentful Paint: 420ms
+
+(all relative to navigation start)
 ```
 
-**Design note:** ✅ Flat structure, removed nested timing/memory/metrics objects.
+**Token efficiency:** ~50 tokens vs ~120 tokens (JSON format) = **58% savings**
+
+**Design note:** Simple timing metrics in readable format. No nested objects.
 
 ---
 
@@ -439,17 +634,21 @@ Wait for element to reach a specific state.
 }
 ```
 
-**Returns:**
-```typescript
-{
-  success: boolean;
-  waitedMs: number;
-  finallyVisible: boolean;
-  finallyExists: boolean;
-}
+**Returns:** Compact text format
+```
+✓ Element visible after 1.2s
+Now: ✓ visible, ✓ exists
 ```
 
-**Design note:** ✅ Good design - 3 parameters, flat return, clear purpose.
+Or on timeout:
+```
+✗ Timeout after 30s waiting for visible
+Now: ✗ hidden, ✓ exists
+```
+
+**Token efficiency:** ~30 tokens vs ~100 tokens (JSON format) = **70% savings**
+
+**Design note:** 3 parameters, ultra-compact return. Clear success/failure indication with current state.
 
 ---
 
@@ -463,24 +662,29 @@ Get cookies for current page.
 }
 ```
 
-**Returns:**
-```typescript
-{
-  cookies: Array<{
-    name: string;
-    value: string;
-    domain: string;
-    path: string;
-    expires: number;       // Unix timestamp, -1 for session
-    httpOnly: boolean;
-    secure: boolean;
-    sameSite: string;
-  }>;
-  total: number;
-}
+**Returns:** Compact text format
+```
+Cookies (3):
+
+session_id
+  Value: abc123xyz...
+  Domain: example.com | Path: / | Expires: 2025-12-31
+  ✓ Secure, ✓ HttpOnly, SameSite: Strict
+
+auth_token
+  Value: eyJhbGc...
+  Domain: .example.com | Path: / | Session cookie
+  ✓ Secure, ✗ HttpOnly, SameSite: Lax
+
+tracking
+  Value: GA1.2.123...
+  Domain: .google.com | Path: / | Expires: 2026-01-01
+  ✗ Secure, ✗ HttpOnly, SameSite: None
 ```
 
-**Design note:** ✅ Simplified URLs array to single context.
+**Token efficiency:** ~180 tokens vs ~350 tokens (JSON format) = **48% savings**
+
+**Design note:** Grouped cookie properties. Symbols for security flags make scanning easier.
 
 ---
 
@@ -501,14 +705,14 @@ Set a single cookie.
 }
 ```
 
-**Returns:**
-```typescript
-{
-  success: boolean;
-}
+**Returns:** Compact text format
+```
+✓ Cookie 'session_id' set for example.com
 ```
 
-**Design note:** ✅ Single cookie instead of array. LLM calls multiple times for multiple cookies.
+**Token efficiency:** ~15 tokens vs ~30 tokens (JSON format) = **50% savings**
+
+**Design note:** Single cookie instead of array. LLM calls multiple times for multiple cookies. Ultra-compact confirmation.
 
 ---
 
@@ -522,15 +726,20 @@ Get localStorage contents.
 }
 ```
 
-**Returns:**
-```typescript
-{
-  items: Record<string, string>;
-  total: number;
-}
+**Returns:** Compact text format
+```
+localStorage (5 items):
+
+theme: dark
+language: en-US
+user_preferences: {"notifications":true,"autoSave":false}
+session_start: 2025-01-19T10:30:00Z
+cart_items: [{"id":123,"qty":2},{"id":456,"qty":1}]
 ```
 
-**Design note:** ✅ Simple, flat structure.
+**Token efficiency:** ~100 tokens vs ~180 tokens (JSON format) = **44% savings**
+
+**Design note:** Simple key-value list. JSON values displayed as-is for readability.
 
 ---
 
@@ -544,13 +753,18 @@ Get sessionStorage contents.
 }
 ```
 
-**Returns:**
-```typescript
-{
-  items: Record<string, string>;
-  total: number;
-}
+**Returns:** Compact text format
 ```
+sessionStorage (3 items):
+
+temp_form_data: {"email":"user@example.com","step":2}
+wizard_state: in-progress
+last_action: 2025-01-19T10:32:15Z
+```
+
+**Token efficiency:** ~80 tokens vs ~140 tokens (JSON format) = **43% savings**
+
+**Design note:** Same format as localStorage for consistency.
 
 ---
 
@@ -567,15 +781,20 @@ Get text content of a specific element.
 }
 ```
 
-**Returns:**
-```typescript
-{
-  text: string;
-  length: number;
-}
+**Returns:** Compact text format
+```
+Lorem ipsum dolor sit amet, consectetur adipiscing elit...
+(234 characters)
 ```
 
-**Design note:** ✅ Removed innerText parameter - use sensible default. Simpler.
+Or for empty text:
+```
+(empty - 0 characters)
+```
+
+**Token efficiency:** Direct text return instead of JSON wrapper = **60% savings** for short text
+
+**Design note:** Return text directly with length note. No JSON wrapper needed for simple text extraction.
 
 ---
 
@@ -589,18 +808,21 @@ Scroll an element into view. **Complements `playwright_element_visibility`.**
 }
 ```
 
-**Returns:**
-```typescript
-{
-  scrolled: boolean;           // Whether scrolling was needed
-  nowInViewport: boolean;      // Element in viewport after scroll
-  viewportRatio: number;       // How much is visible (0.0-1.0)
-}
+**Returns:** Compact text format
+```
+✓ Scrolled, now 100% in viewport
 ```
 
-**Use case:** When `playwright_element_visibility` returns `needsScroll=true`, call this before clicking/interacting.
+Or if already visible:
+```
+Already in viewport (85% visible), no scroll needed
+```
 
-**Design note:** ✅ Wraps Playwright's `scrollIntoViewIfNeeded()`. Simple, focused operation.
+**Token efficiency:** ~20 tokens vs ~90 tokens (JSON format) = **78% savings**
+
+**Use case:** When `playwright_element_visibility` returns `⚠ needs scroll`, call this before clicking/interacting.
+
+**Design note:** Wraps Playwright's `scrollIntoViewIfNeeded()`. Ultra-compact confirmation with visibility ratio.
 
 ---
 
@@ -639,10 +861,11 @@ All tools accepting `selector` parameter support these shorthand formats:
 - **Selector normalization** - Test ID shortcuts (testid:, data-test:, data-cy:) ✅ **DONE**
 
 ### Phase 1 - Critical Tools (Next to Implement)
-1. **`playwright_get_test_ids`** - Enable test-driven workflows
-2. **`playwright_query_selector_all`** - Essential for selector debugging
-3. **`playwright_list_iframes`** - Fills critical gap
-4. **`playwright_element_exists`** - Most common check
+1. **`playwright_inspect_dom`** - 🔥 **PRIMARY TOOL** - Progressive DOM discovery with spatial layout (replaces multiple tools)
+2. **`playwright_get_test_ids`** - Enable test-driven workflows
+3. **`playwright_query_selector_all`** - Essential for selector debugging (may be superseded by inspect_dom)
+4. **`playwright_list_iframes`** - Fills critical gap
+5. **`playwright_element_exists`** - Most common check
 
 ### Phase 2 - High-Value Tools
 7. **`playwright_list_network_requests`** - Common debugging need
@@ -683,10 +906,14 @@ All tools accepting `selector` parameter support these shorthand formats:
 ✅ **Atomic operations** - Each tool does ONE thing
 ✅ **Fewer parameters** - Most tools have 1-3 params, max 5
 ✅ **Primitive types** - Strings, numbers, booleans preferred
-✅ **Flat returns** - Minimal nesting in response objects
+✅ **Token-efficient responses** - Compact text format (60-75% token savings vs JSON)
+✅ **Semantic filtering** - Skip wrapper divs, show only meaningful elements
+✅ **Symbols over words** - ✓✗⚡→↓ instead of verbose field names
 ✅ **Single selector param** - String normalization handles multiple formats
 ✅ **Clear naming** - Tool names describe exact behavior
 ✅ **Error as results** - Errors returned in ToolResponse, not thrown
+
+**Research-backed**: Based on 2024-2025 studies showing JSON costs 2x tokens vs compact formats, and Anthropic's findings that concise responses use ⅓ tokens vs detailed JSON.
 
 See `TOOL_DESIGN_PRINCIPLES.md` for detailed rationale and research sources.
 
