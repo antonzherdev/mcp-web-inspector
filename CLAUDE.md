@@ -1,0 +1,216 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Overview
+
+This is a Model Context Protocol (MCP) server that provides browser automation capabilities using Playwright. It enables LLMs to interact with web pages, take screenshots, execute JavaScript, and perform HTTP requests through a set of MCP tools.
+
+Server name: `playwright-mcp` (important for tool name length constraints - some clients like Cursor have a 60-character limit for `server_name:tool_name`)
+
+## Development Commands
+
+### Building
+```bash
+npm run build          # Compile TypeScript to dist/
+npm run watch          # Watch mode for development
+npm run prepare        # Build and make dist files executable (runs on npm install)
+```
+
+### Testing
+```bash
+npm test               # Run tests without coverage
+npm run test:coverage  # Run tests with coverage report (outputs to coverage/)
+npm run test:custom    # Run tests using custom script (node run-tests.cjs)
+node run-tests.cjs     # Alternative way to run tests with coverage
+```
+
+### Running Evals
+The evals package loads an MCP client that runs index.ts directly (no rebuild needed between tests):
+```bash
+OPENAI_API_KEY=your-key npx mcp-eval src/evals/evals.ts src/tools/codegen/index.ts
+```
+
+## Available Tools
+
+### Browser Tools
+- `playwright_navigate` - Navigate to a URL (supports chromium/firefox/webkit, viewport config, headless mode)
+- `playwright_screenshot` - Take screenshots (full page or element, base64 or PNG file)
+- `playwright_click` - Click an element
+- `playwright_iframe_click` - Click an element inside an iframe
+- `playwright_fill` - Fill an input field
+- `playwright_iframe_fill` - Fill an input field inside an iframe
+- `playwright_select` - Select from dropdown
+- `playwright_hover` - Hover over an element
+- `playwright_upload_file` - Upload file to input[type='file']
+- `playwright_evaluate` - Execute JavaScript in browser console
+- `playwright_console_logs` - Retrieve browser console logs (with filtering by type/search/limit)
+- `playwright_get_visible_text` - Get visible text content of page
+- `playwright_get_visible_html` - Get HTML content (with script/comment/style removal options)
+- `playwright_go_back` - Navigate back in history
+- `playwright_go_forward` - Navigate forward in history
+- `playwright_drag` - Drag element to target location
+- `playwright_press_key` - Press keyboard key
+- `playwright_save_as_pdf` - Save page as PDF
+- `playwright_click_and_switch_tab` - Click link and switch to new tab
+- `playwright_expect_response` - Start waiting for HTTP response
+- `playwright_assert_response` - Validate previously initiated HTTP response wait
+- `playwright_custom_user_agent` - Set custom User Agent
+- `playwright_close` - Close browser and release resources
+
+### API Tools (HTTP Requests)
+- `playwright_get` - HTTP GET request
+- `playwright_post` - HTTP POST request (with body, token, custom headers)
+- `playwright_put` - HTTP PUT request
+- `playwright_patch` - HTTP PATCH request
+- `playwright_delete` - HTTP DELETE request
+
+### Code Generation Tools
+- `start_codegen_session` - Start recording Playwright actions for test generation
+- `end_codegen_session` - End session and generate Playwright test file
+- `get_codegen_session` - Get session information
+- `clear_codegen_session` - Clear session without generating test
+
+## Architecture
+
+### Server Structure (MCP Protocol)
+
+The server follows the Model Context Protocol specification:
+
+1. **Entry Point** (`src/index.ts`): Sets up MCP server with stdio transport, creates tool definitions, and configures request handlers with graceful shutdown logic.
+
+2. **Request Handler** (`src/requestHandler.ts`): Implements MCP protocol handlers:
+   - `ListResourcesRequestSchema`: Exposes console logs and screenshots as resources
+   - `ReadResourceRequestSchema`: Retrieves resource contents
+   - `ListToolsRequestSchema`: Returns available tools
+   - `CallToolRequestSchema`: Delegates to `handleToolCall` for execution
+
+3. **Tool Handler** (`src/toolHandler.ts`): Central dispatcher for tool execution
+   - Manages global browser state (browser, page, currentBrowserType)
+   - Implements `ensureBrowser()` to lazily launch browsers with reconnection handling
+   - Routes tool calls to appropriate tool instances
+   - Handles browser/API context setup based on tool requirements
+   - Integrates with ActionRecorder for codegen sessions
+   - Contains browser cleanup and error recovery logic
+
+### Tool Organization
+
+Tools are organized into three categories defined in `src/tools.ts`:
+
+- **BROWSER_TOOLS**: Tools requiring a Playwright browser instance (navigate, click, screenshot, etc.)
+- **API_TOOLS**: HTTP request tools using Playwright's API request context (GET, POST, PUT, PATCH, DELETE)
+- **CODEGEN_TOOLS**: Test generation session management (start, end, get, clear)
+
+All browser tools extend `BrowserToolBase` (`src/tools/browser/base.ts`) which provides:
+- `safeExecute()`: Wrapper with browser connection validation and error handling
+- `ensurePage()` and `validatePageAvailable()`: Page availability checks
+- Automatic browser state reset on disconnection errors
+
+### Tool Implementation Pattern
+
+Tools follow a consistent pattern implementing the `ToolHandler` interface (`src/tools/common/types.ts`):
+
+```typescript
+export interface ToolHandler {
+  execute(args: any, context: ToolContext): Promise<ToolResponse>;
+}
+```
+
+The `ToolContext` provides browser, page, apiContext, and server references. Tools return standardized `ToolResponse` objects with content arrays and error flags.
+
+### Browser Lifecycle
+
+Browser instances are managed globally in `toolHandler.ts`:
+- Browsers launch on first tool use (lazy initialization)
+- Support for chromium, firefox, and webkit engines
+- Automatic reconnection handling for disconnected browsers
+- Console message registration via `registerConsoleMessage()` for all page events
+- Clean shutdown on SIGINT/SIGTERM signals
+
+The `ensureBrowser()` function handles:
+- Browser disconnection detection and cleanup
+- Closed page recovery (creates new page)
+- Browser type switching (e.g., chromium → firefox)
+- Viewport, user agent, and headless mode configuration
+- Retry logic for initialization failures
+
+### Code Generation (Codegen)
+
+The codegen system (`src/tools/codegen/`) records Playwright actions and generates test files:
+
+- **ActionRecorder** (`recorder.ts`): Singleton tracking active sessions and recording actions
+- **PlaywrightGenerator** (`generator.ts`): Converts recorded actions to Playwright test code
+- **Codegen Tools** (`index.ts`): MCP tools for session management (start/end/get/clear)
+
+Sessions store:
+- Unique sessionId
+- CodegenOptions (outputPath, testNamePrefix, includeComments)
+- Recorded actions array
+- Timestamps
+
+Generated tests are written to the configured outputPath as executable Playwright tests.
+
+### File Structure
+
+```
+src/
+├── index.ts                 # MCP server entry point
+├── requestHandler.ts        # MCP protocol handlers
+├── toolHandler.ts          # Tool execution dispatcher, browser state
+├── tools.ts                # Tool definitions and categorization
+├── tools/
+│   ├── common/types.ts     # Shared interfaces (ToolContext, ToolResponse)
+│   ├── browser/            # Browser automation tools
+│   │   ├── base.ts         # BrowserToolBase class
+│   │   ├── interaction.ts  # Click, fill, select, hover, etc.
+│   │   ├── navigation.ts   # Navigate, go back/forward
+│   │   ├── screenshot.ts   # Screenshot tool
+│   │   ├── console.ts      # Console logs retrieval
+│   │   ├── visiblePage.ts  # Get visible text/HTML
+│   │   ├── output.ts       # PDF generation
+│   │   └── ...
+│   ├── api/                # HTTP request tools
+│   │   ├── base.ts         # Base API tool class
+│   │   └── requests.ts     # GET, POST, PUT, PATCH, DELETE
+│   └── codegen/            # Test generation
+│       ├── recorder.ts     # Action recording
+│       ├── generator.ts    # Playwright test code generation
+│       ├── index.ts        # Codegen tool definitions
+│       └── types.ts        # Codegen interfaces
+└── __tests__/              # Jest test suites
+```
+
+## Testing Notes
+
+- Tests use Jest with ts-jest preset
+- Test environment: Node.js
+- Coverage excludes `src/index.ts`
+- Tests are in `src/__tests__/**/*.test.ts`
+- Module name mapper handles `.js` imports in ESM context
+- Uses `tsconfig.test.json` for test-specific TypeScript config
+
+## Important Constraints
+
+1. **Tool Naming**: Keep tool names short - some clients (Cursor) limit `server_name:tool_name` to 60 characters. Server name is `playwright-mcp`.
+
+2. **Browser State**: Browser and page instances are global singletons. Browser type changes (chromium/firefox/webkit) force browser restart.
+
+3. **Error Handling**: Tools must handle browser disconnection gracefully. The `BrowserToolBase.safeExecute()` method automatically resets state on connection errors.
+
+4. **ESM Modules**: This project uses ES modules (type: "module" in package.json). Import statements must include `.js` extensions even for `.ts` files.
+
+5. **Console Logging**: Page console messages, exceptions, and unhandled promise rejections are captured via `registerConsoleMessage()` and stored in `ConsoleLogsTool`.
+
+## Environment Variables
+
+- `CHROME_EXECUTABLE_PATH`: Custom path to Chrome/Chromium executable (optional)
+
+## Contributing Notes
+
+When adding new tools:
+1. Choose appropriate category (BROWSER_TOOLS, API_TOOLS, or CODEGEN_TOOLS)
+2. Extend `BrowserToolBase` for browser tools or `ApiToolBase` for API tools
+3. Add tool definition to `createToolDefinitions()` in `src/tools.ts`
+4. Add case to switch statement in `handleToolCall()` in `src/toolHandler.ts`
+5. Initialize tool instance in `initializeTools()` function
+6. Add tests in `src/__tests__/tools/` matching the tool category
