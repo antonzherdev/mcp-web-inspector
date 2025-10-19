@@ -537,6 +537,64 @@ export function createToolDefinitions() {
         required: ["selector"],
       },
     },
+    {
+      name: "playwright_find_by_text",
+      description: "Find elements by their text content. Essential for finding elements without good selectors, especially in poorly structured DOM. Returns elements with position, visibility, and interaction state. Supports exact match and case-sensitive search options.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          text: {
+            type: "string",
+            description: "Text to search for in elements"
+          },
+          exact: {
+            type: "boolean",
+            description: "Whether to match text exactly (default: false, allows partial matches)"
+          },
+          caseSensitive: {
+            type: "boolean",
+            description: "Whether search should be case-sensitive (default: false)"
+          },
+          limit: {
+            type: "number",
+            description: "Maximum number of elements to return (default: 10)"
+          }
+        },
+        required: ["text"],
+      },
+    },
+    {
+      name: "playwright_get_computed_styles",
+      description: "Get computed CSS styles for an element. Essential for understanding why elements behave unexpectedly and debugging layout issues. Returns styles grouped by category (Layout, Visibility, Spacing, Typography). Use properties parameter to request specific CSS properties, or omit for common layout properties.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          selector: {
+            type: "string",
+            description: "CSS selector, text selector, or testid shorthand (e.g., 'testid:submit-button', '#main')"
+          },
+          properties: {
+            type: "string",
+            description: "Comma-separated list of CSS properties to retrieve (e.g., 'display,width,color'). If not specified, returns common layout properties: display, position, width, height, opacity, visibility, z-index, overflow, margin, padding, font-size, font-weight, color, background-color"
+          }
+        },
+        required: ["selector"],
+      },
+    },
+    {
+      name: "playwright_element_exists",
+      description: "Quick check if an element exists on the page. Ultra-lightweight alternative to query_selector_all when you only need existence confirmation. Returns simple exists/not found status. Most common check before attempting interaction. Supports testid shortcuts.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          selector: {
+            type: "string",
+            description: "CSS selector, text selector, or testid shorthand (e.g., 'testid:submit-button', '#main')"
+          }
+        },
+        required: ["selector"],
+      },
+    },
   ] as const satisfies Tool[];
 }
 
@@ -568,7 +626,10 @@ export const BROWSER_TOOLS = [
   "playwright_element_position",
   "playwright_inspect_dom",
   "playwright_get_test_ids",
-  "playwright_query_selector_all"
+  "playwright_query_selector_all",
+  "playwright_find_by_text",
+  "playwright_get_computed_styles",
+  "playwright_element_exists"
 ];
 
 // API Request tools for conditional launch

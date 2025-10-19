@@ -38,6 +38,9 @@ import { ElementPositionTool } from './tools/browser/elementPosition.js';
 import { InspectDomTool } from './tools/browser/inspectDom.js';
 import { GetTestIdsTool } from './tools/browser/getTestIds.js';
 import { QuerySelectorAllTool } from './tools/browser/querySelectorAll.js';
+import { FindByTextTool } from './tools/browser/findByText.js';
+import { GetComputedStylesTool } from './tools/browser/computedStyles.js';
+import { ElementExistsTool } from './tools/browser/elementExists.js';
 import {
   GetRequestTool,
   PostRequestTool,
@@ -110,6 +113,9 @@ let elementPositionTool: ElementPositionTool;
 let inspectDomTool: InspectDomTool;
 let getTestIdsTool: GetTestIdsTool;
 let querySelectorAllTool: QuerySelectorAllTool;
+let findByTextTool: FindByTextTool;
+let getComputedStylesTool: GetComputedStylesTool;
+let elementExistsTool: ElementExistsTool;
 
 
 interface BrowserSettings {
@@ -361,6 +367,9 @@ function initializeTools(server: any) {
   if (!inspectDomTool) inspectDomTool = new InspectDomTool(server);
   if (!getTestIdsTool) getTestIdsTool = new GetTestIdsTool(server);
   if (!querySelectorAllTool) querySelectorAllTool = new QuerySelectorAllTool(server);
+  if (!findByTextTool) findByTextTool = new FindByTextTool(server);
+  if (!getComputedStylesTool) getComputedStylesTool = new GetComputedStylesTool(server);
+  if (!elementExistsTool) elementExistsTool = new ElementExistsTool(server);
 }
 
 /**
@@ -579,6 +588,15 @@ export async function handleToolCall(
 
       case "playwright_query_selector_all":
         return await querySelectorAllTool.execute(args, context);
+
+      case "playwright_find_by_text":
+        return await findByTextTool.execute(args, context);
+
+      case "playwright_get_computed_styles":
+        return await getComputedStylesTool.execute(args, context);
+
+      case "playwright_element_exists":
+        return await elementExistsTool.execute(args, context);
 
       default:
         return {

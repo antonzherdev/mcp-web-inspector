@@ -56,6 +56,9 @@ OPENAI_API_KEY=your-key npx mcp-eval src/evals/evals.ts src/tools/codegen/index.
 - `playwright_query_selector_all` - Test a selector and return detailed information about all matched elements. Essential for selector debugging and finding the right element to interact with. Returns compact text format with element tag, position, text content, visibility status, and diagnostic info (display:none, opacity:0, zero size). Supports testid shortcuts and limit parameter (default: 10).
 - `playwright_element_visibility` - Check if element is visible with detailed diagnostics (viewport, clipping, coverage, scroll needed)
 - `playwright_element_position` - Get element position and size (x, y, width, height, viewport status)
+- `playwright_find_by_text` - Find elements by text content (partial or exact match, case-sensitive/insensitive). Essential for pages without test IDs. Returns elements with position, visibility, and interaction state.
+- `playwright_get_computed_styles` - Get computed CSS styles for an element. Returns styles grouped by category (Layout, Visibility, Spacing, Typography). Useful for debugging layout issues and understanding why elements behave unexpectedly.
+- `playwright_element_exists` - Ultra-lightweight existence check (< 50 chars response). Returns ✓ exists or ✗ not found. Most common check before interaction.
 
 #### Content Extraction
 - `playwright_screenshot` - Take screenshots (full page or element, base64 or PNG file)

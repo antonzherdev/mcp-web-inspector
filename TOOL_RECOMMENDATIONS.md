@@ -16,8 +16,8 @@
 
 ## 🎉 Implementation Status
 
-**Completed:** 5 tools + selector normalization helper
-**Total Remaining:** 14 tools
+**Completed:** 8 tools + selector normalization helper
+**Total Remaining:** 11 tools
 
 ### ✅ Recently Implemented
 - `playwright_inspect_dom` - **PRIMARY TOOL** - Progressive DOM inspection with semantic filtering ✅
@@ -25,6 +25,9 @@
 - `playwright_query_selector_all` - Test selectors and debug element matches (with `showAttributes` parameter) ✅ **ENHANCED**
 - `playwright_element_visibility` - Comprehensive visibility diagnostics with **compact text format** and **strict mode handling** ✅ **UPDATED**
 - `playwright_element_position` - Element coordinates and dimensions with **compact text format**, **strict mode handling**, and **improved hidden element errors** ✅ **UPDATED**
+- `playwright_find_by_text` - Text-based element discovery with exact/partial matching ✅ **NEW**
+- `playwright_get_computed_styles` - CSS property inspector with grouped output ✅ **NEW**
+- `playwright_element_exists` - Ultra-lightweight existence check ✅ **NEW**
 - `BrowserToolBase.normalizeSelector()` - Test ID shorthand support ✅
 
 **Recent Enhancements (2025-10-19):**
@@ -32,6 +35,7 @@
 - ✅ Improved error messages for hidden elements - structured responses instead of errors
 - ✅ Added `showAll` parameter to `playwright_get_test_ids` for complete test ID listings
 - ✅ Added `showAttributes` parameter to `playwright_query_selector_all` for attribute inspection
+- ✅ **Implemented 3 high-priority tools**: `playwright_find_by_text`, `playwright_get_computed_styles`, `playwright_element_exists`
 
 See `IMPLEMENTATION_SUMMARY.md` for full implementation details and test coverage.
 
@@ -421,8 +425,8 @@ This section lists all recommended tools in priority order, merging assessment f
 
 ## 🔴 High Priority - Critical Gaps & Frequent Needs
 
-### 1. `playwright_find_by_text` - Text-Based Element Discovery
-**Priority:** 🔴 **High** | **Source:** Production Testing Assessment
+### ✅ 1. `playwright_find_by_text` - Text-Based Element Discovery **IMPLEMENTED**
+**Priority:** 🔴 **High** | **Source:** Production Testing Assessment | **Status:** ✅ Completed
 **Use case:** Finding elements without good selectors, especially in poorly structured DOM
 
 **Parameters:**
@@ -461,8 +465,8 @@ Found 3 elements containing "Sign in":
 
 ---
 
-### 2. `playwright_get_computed_styles` - CSS Property Inspector
-**Priority:** 🔴 **High** | **Source:** Production Testing Assessment
+### ✅ 2. `playwright_get_computed_styles` - CSS Property Inspector **IMPLEMENTED**
+**Priority:** 🔴 **High** | **Source:** Production Testing Assessment | **Status:** ✅ Completed
 **Use case:** Understanding why elements behave unexpectedly, debugging layout issues
 
 **Parameters:**
@@ -532,8 +536,8 @@ Found 2 iframes:
 
 ---
 
-### 4. `playwright_element_exists` - Simple Existence Check
-**Priority:** 🔴 **High** | **Source:** Original Recommendations
+### ✅ 4. `playwright_element_exists` - Simple Existence Check **IMPLEMENTED**
+**Priority:** 🔴 **High** | **Source:** Original Recommendations | **Status:** ✅ Completed
 **Use case:** Quick check if element exists before attempting interaction
 
 **Parameters:**
@@ -1579,46 +1583,46 @@ All tools accepting `selector` parameter support these shorthand formats:
 ## Implementation Summary
 
 ### ✅ Completed Tools (2025-10-19 Update)
-5 core tools fully implemented with recent enhancements:
+8 core tools fully implemented with recent enhancements:
 
 - **`playwright_inspect_dom`** - Progressive DOM discovery with semantic filtering ✅
 - **`playwright_get_test_ids`** - Test ID discovery (enhanced with `showAll` parameter) ✅
 - **`playwright_query_selector_all`** - Selector debugging (enhanced with `showAttributes` parameter) ✅
 - **`playwright_element_visibility`** - Visibility diagnostics (strict mode handling, compact text format) ✅
 - **`playwright_element_position`** - Position inspection (strict mode handling, improved hidden element handling) ✅
+- **`playwright_find_by_text`** - Text-based element discovery (exact/partial matching, case sensitivity) ✅
+- **`playwright_get_computed_styles`** - CSS property inspector (grouped by category) ✅
+- **`playwright_element_exists`** - Ultra-lightweight existence check ✅
 - **Selector normalization** - Test ID shortcuts (testid:, data-test:, data-cy:) ✅
 
 ### 📋 Recommended for Implementation
-17 tools remain, deduplicated and prioritized:
+14 tools remain, deduplicated and prioritized:
 
-**🔴 High Priority (4 tools):**
-1. `playwright_find_by_text` - Text-based discovery (critical for pages without test IDs)
-2. `playwright_get_computed_styles` - CSS inspection (debugging layout issues)
-3. `playwright_list_iframes` - Iframe discovery (payment forms, chat widgets)
-4. `playwright_element_exists` - Simple existence check (most common operation)
+**🔴 High Priority (1 tool):**
+1. `playwright_list_iframes` - Iframe discovery (payment forms, chat widgets)
 
 **🟡 Medium Priority (7 tools):**
-5. `playwright_compare_positions` - Layout alignment validation
-6. `playwright_measure_overflow` - Viewport overflow (mobile debugging)
-7. `playwright_element_interaction_state` - Form state debugging
-8. `playwright_scroll_to_element` - Bring element into viewport
-9. `playwright_list_network_requests` - Network activity list
-10. `playwright_get_request_details` - Request detail inspector
-11. `playwright_wait_for_element` - State-based waiting
+2. `playwright_compare_positions` - Layout alignment validation
+3. `playwright_measure_overflow` - Viewport overflow (mobile debugging)
+4. `playwright_element_interaction_state` - Form state debugging
+5. `playwright_scroll_to_element` - Bring element into viewport
+6. `playwright_list_network_requests` - Network activity list
+7. `playwright_get_request_details` - Request detail inspector
+8. `playwright_wait_for_element` - State-based waiting
 
 **🟢 Low Priority (6 tools):**
-12. `playwright_accessibility_tree` - A11y testing
-13. `playwright_get_cookies` / `playwright_set_cookie` - Cookie management (2 tools)
-14. `playwright_wait_for_network_idle` - Network settling
-15. `playwright_get_element_text` - Text extraction
-16. `playwright_get_performance_timing` - Performance metrics
-17. `playwright_get_local_storage` / `playwright_get_session_storage` - Storage inspection (2 tools)
+9. `playwright_accessibility_tree` - A11y testing
+10. `playwright_get_cookies` / `playwright_set_cookie` - Cookie management (2 tools)
+11. `playwright_wait_for_network_idle` - Network settling
+12. `playwright_get_element_text` - Text extraction
+13. `playwright_get_performance_timing` - Performance metrics
+14. `playwright_get_local_storage` / `playwright_get_session_storage` - Storage inspection (2 tools)
 
 **❌ Not Recommended (2 superseded tools):**
 - `playwright_get_element_attributes` → Use `query_selector_all` with `showAttributes`
 - `playwright_get_accessibility_snapshot` → Use `playwright_accessibility_tree`
 
-**Total: 22 tools** (5 implemented + 17 recommended)
+**Total: 22 tools** (8 implemented + 14 recommended)
 
 ---
 
