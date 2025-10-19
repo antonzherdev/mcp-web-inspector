@@ -30,6 +30,7 @@ export class QuerySelectorAllTool extends BrowserToolBase {
     return this.safeExecute(context, async (page) => {
       const selector = this.normalizeSelector(args.selector);
       const limit = args.limit ?? 10;
+      const onlyVisible = args.onlyVisible; // true = visible only, false = hidden only, undefined = all
       const showAttributes = args.showAttributes
         ? args.showAttributes.split(',').map((a: string) => a.trim())
         : undefined;
@@ -45,12 +46,11 @@ export class QuerySelectorAllTool extends BrowserToolBase {
           );
         }
 
-        // Get detailed information for each element (up to limit)
+        // Get detailed information for each element (all elements to allow filtering)
         const matchData: ElementMatch[] = [];
-        const elementsToProcess = elements.slice(0, limit);
 
-        for (let i = 0; i < elementsToProcess.length; i++) {
-          const element = elementsToProcess[i];
+        for (let i = 0; i < elements.length; i++) {
+          const element = elements[i];
 
           try {
             const elementInfo = await element.evaluate((el, attrList) => {
@@ -139,14 +139,39 @@ export class QuerySelectorAllTool extends BrowserToolBase {
           }
         }
 
+        // Filter by visibility if requested
+        let filteredMatches = matchData;
+        if (onlyVisible !== undefined) {
+          filteredMatches = matchData.filter((match) =>
+            onlyVisible ? match.isVisible : !match.isVisible
+          );
+        }
+
+        // Apply limit after filtering
+        const displayMatches = filteredMatches.slice(0, limit);
+
         // Format compact text output
         const lines: string[] = [];
-        lines.push(
-          `Found ${totalMatches} element${totalMatches > 1 ? 's' : ''} matching "${args.selector}":`
-        );
+
+        // Header with counts
+        if (onlyVisible === true) {
+          const visibleCount = filteredMatches.length;
+          lines.push(
+            `Found ${totalMatches} element${totalMatches > 1 ? 's' : ''} matching "${args.selector}" (${visibleCount} visible):`
+          );
+        } else if (onlyVisible === false) {
+          const hiddenCount = filteredMatches.length;
+          lines.push(
+            `Found ${totalMatches} element${totalMatches > 1 ? 's' : ''} matching "${args.selector}" (${hiddenCount} hidden):`
+          );
+        } else {
+          lines.push(
+            `Found ${totalMatches} element${totalMatches > 1 ? 's' : ''} matching "${args.selector}":`
+          );
+        }
         lines.push('');
 
-        matchData.forEach((match, index) => {
+        displayMatches.forEach((match, index) => {
           const prefix = `[${index}]`;
 
           // Element tag with selector info
@@ -200,15 +225,25 @@ export class QuerySelectorAllTool extends BrowserToolBase {
           lines.push('');
         });
 
-        // Show omitted count
-        if (totalMatches > limit) {
-          const omitted = totalMatches - limit;
+        // Show omitted count and summary
+        if (filteredMatches.length > limit) {
+          const omitted = filteredMatches.length - limit;
+          const matchType = onlyVisible === true ? 'visible ' : onlyVisible === false ? 'hidden ' : '';
           lines.push(
-            `Showing ${limit} of ${totalMatches} matches (${omitted} omitted)`
+            `Showing ${limit} of ${filteredMatches.length} ${matchType}matches (${omitted} omitted)`
           );
-          lines.push(`Use limit parameter to show more: { selector: "${args.selector}", limit: ${Math.min(totalMatches, 50)} }`);
+          lines.push(
+            `Use limit parameter to show more: { selector: "${args.selector}", limit: ${Math.min(filteredMatches.length, 50)} }`
+          );
         } else {
-          lines.push(`Showing all ${totalMatches} matches`);
+          const matchWord = filteredMatches.length === 1 ? 'match' : 'matches';
+          if (onlyVisible === true) {
+            lines.push(`Showing ${filteredMatches.length} visible ${matchWord}`);
+          } else if (onlyVisible === false) {
+            lines.push(`Showing ${filteredMatches.length} hidden ${matchWord}`);
+          } else {
+            lines.push(`Showing all ${filteredMatches.length} ${matchWord}`);
+          }
         }
 
         return createSuccessResponse(lines.join('\n'));

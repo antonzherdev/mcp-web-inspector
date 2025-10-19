@@ -517,7 +517,7 @@ export function createToolDefinitions() {
     },
     {
       name: "playwright_query_selector_all",
-      description: "Test a selector and return detailed information about all matched elements. Essential for selector debugging and finding the right element to interact with. Returns compact text format with element tag, position, text content, visibility status, and interaction capability. Shows why elements are hidden (display:none, opacity:0, zero size). Supports testid shortcuts (e.g., 'testid:submit-button'). Use limit parameter to control how many matches to show (default: 10).",
+      description: "Test a selector and return detailed information about all matched elements. Essential for selector debugging and finding the right element to interact with. Returns compact text format with element tag, position, text content, visibility status, and interaction capability. Shows why elements are hidden (display:none, opacity:0, zero size). Supports testid shortcuts (e.g., 'testid:submit-button'). Use limit parameter to control how many matches to show (default: 10). NEW: Use onlyVisible parameter to filter results (true=visible only, false=hidden only, undefined=all).",
       inputSchema: {
         type: "object",
         properties: {
@@ -529,6 +529,10 @@ export function createToolDefinitions() {
             type: "number",
             description: "Maximum number of elements to return detailed info for (default: 10, recommended max: 50)"
           },
+          onlyVisible: {
+            type: "boolean",
+            description: "Filter results by visibility: true = show only visible elements, false = show only hidden elements, undefined/not specified = show all elements (default: undefined)"
+          },
           showAttributes: {
             type: "string",
             description: "Comma-separated list of HTML attributes to display for each element (e.g., 'id,name,aria-label,href,type'). If not specified, attributes are not shown."
@@ -539,21 +543,25 @@ export function createToolDefinitions() {
     },
     {
       name: "playwright_find_by_text",
-      description: "Find elements by their text content. Essential for finding elements without good selectors, especially in poorly structured DOM. Returns elements with position, visibility, and interaction state. Supports exact match and case-sensitive search options.",
+      description: "Find elements by their text content. Essential for finding elements without good selectors, especially in poorly structured DOM. Returns elements with position, visibility, and interaction state. Supports exact match, case-sensitive search, and NEW: regex pattern matching for advanced text searching (e.g., '/\\d+ items?/' to find elements with numbers).",
       inputSchema: {
         type: "object",
         properties: {
           text: {
             type: "string",
-            description: "Text to search for in elements"
+            description: "Text to search for in elements. If regex=true, this can be a regex pattern in /pattern/flags format (e.g., '/\\d+/i' for case-insensitive numbers) or a raw pattern string."
           },
           exact: {
             type: "boolean",
-            description: "Whether to match text exactly (default: false, allows partial matches)"
+            description: "Whether to match text exactly (default: false, allows partial matches). Ignored if regex=true."
           },
           caseSensitive: {
             type: "boolean",
-            description: "Whether search should be case-sensitive (default: false)"
+            description: "Whether search should be case-sensitive (default: false). Ignored if regex=true (use regex flags instead)."
+          },
+          regex: {
+            type: "boolean",
+            description: "Whether to treat 'text' as a regex pattern (default: false). If true, supports /pattern/flags format or raw pattern. Examples: '/sign.*/i' (case-insensitive), '/\\d+ items?/' (numbers + optional 's')."
           },
           limit: {
             type: "number",

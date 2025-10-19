@@ -38,8 +38,111 @@
 - ✅ **Implemented 3 high-priority tools**: `playwright_find_by_text`, `playwright_get_computed_styles`, `playwright_element_exists`
 - ✅ **Enhanced `playwright_element_visibility`** with coverage detection (~% covered), covering element details, and interactability state (disabled, readonly, pointer-events)
 - ✅ **Enhanced `playwright_get_test_ids`** with duplicate test ID detection and warnings
+- ✅ **NEW (Post-Assessment)**: Added `onlyVisible` parameter to `playwright_query_selector_all` for visibility filtering (true=visible only, false=hidden only)
+- ✅ **NEW (Post-Assessment)**: Added regex pattern support to `playwright_find_by_text` for advanced text matching (e.g., '/\\d+ items?/' for numbers)
 
 See `IMPLEMENTATION_SUMMARY.md` for full implementation details and test coverage.
+
+---
+
+## 🎯 Production Testing Assessment (2025-10-19)
+
+**Test Environment**: Recipe2 PWA (Next.js 15 + React 19 + Supabase)
+**Overall Rating**: ⭐⭐⭐⭐⭐ (5/5)
+**Tools Tested**: 8/8 (100%)
+**Success Rate**: 100%
+**Bugs Found**: 0 critical, 0 minor
+
+### Assessment Summary
+
+All 8 implemented tools were tested in production on a real-world Next.js PWA application. Every tool performed excellently with no bugs or issues detected. The progressive workflow (inspect_dom → get_test_ids → query_selector_all → element debugging) was validated in real scenarios.
+
+**Key Strengths Confirmed**:
+- ✅ Automatic wrapper drilling works perfectly (skipped 17+ non-semantic divs)
+- ✅ Token efficiency validated (60-75% savings vs JSON)
+- ✅ Layout detection accurate (horizontal/vertical patterns)
+- ✅ Visibility diagnostics identify root causes correctly
+- ✅ Text-based fallback essential for pages without test IDs
+
+### Improvements Implemented Post-Assessment
+
+Based on the assessment recommendations, the following enhancements were immediately implemented:
+
+#### ✅ 1. `playwright_query_selector_all` - Added `onlyVisible` Parameter
+**Priority**: High
+**Status**: ✅ **COMPLETED**
+**Implementation**: 2025-10-19
+
+- **Feature**: Filter results by visibility state
+- **Usage**:
+  - `onlyVisible: true` → Show only visible elements
+  - `onlyVisible: false` → Show only hidden elements
+  - `onlyVisible: undefined` → Show all elements (default)
+- **Use Case**: "Show me all visible buttons" - now fully supported
+- **Tests**: 3 new test cases added and passing
+
+**Example Output**:
+```
+Found 3 elements matching "button" (2 visible):
+
+[0] <button data-testid="visible-btn">
+    @ (100,100) 80x40px
+    "Click Me"
+    ✓ visible, ⚡ interactive
+
+[1] <button data-testid="another-visible">
+    @ (200,100) 80x40px
+    "Another"
+    ✓ visible, ⚡ interactive
+
+Showing 2 visible matches
+```
+
+#### ✅ 2. `playwright_find_by_text` - Added Regex Pattern Support
+**Priority**: High
+**Status**: ✅ **COMPLETED**
+**Implementation**: 2025-10-19
+
+- **Feature**: Advanced text matching with regex patterns
+- **Usage**:
+  - `{ text: '/\\d+ items?/', regex: true }` → Find elements with numbers
+  - `{ text: '/sign.*/i', regex: true }` → Case-insensitive pattern
+  - Supports `/pattern/flags` format or raw patterns
+- **Use Case**: Find elements matching complex patterns (e.g., prices, counts, dynamic content)
+- **Tests**: 4 new test cases added and passing
+- **Validation**: Validates regex patterns and returns error for invalid syntax
+
+**Example Output**:
+```
+Found 3 elements matching regex /\d+ items?/:
+
+[0] <div>
+    @ (8,8) 1264x18px
+    "3 items"
+    ✓ visible
+
+[1] <div>
+    @ (8,26) 1264x18px
+    "10 items"
+    ✓ visible
+
+[2] <div>
+    @ (8,62) 1264x18px
+    "100 items"
+    ✓ visible
+```
+
+#### ✅ 3. `playwright_get_test_ids` - Duplicate Detection
+**Priority**: Medium
+**Status**: ✅ **ALREADY EXISTED**
+**Note**: This feature was already fully implemented with comprehensive warnings
+
+- **Feature**: Detects and warns about duplicate test IDs
+- **Output**: Shows which test IDs appear multiple times with counts
+- **Guidance**: Provides actionable suggestions to fix duplicates
+- **Tests**: 2 existing test cases validate this functionality
+
+Full assessment report: `/Users/anton/dev/recipe2/playwright-mcp-tools-evaluation.md`
 
 ---
 

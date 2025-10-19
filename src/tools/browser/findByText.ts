@@ -6,17 +6,45 @@ export interface FindByTextArgs {
   text: string;
   exact?: boolean;
   caseSensitive?: boolean;
+  regex?: boolean;
   limit?: number;
 }
 
 export class FindByTextTool extends BrowserToolBase implements ToolHandler {
   async execute(args: FindByTextArgs, context: ToolContext): Promise<ToolResponse> {
     return this.safeExecute(context, async (page) => {
-      const { text, exact = false, caseSensitive = false, limit = 10 } = args;
+      const { text, exact = false, caseSensitive = false, regex = false, limit = 10 } = args;
 
-      // Build the text selector based on exact and caseSensitive options
+      // Build the text selector based on exact, caseSensitive, and regex options
       let selector: string;
-      if (exact) {
+
+      if (regex) {
+        // Validate and use user-provided regex pattern
+        try {
+          // Extract pattern and flags from /pattern/flags format
+          const regexMatch = text.match(/^\/(.+?)\/([gimuy]*)$/);
+          if (regexMatch) {
+            const [, pattern, flags] = regexMatch;
+            // Validate the regex pattern
+            new RegExp(pattern, flags);
+            selector = `text=/${pattern}/${flags}`;
+          } else {
+            // If not in /pattern/flags format, treat as raw pattern
+            new RegExp(text);
+            selector = `text=/${text}/`;
+          }
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: `✗ Invalid regex pattern: ${(error as Error).message}`
+              }
+            ],
+            isError: true
+          };
+        }
+      } else if (exact) {
         selector = `text="${text}"`;
       } else {
         // Use regex for partial match with case sensitivity
@@ -30,11 +58,21 @@ export class FindByTextTool extends BrowserToolBase implements ToolHandler {
       const count = await locator.count();
 
       if (count === 0) {
+        // Build "not found" message based on search type
+        let notFoundMsg: string;
+        if (regex) {
+          notFoundMsg = `✗ No elements found matching regex ${text}`;
+        } else if (exact) {
+          notFoundMsg = `✗ No elements found with exact text "${text}"`;
+        } else {
+          notFoundMsg = `✗ No elements found containing "${text}"`;
+        }
+
         return {
           content: [
             {
               type: 'text',
-              text: `✗ No elements found containing "${text}"`
+              text: notFoundMsg
             }
           ],
           isError: false
@@ -139,9 +177,19 @@ export class FindByTextTool extends BrowserToolBase implements ToolHandler {
         elements.push(`[${i}] ${selectorStr}\n${positionStr}\n${textStr}\n${stateStr}`);
       }
 
+      // Build header message based on search type
+      let searchDesc: string;
+      if (regex) {
+        searchDesc = `matching regex ${text}`;
+      } else if (exact) {
+        searchDesc = `with exact text "${text}"`;
+      } else {
+        searchDesc = `containing "${text}"`;
+      }
+
       const header = count > limit
-        ? `Found ${count} elements containing "${text}" (showing first ${limit}):\n`
-        : `Found ${count} element${count > 1 ? 's' : ''} containing "${text}":\n`;
+        ? `Found ${count} elements ${searchDesc} (showing first ${limit}):\n`
+        : `Found ${count} element${count > 1 ? 's' : ''} ${searchDesc}:\n`;
 
       return {
         content: [

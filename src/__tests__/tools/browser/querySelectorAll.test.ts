@@ -454,4 +454,136 @@ describe('QuerySelectorAllTool', () => {
     expect(result.content[0].text).toContain('Showing all 5 matches');
     expect(result.content[0].text).not.toContain('omitted');
   });
+
+  test('should filter to show only visible elements when onlyVisible is true', async () => {
+    const args = { selector: 'button', onlyVisible: true };
+
+    const mockElements = [
+      createMockElement({
+        tag: 'button',
+        selector: 'data-testid="visible-btn"',
+        testId: 'visible-btn',
+        classes: 'btn',
+        text: 'Click Me',
+        position: { x: 100, y: 100, width: 80, height: 40 },
+        isVisible: true,
+        isInteractive: true,
+        opacity: 1,
+        display: 'block',
+      }),
+      createMockElement({
+        tag: 'button',
+        selector: 'data-testid="hidden-btn"',
+        testId: 'hidden-btn',
+        classes: 'btn',
+        text: 'Hidden',
+        position: { x: 0, y: 0, width: 0, height: 0 },
+        isVisible: false,
+        isInteractive: true,
+        opacity: 0,
+        display: 'none',
+      }),
+      createMockElement({
+        tag: 'button',
+        selector: 'data-testid="another-visible"',
+        testId: 'another-visible',
+        classes: 'btn',
+        text: 'Another',
+        position: { x: 200, y: 100, width: 80, height: 40 },
+        isVisible: true,
+        isInteractive: true,
+        opacity: 1,
+        display: 'block',
+      }),
+    ];
+
+    mockPageLocator.mockReturnValue(createMockLocator(mockElements));
+
+    const result = await querySelectorAllTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('Found 3 elements matching "button" (2 visible)');
+    expect(result.content[0].text).toContain('[0] <button data-testid="visible-btn">');
+    expect(result.content[0].text).toContain('[1] <button data-testid="another-visible">');
+    expect(result.content[0].text).not.toContain('hidden-btn');
+    expect(result.content[0].text).toContain('Showing 2 visible matches');
+  });
+
+  test('should filter to show only hidden elements when onlyVisible is false', async () => {
+    const args = { selector: 'div', onlyVisible: false };
+
+    const mockElements = [
+      createMockElement({
+        tag: 'div',
+        selector: 'class="visible"',
+        classes: 'visible',
+        text: 'Visible',
+        position: { x: 100, y: 100, width: 200, height: 50 },
+        isVisible: true,
+        isInteractive: false,
+        opacity: 1,
+        display: 'block',
+      }),
+      createMockElement({
+        tag: 'div',
+        selector: 'class="hidden"',
+        classes: 'hidden',
+        text: 'Hidden',
+        position: { x: 0, y: 0, width: 0, height: 0 },
+        isVisible: false,
+        isInteractive: false,
+        opacity: 0,
+        display: 'none',
+      }),
+    ];
+
+    mockPageLocator.mockReturnValue(createMockLocator(mockElements));
+
+    const result = await querySelectorAllTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('Found 2 elements matching "div" (1 hidden)');
+    expect(result.content[0].text).toContain('[0] <div class="hidden">');
+    expect(result.content[0].text).not.toContain('class="visible"');
+    expect(result.content[0].text).toContain('Showing 1 hidden match');
+  });
+
+  test('should show all elements when onlyVisible is undefined', async () => {
+    const args = { selector: 'span' };
+
+    const mockElements = [
+      createMockElement({
+        tag: 'span',
+        selector: 'class="visible"',
+        classes: 'visible',
+        text: 'Visible',
+        position: { x: 100, y: 100, width: 50, height: 20 },
+        isVisible: true,
+        isInteractive: false,
+        opacity: 1,
+        display: 'inline',
+      }),
+      createMockElement({
+        tag: 'span',
+        selector: 'class="hidden"',
+        classes: 'hidden',
+        text: 'Hidden',
+        position: { x: 0, y: 0, width: 0, height: 0 },
+        isVisible: false,
+        isInteractive: false,
+        opacity: 0,
+        display: 'none',
+      }),
+    ];
+
+    mockPageLocator.mockReturnValue(createMockLocator(mockElements));
+
+    const result = await querySelectorAllTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('Found 2 elements matching "span"');
+    expect(result.content[0].text).toContain('class="visible"');
+    expect(result.content[0].text).toContain('class="hidden"');
+    expect(result.content[0].text).toContain('Showing all 2 matches');
+  });
 });

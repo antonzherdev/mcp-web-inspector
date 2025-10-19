@@ -176,4 +176,97 @@ describe('FindByTextTool', () => {
     expect(result.isError).toBeFalsy();
     expect(result.content[0].text).toContain('data-testid="submit-button"');
   });
+
+  it('should support regex patterns for advanced matching', async () => {
+    await page.setContent(`
+      <html>
+        <body>
+          <div>3 items</div>
+          <div>10 items</div>
+          <div>No items</div>
+          <div>100 items</div>
+        </body>
+      </html>
+    `);
+
+    const result = await tool.execute(
+      { text: '/\\d+ items?/', regex: true },
+      { page, browser } as any
+    );
+
+    expect(result.isError).toBeFalsy();
+    expect(result.content[0].text).toContain('Found 3 elements'); // Matches "3 items", "10 items", "100 items"
+    expect(result.content[0].text).toContain('3 items');
+    expect(result.content[0].text).toContain('10 items');
+    expect(result.content[0].text).toContain('100 items');
+    // "No items" should not be in the results
+  });
+
+  it('should support regex with case insensitive flag', async () => {
+    await page.setContent(`
+      <html>
+        <body>
+          <button>Sign In</button>
+          <button>SIGN OUT</button>
+          <button>sign up</button>
+          <button>Login</button>
+        </body>
+      </html>
+    `);
+
+    const result = await tool.execute(
+      { text: '/sign/i', regex: true },
+      { page, browser } as any
+    );
+
+    expect(result.isError).toBeFalsy();
+    expect(result.content[0].text).toContain('Found 3 elements');
+    expect(result.content[0].text).toContain('Sign In');
+    expect(result.content[0].text).toContain('SIGN OUT');
+    expect(result.content[0].text).toContain('sign up');
+    expect(result.content[0].text).not.toContain('Login');
+  });
+
+  it('should support complex regex patterns', async () => {
+    await page.setContent(`
+      <html>
+        <body>
+          <span>Price: $29.99</span>
+          <span>Price: €15.50</span>
+          <span>Price: £100.00</span>
+          <span>Free</span>
+        </body>
+      </html>
+    `);
+
+    const result = await tool.execute(
+      { text: '/Price:\\s*[$€£]\\d+\\.\\d+/', regex: true },
+      { page, browser } as any
+    );
+
+    expect(result.isError).toBeFalsy();
+    expect(result.content[0].text).toContain('Found 3 elements');
+    expect(result.content[0].text).toContain('$29.99');
+    expect(result.content[0].text).toContain('€15.50');
+    expect(result.content[0].text).toContain('£100.00');
+    expect(result.content[0].text).not.toContain('Free');
+  });
+
+  it('should handle invalid regex gracefully', async () => {
+    await page.setContent(`
+      <html>
+        <body>
+          <div>Test</div>
+        </body>
+      </html>
+    `);
+
+    const result = await tool.execute(
+      { text: '/[invalid(/', regex: true },
+      { page, browser } as any
+    );
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('Invalid regex pattern');
+  });
 });
