@@ -7,12 +7,17 @@ import { jest } from '@jest/globals';
 const mockLocatorCount = jest.fn() as jest.MockedFunction<() => Promise<number>>;
 const mockLocatorBoundingBox = jest.fn() as jest.MockedFunction<() => Promise<{ x: number; y: number; width: number; height: number } | null>>;
 const mockLocatorEvaluate = jest.fn() as jest.MockedFunction<(pageFunction: any) => Promise<any>>;
+const mockLocatorFirst = jest.fn() as jest.MockedFunction<() => Locator>;
 
 const mockLocator = {
   count: mockLocatorCount,
   boundingBox: mockLocatorBoundingBox,
   evaluate: mockLocatorEvaluate,
+  first: mockLocatorFirst,
 } as unknown as Locator;
+
+// Mock first() to return a locator with the same methods
+mockLocatorFirst.mockReturnValue(mockLocator);
 
 // Mock Page
 const mockPageLocator = jest.fn().mockReturnValue(mockLocator);
@@ -113,16 +118,26 @@ describe('ElementPositionTool', () => {
     expect(result.content[0].text).toContain('Element not found');
   });
 
-  test('should return error when element has no bounding box', async () => {
+  test('should return structured response when element has no bounding box', async () => {
     const args = { selector: '#hidden' };
 
     mockLocatorCount.mockResolvedValue(1);
     mockLocatorBoundingBox.mockResolvedValue(null);
+    mockLocatorEvaluate.mockResolvedValue({
+      descriptor: '<div#hidden>',
+      display: 'none',
+      opacity: '1',
+      visibility: 'visible',
+      width: 0,
+      height: 0
+    });
 
     const result = await positionTool.execute(args, mockContext);
 
-    expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('no bounding box');
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('@ null');
+    expect(result.content[0].text).toContain('element hidden');
+    expect(result.content[0].text).toContain('display: none');
   });
 
   test('should handle missing page', async () => {
@@ -201,5 +216,60 @@ describe('ElementPositionTool', () => {
 
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('closed');
+  });
+
+  test('should handle multiple matching elements with warning', async () => {
+    const args = { selector: 'button.submit' };
+
+    // Simulate 5 matching elements
+    mockLocatorCount.mockResolvedValue(5);
+    mockLocatorBoundingBox.mockResolvedValue({
+      x: 260,
+      y: 100,
+      width: 120,
+      height: 40,
+    });
+    mockLocatorEvaluate.mockResolvedValue({
+      inViewport: true,
+      descriptor: '<button class="submit">'
+    });
+
+    const result = await positionTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+    const response = result.content[0].text as string;
+
+    // Should show warning about multiple matches
+    expect(response).toContain('⚠ Warning: Selector matched 5 elements, showing first:');
+
+    // Should still show position info for first element
+    expect(response).toContain('Position: <button class="submit">');
+    expect(response).toContain('@ (260,100) 120x40px');
+  });
+
+  test('should handle multiple hidden elements with structured response', async () => {
+    const args = { selector: 'div.hidden' };
+
+    // Simulate 2 matching hidden elements
+    mockLocatorCount.mockResolvedValue(2);
+    mockLocatorBoundingBox.mockResolvedValue(null);
+    mockLocatorEvaluate.mockResolvedValue({
+      descriptor: '<div class="hidden">',
+      display: 'none',
+      opacity: '1',
+      visibility: 'visible',
+      width: 0,
+      height: 0
+    });
+
+    const result = await positionTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+    const response = result.content[0].text as string;
+
+    // Should show warning AND structured response for hidden element
+    expect(response).toContain('⚠ Warning: Selector matched 2 elements, showing first:');
+    expect(response).toContain('@ null');
+    expect(response).toContain('element hidden: display: none');
   });
 });

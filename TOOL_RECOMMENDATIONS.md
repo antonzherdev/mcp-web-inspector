@@ -1,6 +1,18 @@
-# Playwright MCP Server - Tool Recommendations (Revised)
+# Playwright MCP Server - Tool Recommendations (Revised & Consolidated)
 
-**IMPORTANT:** This document has been revised based on LLM tool calling best practices research (2024-2025). See `TOOL_DESIGN_PRINCIPLES.md` for detailed design rationale.
+**IMPORTANT:** This document has been revised based on LLM tool calling best practices research (2024-2025) and production testing assessment (2025-10-19). See `TOOL_DESIGN_PRINCIPLES.md` for detailed design rationale.
+
+**Document Structure:**
+1. **Implementation Status** - What's completed with recent enhancements
+2. **Recommended Tools for Implementation** - 17 deduplicated tools in priority order (🔴 High / 🟡 Medium / 🟢 Low)
+3. **Reference Sections** - Detailed specs for implemented tools (inspect_dom, get_test_ids, etc.)
+4. **Implementation Summary** - Quick overview of completed and remaining work
+
+**Key Changes (2025-10-19):**
+- Merged assessment findings with original recommendations
+- Removed duplicate/similar tools (`get_element_attributes` → use `query_selector_all` with `showAttributes`)
+- Added 5 new high-value tools from production testing
+- All recommendations follow strict token-efficiency and design principles
 
 ## 🎉 Implementation Status
 
@@ -9,11 +21,17 @@
 
 ### ✅ Recently Implemented
 - `playwright_inspect_dom` - **PRIMARY TOOL** - Progressive DOM inspection with semantic filtering ✅
-- `playwright_get_test_ids` - Discover all test identifiers on the page ✅
-- `playwright_query_selector_all` - Test selectors and debug element matches ✅
-- `playwright_element_visibility` - Comprehensive visibility diagnostics with **compact text format** ✅ **UPDATED**
-- `playwright_element_position` - Element coordinates and dimensions with **compact text format** ✅ **UPDATED**
+- `playwright_get_test_ids` - Discover all test identifiers on the page (with `showAll` parameter) ✅ **ENHANCED**
+- `playwright_query_selector_all` - Test selectors and debug element matches (with `showAttributes` parameter) ✅ **ENHANCED**
+- `playwright_element_visibility` - Comprehensive visibility diagnostics with **compact text format** and **strict mode handling** ✅ **UPDATED**
+- `playwright_element_position` - Element coordinates and dimensions with **compact text format**, **strict mode handling**, and **improved hidden element errors** ✅ **UPDATED**
 - `BrowserToolBase.normalizeSelector()` - Test ID shorthand support ✅
+
+**Recent Enhancements (2025-10-19):**
+- ✅ Fixed strict mode violations - all tools now handle multiple element matches gracefully
+- ✅ Improved error messages for hidden elements - structured responses instead of errors
+- ✅ Added `showAll` parameter to `playwright_get_test_ids` for complete test ID listings
+- ✅ Added `showAttributes` parameter to `playwright_query_selector_all` for attribute inspection
 
 See `IMPLEMENTATION_SUMMARY.md` for full implementation details and test coverage.
 
@@ -27,6 +45,174 @@ See `IMPLEMENTATION_SUMMARY.md` for full implementation details and test coverag
 4. **Single selector parameter** - Use string normalization instead of multiple selector types
 5. **Primitive types** - Avoid nested objects in parameters where possible
 6. **Symbols over words** - Use ✓✗⚡→↓ instead of verbose field names ✅ **Now implemented in visibility & position tools**
+
+---
+
+## Recommended New Tools (from Production Testing Assessment)
+
+Based on comprehensive testing with real-world applications (Next.js PWA, GitHub, Anthropic), the following tools would add significant value:
+
+### 🔴 High Priority - Layout & Debugging Tools
+
+#### `playwright_find_by_text` - Text-Based Element Discovery
+**Use case:** Finding elements without good selectors, especially in poorly structured DOM
+
+```typescript
+{
+  text: string;              // Text to search for
+  exact?: boolean;           // Exact match (default: false)
+  caseSensitive?: boolean;   // Case-sensitive search (default: false)
+  limit?: number;            // Max results (default: 10)
+}
+```
+
+**Returns:** Compact text format
+```
+Found 3 elements containing "Sign in":
+
+[0] <button data-testid="login-btn">
+    @ (260,100) 120x40px
+    "Sign in"
+    ✓ visible, ⚡ interactive
+
+[1] <a href="/login">
+    @ (50,20) 80x30px
+    "Sign in to your account"
+    ✓ visible, ⚡ interactive
+
+[2] <span class="tooltip">
+    @ (300,150) 100x20px
+    "Sign in required"
+    ✗ hidden (opacity: 0)
+```
+
+**Why this matters:** Many pages lack test IDs. Text-based search provides fallback for element discovery.
+
+---
+
+#### `playwright_get_computed_styles` - CSS Property Inspector
+**Use case:** Understanding why elements behave unexpectedly, debugging layout issues
+
+```typescript
+{
+  selector: string;
+  properties?: string;  // Comma-separated CSS properties (default: common properties)
+}
+```
+
+**Returns:** Compact text format
+```
+Computed Styles: <button data-testid="submit">
+
+Layout:
+  display: inline-flex
+  position: relative
+  width: 398px
+  height: 36px
+
+Visibility:
+  opacity: 1
+  visibility: visible
+  z-index: auto
+
+Typography:
+  font-size: 14px
+  font-weight: 500
+  color: rgb(255, 255, 255)
+```
+
+**Default properties:** `display, position, width, height, opacity, visibility, z-index, overflow, font-size, font-weight, color, background-color`
+
+**Why this matters:** Addresses "Why won't it click?" and layout debugging without needing developer tools.
+
+---
+
+### 🟡 Medium Priority - Advanced Layout Tools
+
+#### `playwright_compare_positions` - Layout Alignment Check
+**Use case:** Validating header alignment, ensuring consistent spacing across components
+
+```typescript
+{
+  selector1: string;
+  selector2: string;
+  checkAlignment: 'top' | 'left' | 'right' | 'bottom' | 'width' | 'height';
+}
+```
+
+**Returns:** Compact text format
+```
+Alignment Check:
+<header data-testid="main-header"> vs <header data-testid="chat-header">
+
+Height: ✓ aligned
+  main-header: 64px
+  chat-header: 64px
+  Difference: 0px
+```
+
+**Why this matters:** Automates visual regression testing for layout consistency.
+
+---
+
+#### `playwright_measure_overflow` - Viewport Overflow Detection
+**Use case:** Mobile layout debugging, identifying scrollable content issues
+
+```typescript
+{
+  selector?: string;  // Element to check (default: document.body)
+}
+```
+
+**Returns:** Compact text format
+```
+Overflow: <body>
+
+Horizontal: ✓ no overflow
+  scrollWidth: 1200px
+  clientWidth: 1200px
+
+Vertical: ✗ overflow detected
+  scrollHeight: 3500px
+  clientHeight: 800px
+  Overflow by: 2700px (77% below fold)
+
+→ Content extends 2700px beyond viewport
+```
+
+**Why this matters:** Critical for mobile testing and responsive design validation.
+
+---
+
+### 🟢 Low Priority - Accessibility & Advanced Features
+
+#### `playwright_accessibility_tree` - Accessibility Inspection
+**Use case:** Testing accessibility, understanding semantic structure for screen readers
+
+```typescript
+{
+  selector?: string;  // Root element (default: whole page)
+  maxDepth?: number;  // Tree depth (default: 3)
+}
+```
+
+**Returns:** Compact text format
+```
+Accessibility Tree: <main data-testid="content">
+
+[0] navigation "Main navigation"
+    ├─ link "Home"
+    ├─ link "About"
+    └─ link "Contact"
+
+[1] region "Content area"
+    └─ form "Login form"
+        ├─ textbox "Email" (required)
+        ├─ textbox "Password" (required)
+        └─ button "Sign In"
+```
+
+**Why this matters:** Enables accessibility testing and understanding how assistive technologies see the page.
 
 ---
 
@@ -227,53 +413,128 @@ data-cy (1):
 
 ---
 
-## Content Analysis & Debugging Tools
+## Recommended Tools for Implementation
 
-### ✅ 1. `playwright_query_selector_all` - **IMPLEMENTED**
-Test a selector and return information about all matched elements.
+This section lists all recommended tools in priority order, merging assessment findings with original recommendations. Similar/duplicate tools have been consolidated to avoid redundancy.
 
-**Status:** Fully implemented and tested ✅
-**File:** `src/tools/browser/querySelectorAll.ts`
-**Tests:** `src/__tests__/tools/browser/querySelectorAll.test.ts` (17 test cases passing)
+---
+
+## 🔴 High Priority - Critical Gaps & Frequent Needs
+
+### 1. `playwright_find_by_text` - Text-Based Element Discovery
+**Priority:** 🔴 **High** | **Source:** Production Testing Assessment
+**Use case:** Finding elements without good selectors, especially in poorly structured DOM
 
 **Parameters:**
 ```typescript
 {
-  selector: string;        // CSS, text, or testid:value shorthand
-  limit?: number;          // Max elements to return (default: 10)
+  text: string;              // Text to search for
+  exact?: boolean;           // Exact match (default: false)
+  caseSensitive?: boolean;   // Case-sensitive search (default: false)
+  limit?: number;            // Max results (default: 10)
 }
 ```
 
 **Returns:** Compact text format
 ```
-Found 3 elements matching "button.submit":
+Found 3 elements containing "Sign in":
 
-[0] <button data-testid="submit-main" class="submit primary">
+[0] <button data-testid="login-btn">
     @ (260,100) 120x40px
-    "Sign In"
+    "Sign in"
     ✓ visible, ⚡ interactive
 
-[1] <button data-testid="submit-secondary" class="submit">
-    @ (400,100) 120x40px
-    "Continue"
+[1] <a href="/login">
+    @ (50,20) 80x30px
+    "Sign in to your account"
     ✓ visible, ⚡ interactive
 
-[2] <button#disabled-submit class="submit disabled">
-    @ (260,200) 120x40px
-    "Submit"
-    ✗ hidden, opacity: 0.3
-
-Showing 3 of 3 matches
+[2] <span class="tooltip">
+    @ (300,150) 100x20px
+    "Sign in required"
+    ✗ hidden (opacity: 0)
 ```
 
-**Token efficiency:** ~150 tokens vs ~400 tokens (JSON format) = **62% savings**
+**Token efficiency:** ~150 tokens vs ~400+ tokens (JSON) = **62% savings**
 
-**Design note:** Compact text with symbols makes results scannable. Use index numbers with other tools to interact.
+**Why this matters:** Many real-world pages lack test IDs (e.g., Anthropic.com had 0 test IDs). Text-based search provides essential fallback for element discovery. Complements `playwright_inspect_dom` for poorly structured pages.
 
 ---
 
-### ⚠️ 2. `playwright_element_exists` (SPLIT from get_element_state)
-Check if element exists and get basic info.
+### 2. `playwright_get_computed_styles` - CSS Property Inspector
+**Priority:** 🔴 **High** | **Source:** Production Testing Assessment
+**Use case:** Understanding why elements behave unexpectedly, debugging layout issues
+
+**Parameters:**
+```typescript
+{
+  selector: string;
+  properties?: string;  // Comma-separated CSS properties (default: common layout properties)
+}
+```
+
+**Returns:** Compact text format
+```
+Computed Styles: <button data-testid="submit">
+
+Layout:
+  display: inline-flex, position: relative
+  width: 398px, height: 36px
+
+Visibility:
+  opacity: 1, visibility: visible, z-index: auto
+
+Spacing:
+  margin: 0px, padding: 8px 16px
+  overflow: visible
+
+Typography:
+  font-size: 14px, font-weight: 500
+  color: rgb(255, 255, 255)
+```
+
+**Default properties:** `display, position, width, height, opacity, visibility, z-index, overflow, margin, padding, font-size, font-weight, color, background-color`
+
+**Token efficiency:** ~120 tokens vs ~300+ tokens (JSON) = **60% savings**
+
+**Why this matters:** Addresses "Why won't it click?" and layout debugging without needing browser developer tools. More focused than `playwright_get_element_attributes` which shows HTML attributes, not computed CSS.
+
+---
+
+### 3. `playwright_list_iframes` - Iframe Discovery
+**Priority:** 🔴 **High** | **Source:** Original Recommendations
+**Use case:** Finding and debugging iframe-embedded content
+
+**Parameters:**
+```typescript
+{} // No parameters - keep it simple
+```
+
+**Returns:** Compact text format
+```
+Found 2 iframes:
+
+[0] <iframe#payment-frame name="stripe-payment">
+    src: https://checkout.stripe.com/...
+    @ (100,200) 400x300px
+    "Payment Form"
+    ✓ visible
+
+[1] <iframe name="analytics">
+    src: https://www.google-analytics.com/...
+    @ (0,0) 1x1px
+    ✗ hidden (tracking pixel)
+```
+
+**Token efficiency:** ~80 tokens vs ~200 tokens (JSON) = **60% savings**
+
+**Why this matters:** Fills critical gap for pages with embedded content (payment forms, chat widgets, etc.). Use with existing `playwright_iframe_click` and `playwright_iframe_fill` tools.
+
+---
+
+### 4. `playwright_element_exists` - Simple Existence Check
+**Priority:** 🔴 **High** | **Source:** Original Recommendations
+**Use case:** Quick check if element exists before attempting interaction
 
 **Parameters:**
 ```typescript
@@ -292,13 +553,478 @@ Or if not found:
 ✗ not found: button#invalid-selector
 ```
 
-**Token efficiency:** ~15 tokens vs ~80 tokens (JSON format) = **81% savings**
+**Token efficiency:** ~15 tokens vs ~80 tokens (JSON) = **81% savings**
 
-**Why split:** Original `get_element_state` had 10+ return fields. This focuses on existence check with minimal tokens.
+**Why this matters:** Most common check before interaction. Ultra-lightweight alternative to `playwright_query_selector_all` when you only need existence confirmation.
 
 ---
 
-### ✅ 3. `playwright_element_visibility` (SPLIT from get_element_state) - **IMPLEMENTED**
+## 🟡 Medium Priority - High-Value Quality of Life
+
+### 5. `playwright_compare_positions` - Layout Alignment Validation
+**Priority:** 🟡 **Medium** | **Source:** Production Testing Assessment
+**Use case:** Validating header alignment, ensuring consistent spacing across components
+
+**Parameters:**
+```typescript
+{
+  selector1: string;
+  selector2: string;
+  checkAlignment: 'top' | 'left' | 'right' | 'bottom' | 'width' | 'height';
+}
+```
+
+**Returns:** Compact text format
+```
+Alignment Check:
+<header data-testid="main-header"> vs <header data-testid="chat-header">
+
+Height: ✓ aligned
+  main-header: 64px
+  chat-header: 64px
+  Difference: 0px
+```
+
+**Token efficiency:** ~50 tokens vs ~120 tokens (JSON) = **58% savings**
+
+**Why this matters:** Automates visual regression testing for layout consistency. Addresses specific use case from production testing (header alignment validation).
+
+---
+
+### 6. `playwright_measure_overflow` - Viewport Overflow Detection
+**Priority:** 🟡 **Medium** | **Source:** Production Testing Assessment
+**Use case:** Mobile layout debugging, identifying scrollable content issues
+
+**Parameters:**
+```typescript
+{
+  selector?: string;  // Element to check (default: document.body)
+}
+```
+
+**Returns:** Compact text format
+```
+Overflow: <body>
+
+Horizontal: ✓ no overflow
+  scrollWidth: 1200px, clientWidth: 1200px
+
+Vertical: ✗ overflow detected
+  scrollHeight: 3500px, clientHeight: 800px
+  Overflow by: 2700px (77% below fold)
+
+→ Content extends 2700px beyond viewport
+```
+
+**Token efficiency:** ~90 tokens vs ~200 tokens (JSON) = **55% savings**
+
+**Why this matters:** Critical for mobile testing and responsive design validation. Complements `playwright_element_position` for understanding page layout.
+
+---
+
+### 7. `playwright_element_interaction_state` - Interaction Capability Check
+**Priority:** 🟡 **Medium** | **Source:** Original Recommendations
+**Use case:** Debug form issues, understand why element won't accept input
+
+**Parameters:**
+```typescript
+{
+  selector: string;
+}
+```
+
+**Returns:** Compact text format
+```
+Interaction State: <input data-testid="email">
+
+✓ enabled, ✓ editable, ✗ not focused
+✗ not disabled, ✗ not readOnly, ✗ not aria-disabled
+Value: "user@example.com"
+```
+
+Or more concisely for common cases:
+```
+✓ enabled, editable, focused
+```
+
+**Token efficiency:** ~50 tokens vs ~150 tokens (JSON) = **67% savings**
+
+**Why this matters:** Complements `playwright_element_visibility` for interaction debugging. Focused on form state rather than visibility.
+
+---
+
+### 8. `playwright_scroll_to_element` - Scroll Element Into View
+**Priority:** 🟡 **Medium** | **Source:** Original Recommendations
+**Use case:** Bring element into viewport before interaction
+
+**Parameters:**
+```typescript
+{
+  selector: string;
+}
+```
+
+**Returns:** Compact text format
+```
+✓ Scrolled, now 100% in viewport
+```
+
+Or if already visible:
+```
+Already in viewport (85% visible), no scroll needed
+```
+
+**Token efficiency:** ~20 tokens vs ~90 tokens (JSON) = **78% savings**
+
+**Why this matters:** Direct complement to `playwright_element_visibility`. When visibility tool returns `⚠ needs scroll`, call this before clicking/interacting.
+
+---
+
+### 9. `playwright_list_network_requests` - Network Activity List
+**Priority:** 🟡 **Medium** | **Source:** Original Recommendations
+**Use case:** Debugging API calls, monitoring network activity
+
+**Parameters:**
+```typescript
+{
+  type?: string;           // 'xhr', 'fetch', 'script', 'image', etc.
+  limit?: number;          // Default: 50
+}
+```
+
+**Returns:** Compact text format
+```
+Network Requests (15 of 50, recent first):
+
+[0] GET /api/users 200 OK | xhr | 145ms | cached
+[1] POST /api/login 200 OK | fetch | 320ms | 2.1KB
+[2] GET /styles.css 200 OK | stylesheet | 45ms | cached
+[3] GET /app.js 200 OK | script | 280ms | 125KB
+[4] GET /logo.png 200 OK | image | 80ms | cached
+[5] GET /api/profile 401 Unauthorized | xhr | 25ms
+...
+
+Omitted: 35 older requests
+Use playwright_get_request_details(index) for full info
+```
+
+**Token efficiency:** ~150 tokens vs ~600+ tokens (JSON) = **75% savings**
+
+**Why this matters:** Essential for debugging API integration issues. Two-step list→detail pattern saves massive tokens.
+
+---
+
+### 10. `playwright_get_request_details` - Network Request Inspector
+**Priority:** 🟡 **Medium** | **Source:** Original Recommendations
+**Use case:** Deep inspection of specific network request
+
+**Parameters:**
+```typescript
+{
+  index: number;           // From list_network_requests
+}
+```
+
+**Returns:** Compact text format
+```
+Request Details [1]:
+
+POST https://api.example.com/login
+Status: 200 OK (took 320ms)
+Size: 234 bytes → 1.2KB
+
+Request Headers:
+  content-type: application/json
+  authorization: Bearer eyJ...
+
+Request Body:
+  {"email":"user@example.com","password":"***"}
+
+Response Headers:
+  content-type: application/json
+  set-cookie: session=abc123; HttpOnly
+
+Response Body (truncated at 500 chars):
+  {"token":"eyJhbGc...","user":{"id":123,"name":"John Doe"}}
+  ... [700 more bytes]
+```
+
+**Token efficiency:** ~200 tokens vs ~400 tokens (JSON) = **50% savings**
+
+**Why this matters:** Pair with `playwright_list_network_requests` for complete network debugging workflow. Auto-truncates large bodies to save tokens.
+
+---
+
+### 11. `playwright_wait_for_element` - State-Based Waiting
+**Priority:** 🟡 **Medium** | **Source:** Original Recommendations
+**Use case:** Better than arbitrary sleep() calls, wait for specific element state
+
+**Parameters:**
+```typescript
+{
+  selector: string;
+  state?: 'visible' | 'hidden' | 'attached' | 'detached';  // Default: 'visible'
+  timeout?: number;        // Default: 30000
+}
+```
+
+**Returns:** Compact text format
+```
+✓ Element visible after 1.2s
+Now: ✓ visible, ✓ exists
+```
+
+Or on timeout:
+```
+✗ Timeout after 30s waiting for visible
+Now: ✗ hidden, ✓ exists
+```
+
+**Token efficiency:** ~30 tokens vs ~100 tokens (JSON) = **70% savings**
+
+**Why this matters:** Replaces unreliable sleep() calls with deterministic waits. Shows current state for debugging.
+
+---
+
+## 🟢 Low Priority - Nice-to-Have Enhancements
+
+### 12. `playwright_accessibility_tree` - Accessibility Inspector
+**Priority:** 🟢 **Low** | **Source:** Production Testing Assessment (enhanced from original `get_accessibility_snapshot`)
+**Use case:** Testing accessibility, understanding semantic structure for screen readers
+
+**Parameters:**
+```typescript
+{
+  selector?: string;  // Root element (default: whole page)
+  maxDepth?: number;  // Tree depth (default: 3)
+}
+```
+
+**Returns:** Compact text format
+```
+Accessibility Tree: <main data-testid="content">
+
+[0] navigation "Main navigation"
+    ├─ link "Home"
+    ├─ link "About"
+    └─ link "Contact"
+
+[1] region "Content area"
+    └─ form "Login form"
+        ├─ textbox "Email" (required)
+        ├─ textbox "Password" (required)
+        └─ button "Sign In"
+```
+
+**Token efficiency:** ~150 tokens vs ~400+ tokens (JSON) = **62% savings**
+
+**Why this matters:** Enables accessibility testing and understanding how assistive technologies see the page. Tree format is more useful than single-element snapshot.
+
+---
+
+### 13. `playwright_get_cookies` / `playwright_set_cookie` - Cookie Management
+**Priority:** 🟢 **Low** | **Source:** Original Recommendations
+**Use case:** Auth workflows, session management testing
+
+**Get Cookies Parameters:**
+```typescript
+{
+  names?: string;  // Comma-separated cookie names (optional filter)
+}
+```
+
+**Get Cookies Returns:**
+```
+Cookies (3):
+
+session_id
+  Value: abc123xyz...
+  Domain: example.com | Path: / | Expires: 2025-12-31
+  ✓ Secure, ✓ HttpOnly, SameSite: Strict
+
+auth_token
+  Value: eyJhbGc...
+  Domain: .example.com | Path: / | Session cookie
+  ✓ Secure, ✗ HttpOnly, SameSite: Lax
+```
+
+**Set Cookie Parameters:**
+```typescript
+{
+  name: string;
+  value: string;
+  domain?: string;
+  path?: string;           // Default: '/'
+  expires?: number;        // Unix timestamp
+  httpOnly?: boolean;      // Default: false
+  secure?: boolean;        // Default: false
+  sameSite?: string;       // Default: 'Lax'
+}
+```
+
+**Set Cookie Returns:**
+```
+✓ Cookie 'session_id' set for example.com
+```
+
+**Token efficiency:** Get: ~180 tokens vs ~350 (JSON) = 48% savings | Set: ~15 tokens vs ~30 (JSON) = 50% savings
+
+**Why this matters:** Useful for auth testing, but lower priority as most frameworks handle cookies automatically.
+
+---
+
+### 14. `playwright_wait_for_network_idle` - Network Settling
+**Priority:** 🟢 **Low** | **Source:** Original Recommendations
+**Use case:** Wait for all network activity to complete
+
+**Parameters:**
+```typescript
+{
+  timeout?: number;  // Default: 30000
+}
+```
+
+**Returns:** Compact text format
+```
+✓ Network idle after 850ms, 0 pending requests
+```
+
+Or on timeout:
+```
+✗ Timeout after 30000ms, 3 requests still pending
+```
+
+**Token efficiency:** ~20 tokens vs ~80 tokens (JSON) = **75% savings**
+
+**Why this matters:** Useful for SPAs, but modern frameworks often have better loading indicators. Use sensible defaults.
+
+---
+
+### 15. `playwright_get_element_text` - Text Content Extraction
+**Priority:** 🟢 **Low** | **Source:** Original Recommendations
+**Use case:** Extract text content from specific element
+
+**Parameters:**
+```typescript
+{
+  selector: string;
+  trim?: boolean;  // Default: true
+}
+```
+
+**Returns:** Direct text
+```
+Lorem ipsum dolor sit amet, consectetur adipiscing elit...
+(234 characters)
+```
+
+Or for empty:
+```
+(empty - 0 characters)
+```
+
+**Token efficiency:** Direct text return = **60% savings** vs JSON wrapper
+
+**Why this matters:** Lower priority as `playwright_query_selector_all` and `playwright_inspect_dom` already show text content. Useful for focused extraction only.
+
+---
+
+### 16. `playwright_get_performance_timing` - Page Load Metrics
+**Priority:** 🟢 **Low** | **Source:** Original Recommendations
+**Use case:** Performance analysis and monitoring
+
+**Parameters:**
+```typescript
+{} // No parameters
+```
+
+**Returns:** Compact text format
+```
+Performance Timing:
+
+DOMContentLoaded: 450ms
+Load: 1200ms
+First Paint: 380ms
+First Contentful Paint: 420ms
+
+(all relative to navigation start)
+```
+
+**Token efficiency:** ~50 tokens vs ~120 tokens (JSON) = **58% savings**
+
+**Why this matters:** Useful for performance testing, but not essential for most workflows.
+
+---
+
+### 17. `playwright_get_local_storage` / `playwright_get_session_storage` - Storage Inspection
+**Priority:** 🟢 **Low** | **Source:** Original Recommendations
+**Use case:** Debugging state persistence issues
+
+**Parameters:**
+```typescript
+{
+  keys?: string;  // Comma-separated keys (optional)
+}
+```
+
+**Returns:** Compact text format
+```
+localStorage (5 items):
+
+theme: dark
+language: en-US
+user_preferences: {"notifications":true,"autoSave":false}
+session_start: 2025-01-19T10:30:00Z
+cart_items: [{"id":123,"qty":2},{"id":456,"qty":1}]
+```
+
+**Token efficiency:** ~100 tokens vs ~180 tokens (JSON) = **44% savings**
+
+**Why this matters:** Useful for debugging, but lower priority as storage issues are less common.
+
+---
+
+## ❌ Tools NOT Recommended (Duplicates/Superseded)
+
+### `playwright_get_element_attributes` - **SUPERSEDED**
+**Why not:** `playwright_query_selector_all` now has `showAttributes` parameter that provides this functionality. Adding a separate tool would be redundant.
+
+**Use instead:** `playwright_query_selector_all({ selector: "button", showAttributes: "id,name,aria-label" })`
+
+---
+
+### `playwright_get_accessibility_snapshot` (single element) - **SUPERSEDED**
+**Why not:** Replaced by `playwright_accessibility_tree` which provides tree structure instead of flat snapshot. Tree format is more useful for understanding semantic hierarchy.
+
+**Use instead:** `playwright_accessibility_tree({ selector: "button", maxDepth: 1 })` for single element
+
+---
+
+## Reference: Detailed Tool Specifications
+
+The sections above ("Progressive DOM Discovery Tool", "Test ID Discovery Tool") contain full implementation details for completed tools. For tools recommended for implementation, see the "Recommended Tools for Implementation" section above with complete specifications.
+
+---
+
+## Design Patterns
+
+All tools in this server follow consistent design principles detailed in `TOOL_DESIGN_PRINCIPLES.md`:
+
+- **Atomic operations** - Each tool does ONE thing
+- **Minimal parameters** - 1-3 parameters ideal, max 5
+- **Primitive types** - Strings, numbers, booleans preferred over nested objects
+- **Token-efficient responses** - Compact text format (60-75% token savings vs JSON)
+- **Semantic filtering** - Skip wrapper divs, show only meaningful elements
+- **Symbols over words** - ✓✗⚡→↓ instead of verbose field names
+- **Single selector parameter** - String normalization handles multiple formats
+- **Error as results** - Errors returned in ToolResponse, not thrown
+
+---
+
+## ✅ Selector Normalization (All Tools) - **IMPLEMENTED**
+
+**Implementation:** `src/tools/browser/base.ts` - `normalizeSelector()` method
+**Status:** Available in all browser tools extending `BrowserToolBase`
 Check if an element is visible to the user. **CRITICAL for debugging click/interaction failures.**
 
 **Implementation:** `src/tools/browser/elementVisibility.ts`
@@ -850,40 +1576,49 @@ All tools accepting `selector` parameter support these shorthand formats:
 
 ---
 
-## Implementation Priority (Revised)
+## Implementation Summary
 
-### ✅ Completed Tools
-- **`playwright_inspect_dom`** - Progressive DOM discovery with semantic filtering ✅ **DONE**
-- **`playwright_get_test_ids`** - Discover all test identifiers on the page ✅ **DONE**
-- **`playwright_query_selector_all`** - Selector debugging and element inspection ✅ **DONE**
-- **`playwright_element_visibility`** - Debug why clicks fail (compact text format) ✅ **DONE** 🎨 **UPDATED**
-- **`playwright_element_position`** - Find where to click/interact (compact text format) ✅ **DONE** 🎨 **UPDATED**
-- **Selector normalization** - Test ID shortcuts (testid:, data-test:, data-cy:) ✅ **DONE**
+### ✅ Completed Tools (2025-10-19 Update)
+5 core tools fully implemented with recent enhancements:
 
-### Phase 1 - Critical Tools (Next to Implement)
-1. **`playwright_list_iframes`** - Fills critical gap
-2. **`playwright_element_exists`** - Most common check
+- **`playwright_inspect_dom`** - Progressive DOM discovery with semantic filtering ✅
+- **`playwright_get_test_ids`** - Test ID discovery (enhanced with `showAll` parameter) ✅
+- **`playwright_query_selector_all`** - Selector debugging (enhanced with `showAttributes` parameter) ✅
+- **`playwright_element_visibility`** - Visibility diagnostics (strict mode handling, compact text format) ✅
+- **`playwright_element_position`** - Position inspection (strict mode handling, improved hidden element handling) ✅
+- **Selector normalization** - Test ID shortcuts (testid:, data-test:, data-cy:) ✅
 
-### Phase 2 - High-Value Tools
-4. **`playwright_list_network_requests`** - Common debugging need
-5. **`playwright_get_request_details`** - Pair with list tool
-6. **`playwright_wait_for_element`** - Better than sleep
-7. **`playwright_element_interaction_state`** - Debug form issues
+### 📋 Recommended for Implementation
+17 tools remain, deduplicated and prioritized:
 
-### Phase 3 - Quality of Life
-8. **`playwright_get_cookies`** / **`playwright_set_cookie`** - Auth workflows
-9. **`playwright_get_element_attributes`** - Deep inspection
-10. **`playwright_wait_for_network_idle`** - Reliable waits
-11. **`playwright_get_element_text`** - Focused extraction
+**🔴 High Priority (4 tools):**
+1. `playwright_find_by_text` - Text-based discovery (critical for pages without test IDs)
+2. `playwright_get_computed_styles` - CSS inspection (debugging layout issues)
+3. `playwright_list_iframes` - Iframe discovery (payment forms, chat widgets)
+4. `playwright_element_exists` - Simple existence check (most common operation)
 
-### Phase 4 - Advanced Features
-12. **`playwright_get_accessibility_snapshot`** - A11y testing
-13. **`playwright_get_performance_timing`** - Performance analysis
-14. **`playwright_get_local_storage`** / **`playwright_get_session_storage`**
+**🟡 Medium Priority (7 tools):**
+5. `playwright_compare_positions` - Layout alignment validation
+6. `playwright_measure_overflow` - Viewport overflow (mobile debugging)
+7. `playwright_element_interaction_state` - Form state debugging
+8. `playwright_scroll_to_element` - Bring element into viewport
+9. `playwright_list_network_requests` - Network activity list
+10. `playwright_get_request_details` - Request detail inspector
+11. `playwright_wait_for_element` - State-based waiting
 
-**Total Recommended: 19 tools**
-**Implemented: 5 tools** (playwright_inspect_dom, playwright_get_test_ids, playwright_query_selector_all, playwright_element_visibility, playwright_element_position)
-**Remaining: 14 tools**
+**🟢 Low Priority (6 tools):**
+12. `playwright_accessibility_tree` - A11y testing
+13. `playwright_get_cookies` / `playwright_set_cookie` - Cookie management (2 tools)
+14. `playwright_wait_for_network_idle` - Network settling
+15. `playwright_get_element_text` - Text extraction
+16. `playwright_get_performance_timing` - Performance metrics
+17. `playwright_get_local_storage` / `playwright_get_session_storage` - Storage inspection (2 tools)
+
+**❌ Not Recommended (2 superseded tools):**
+- `playwright_get_element_attributes` → Use `query_selector_all` with `showAttributes`
+- `playwright_get_accessibility_snapshot` → Use `playwright_accessibility_tree`
+
+**Total: 22 tools** (5 implemented + 17 recommended)
 
 ---
 

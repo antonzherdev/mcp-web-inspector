@@ -7,12 +7,17 @@ import { jest } from '@jest/globals';
 const mockLocatorCount = jest.fn() as jest.MockedFunction<() => Promise<number>>;
 const mockLocatorIsVisible = jest.fn() as jest.MockedFunction<() => Promise<boolean>>;
 const mockLocatorEvaluate = jest.fn() as jest.MockedFunction<(pageFunction: any) => Promise<any>>;
+const mockLocatorFirst = jest.fn() as jest.MockedFunction<() => Locator>;
 
 const mockLocator = {
   count: mockLocatorCount,
   isVisible: mockLocatorIsVisible,
   evaluate: mockLocatorEvaluate,
+  first: mockLocatorFirst,
 } as unknown as Locator;
+
+// Mock first() to return a locator with the same methods
+mockLocatorFirst.mockReturnValue(mockLocator);
 
 // Mock Page
 const mockPageLocator = jest.fn().mockReturnValue(mockLocator);
@@ -294,5 +299,36 @@ describe('ElementVisibilityTool', () => {
 
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('Failed to check visibility');
+  });
+
+  test('should handle multiple matching elements with warning', async () => {
+    const args = { selector: 'button.submit' };
+
+    // Simulate 3 matching elements
+    mockLocatorCount.mockResolvedValue(3);
+    mockLocatorIsVisible.mockResolvedValue(true);
+    mockLocatorEvaluate
+      .mockResolvedValueOnce({
+        viewportRatio: 1.0,
+        isInViewport: true,
+        opacity: 1,
+        display: 'block',
+        visibility: 'visible',
+        isClipped: false,
+        isCovered: false,
+      })
+      .mockResolvedValueOnce('<button class="submit">');
+
+    const result = await visibilityTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+    const response = result.content[0].text as string;
+
+    // Should show warning about multiple matches
+    expect(response).toContain('⚠ Warning: Selector matched 3 elements, showing first:');
+
+    // Should still show visibility info for first element
+    expect(response).toContain('Visibility: <button class="submit">');
+    expect(response).toContain('✓ visible');
   });
 });

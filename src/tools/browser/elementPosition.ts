@@ -20,15 +20,58 @@ export class ElementPositionTool extends BrowserToolBase {
           return createErrorResponse(`Element not found: ${args.selector}`);
         }
 
+        // Handle multiple matches by using first() - show warning
+        const targetLocator = count > 1 ? locator.first() : locator;
+        const multipleMatchWarning = count > 1
+          ? `⚠ Warning: Selector matched ${count} elements, showing first:\n\n`
+          : '';
+
         // Get bounding box
-        const boundingBox = await locator.boundingBox();
+        const boundingBox = await targetLocator.boundingBox();
 
         if (!boundingBox) {
-          return createErrorResponse(`Element has no bounding box (might be hidden or have display:none): ${args.selector}`);
+          // Get element info for better error message
+          const hiddenInfo = await targetLocator.evaluate((element) => {
+            const styles = window.getComputedStyle(element);
+            const tagName = element.tagName.toLowerCase();
+            const testId = element.getAttribute('data-testid') || element.getAttribute('data-test') || element.getAttribute('data-cy');
+
+            let descriptor = `<${tagName}`;
+            if (testId) descriptor += ` data-testid="${testId}"`;
+            descriptor += '>';
+
+            return {
+              descriptor,
+              display: styles.display,
+              opacity: styles.opacity,
+              visibility: styles.visibility,
+              width: parseFloat(styles.width) || 0,
+              height: parseFloat(styles.height) || 0
+            };
+          });
+
+          // Return structured response instead of error
+          let reason = 'unknown reason';
+          if (hiddenInfo.display === 'none') {
+            reason = 'display: none';
+          } else if (hiddenInfo.width === 0 || hiddenInfo.height === 0) {
+            reason = 'zero size';
+          } else if (parseFloat(hiddenInfo.opacity) === 0) {
+            reason = 'opacity: 0';
+          } else if (hiddenInfo.visibility === 'hidden') {
+            reason = 'visibility: hidden';
+          }
+
+          const output = multipleMatchWarning +
+            `Position: ${hiddenInfo.descriptor}\n` +
+            `@ null (element hidden: ${reason})\n` +
+            `display: ${hiddenInfo.display}, opacity: ${hiddenInfo.opacity}, visibility: ${hiddenInfo.visibility}`;
+
+          return createSuccessResponse(output);
         }
 
         // Check if in viewport and get element tag info
-        const elementData = await locator.evaluate((element) => {
+        const elementData = await targetLocator.evaluate((element) => {
           const rect = element.getBoundingClientRect();
           const viewportHeight = window.innerHeight;
           const viewportWidth = window.innerWidth;
@@ -65,7 +108,8 @@ export class ElementPositionTool extends BrowserToolBase {
         const viewportSymbol = elementData.inViewport ? '✓' : '✗';
         const viewportStatus = elementData.inViewport ? 'in viewport' : 'outside viewport';
 
-        const output = `Position: ${elementData.descriptor}\n@ (${x},${y}) ${width}x${height}px, ${viewportSymbol} ${viewportStatus}`;
+        const output = multipleMatchWarning +
+          `Position: ${elementData.descriptor}\n@ (${x},${y}) ${width}x${height}px, ${viewportSymbol} ${viewportStatus}`;
 
         return createSuccessResponse(output);
       } catch (error) {

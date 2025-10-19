@@ -15,6 +15,7 @@ interface ElementMatch {
   isInteractive: boolean;
   opacity?: number;
   display?: string;
+  attributes?: Record<string, string>;
 }
 
 /**
@@ -29,6 +30,9 @@ export class QuerySelectorAllTool extends BrowserToolBase {
     return this.safeExecute(context, async (page) => {
       const selector = this.normalizeSelector(args.selector);
       const limit = args.limit ?? 10;
+      const showAttributes = args.showAttributes
+        ? args.showAttributes.split(',').map((a: string) => a.trim())
+        : undefined;
 
       try {
         // Query all elements matching the selector
@@ -49,7 +53,7 @@ export class QuerySelectorAllTool extends BrowserToolBase {
           const element = elementsToProcess[i];
 
           try {
-            const elementInfo = await element.evaluate((el) => {
+            const elementInfo = await element.evaluate((el, attrList) => {
               const rect = el.getBoundingClientRect();
               const styles = window.getComputedStyle(el);
               const isVisible =
@@ -96,6 +100,18 @@ export class QuerySelectorAllTool extends BrowserToolBase {
               // Get text content (trimmed and limited)
               const text = el.textContent?.trim().slice(0, 100) || '';
 
+              // Get requested attributes if specified
+              let attributes: Record<string, string> | undefined;
+              if (attrList && attrList.length > 0) {
+                attributes = {};
+                attrList.forEach((attr: string) => {
+                  const value = el.getAttribute(attr);
+                  if (value !== null) {
+                    attributes![attr] = value;
+                  }
+                });
+              }
+
               return {
                 tag: tag,
                 selector: selectorRepr,
@@ -112,8 +128,9 @@ export class QuerySelectorAllTool extends BrowserToolBase {
                 isInteractive,
                 opacity: parseFloat(styles.opacity),
                 display: styles.display,
+                attributes,
               };
-            });
+            }, showAttributes);
 
             matchData.push(elementInfo);
           } catch (error) {
@@ -150,6 +167,14 @@ export class QuerySelectorAllTool extends BrowserToolBase {
           if (match.text) {
             const displayText = match.text.length > 50 ? match.text.slice(0, 47) + '...' : match.text;
             lines.push(`    "${displayText}"`);
+          }
+
+          // Attributes (if requested)
+          if (match.attributes && Object.keys(match.attributes).length > 0) {
+            Object.entries(match.attributes).forEach(([attr, value]) => {
+              const displayValue = value.length > 50 ? value.slice(0, 47) + '...' : value;
+              lines.push(`    ${attr}: "${displayValue}"`);
+            });
           }
 
           // Status symbols

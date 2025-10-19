@@ -21,11 +21,17 @@ export class ElementVisibilityTool extends BrowserToolBase {
           return createErrorResponse(`Element not found: ${args.selector}`);
         }
 
+        // Handle multiple matches by using first() - show warning
+        const targetLocator = count > 1 ? locator.first() : locator;
+        const multipleMatchWarning = count > 1
+          ? `⚠ Warning: Selector matched ${count} elements, showing first:\n\n`
+          : '';
+
         // Get basic visibility (Playwright's isVisible)
-        const isVisible = await locator.isVisible();
+        const isVisible = await targetLocator.isVisible();
 
         // Evaluate detailed visibility information in browser context
-        const visibilityData = await locator.evaluate((element) => {
+        const visibilityData = await targetLocator.evaluate((element) => {
           const rect = element.getBoundingClientRect();
           const viewportHeight = window.innerHeight;
           const viewportWidth = window.innerWidth;
@@ -98,7 +104,7 @@ export class ElementVisibilityTool extends BrowserToolBase {
         const needsScroll = isVisible && !visibilityData.isInViewport;
 
         // Get element tag name for output
-        const tagInfo = await locator.evaluate((el) => {
+        const tagInfo = await targetLocator.evaluate((el) => {
           const tagName = el.tagName.toLowerCase();
           const testId = el.getAttribute('data-testid') || el.getAttribute('data-test') || el.getAttribute('data-cy');
           const id = el.id ? `#${el.id}` : '';
@@ -115,7 +121,7 @@ export class ElementVisibilityTool extends BrowserToolBase {
 
         // Build compact text format
         const viewportPercent = Math.round(visibilityData.viewportRatio * 100);
-        let output = `Visibility: ${tagInfo}\n\n`;
+        let output = multipleMatchWarning + `Visibility: ${tagInfo}\n\n`;
 
         // Status line
         const visibleSymbol = isVisible ? '✓' : '✗';

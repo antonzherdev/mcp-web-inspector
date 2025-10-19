@@ -24,6 +24,7 @@ export class GetTestIdsTool extends BrowserToolBase {
       const attributes = args.attributes
         ? args.attributes.split(',').map((a: string) => a.trim())
         : ['data-testid', 'data-test', 'data-cy'];
+      const showAll = args.showAll === true;
 
       try {
         // Discover all test IDs on the page
@@ -80,8 +81,8 @@ export class GetTestIdsTool extends BrowserToolBase {
             lines.push(`${attr} (${values.length}):`);
 
             // Format values in a compact way
-            if (values.length <= 10) {
-              // Show all if 10 or fewer
+            if (showAll || values.length <= 10) {
+              // Show all if requested or if 10 or fewer
               lines.push(`  ${values.join(', ')}`);
             } else {
               // Show first 8, then indicate more
@@ -89,6 +90,7 @@ export class GetTestIdsTool extends BrowserToolBase {
               const remaining = values.length - 8;
               lines.push(`  ${shown.join(', ')},`);
               lines.push(`  ... and ${remaining} more`);
+              lines.push(`  💡 Use showAll: true to see all ${values.length} test IDs`);
             }
 
             lines.push('');

@@ -506,6 +506,10 @@ export function createToolDefinitions() {
           attributes: {
             type: "string",
             description: "Comma-separated list of test ID attributes to search for (default: 'data-testid,data-test,data-cy')"
+          },
+          showAll: {
+            type: "boolean",
+            description: "If true, display all test IDs without truncation. If false (default), shows first 8 test IDs per attribute with a summary for longer lists."
           }
         },
         required: [],
@@ -524,6 +528,10 @@ export function createToolDefinitions() {
           limit: {
             type: "number",
             description: "Maximum number of elements to return detailed info for (default: 10, recommended max: 50)"
+          },
+          showAttributes: {
+            type: "string",
+            description: "Comma-separated list of HTML attributes to display for each element (e.g., 'id,name,aria-label,href,type'). If not specified, attributes are not shown."
           }
         },
         required: ["selector"],
