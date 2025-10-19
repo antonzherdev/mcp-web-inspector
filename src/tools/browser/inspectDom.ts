@@ -29,11 +29,12 @@ export class InspectDomTool extends BrowserToolBase {
       const selector = args.selector ? this.normalizeSelector(args.selector) : 'body';
       const includeHidden = args.includeHidden ?? false;
       const maxChildren = args.maxChildren ?? 20;
+      const maxDepth = args.maxDepth ?? 5;
 
       try {
         // Get the target element and its semantic children
         const inspectionData = await page.evaluate(
-          ({ sel, hidden, max }) => {
+          ({ sel, hidden, max, maxDepth }) => {
             const target = document.querySelector(sel);
             if (!target) {
               return { error: `Element not found: ${sel}` };
@@ -210,9 +211,6 @@ export class InspectDomTool extends BrowserToolBase {
               return { counts, interactiveCounts };
             };
 
-            // Get maxDepth from arguments, default to 5
-            const maxDepthLimit = typeof args.maxDepth === 'number' ? args.maxDepth : 5;
-
             // Recursive helper to collect semantic children, drilling through non-semantic wrappers
             const collectSemanticChildren = (elements: Element[], depth: number = 0): void => {
 
@@ -261,7 +259,7 @@ export class InspectDomTool extends BrowserToolBase {
                   if (isInteractive(child)) {
                     interactiveCounts[tag] = (interactiveCounts[tag] || 0) + 1;
                   }
-                } else if (depth < maxDepthLimit) {
+                } else if (depth < maxDepth) {
                   // This is a non-semantic wrapper - drill through it to find semantic children
                   if (depth === 0) skippedWrappers++;
 
@@ -334,7 +332,7 @@ export class InspectDomTool extends BrowserToolBase {
               layoutPattern,
             };
           },
-          { sel: selector, hidden: includeHidden, max: maxChildren }
+          { sel: selector, hidden: includeHidden, max: maxChildren, maxDepth }
         );
 
         // Check for errors from evaluate
