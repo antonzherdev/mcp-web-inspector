@@ -83,11 +83,60 @@ export class ElementVisibilityTool extends BrowserToolBase {
             parent = parent.parentElement;
           }
 
-          // Check if covered by another element (check center point)
+          // Check if covered by another element (check center point and corners)
           const centerX = rect.left + rect.width / 2;
           const centerY = rect.top + rect.height / 2;
           const topElement = document.elementFromPoint(centerX, centerY);
           const isCovered = topElement !== element && !element.contains(topElement);
+
+          // Get covering element info if covered
+          let coveringElementInfo = '';
+          let coveragePercent = 0;
+          if (isCovered && topElement) {
+            const coveringTagName = topElement.tagName.toLowerCase();
+            const coveringTestId = topElement.getAttribute('data-testid');
+            const coveringId = topElement.id ? `#${topElement.id}` : '';
+            const coveringClasses = topElement.className && typeof topElement.className === 'string'
+              ? `.${(topElement.className as string).split(' ').filter((c: string) => c).slice(0, 2).join('.')}`
+              : '';
+
+            const coveringStyles = window.getComputedStyle(topElement);
+            const zIndex = coveringStyles.zIndex;
+
+            let descriptor = `<${coveringTagName}`;
+            if (coveringTestId) descriptor += ` data-testid="${coveringTestId}"`;
+            else if (coveringId) descriptor += coveringId;
+            else if (coveringClasses) descriptor += coveringClasses;
+            descriptor += `> (z-index: ${zIndex})`;
+
+            coveringElementInfo = descriptor;
+
+            // Calculate approximate coverage by checking multiple points
+            const samplePoints = [
+              [centerX, centerY],
+              [rect.left + rect.width * 0.25, rect.top + rect.height * 0.25],
+              [rect.left + rect.width * 0.75, rect.top + rect.height * 0.25],
+              [rect.left + rect.width * 0.25, rect.top + rect.height * 0.75],
+              [rect.left + rect.width * 0.75, rect.top + rect.height * 0.75],
+            ];
+
+            let coveredPoints = 0;
+            samplePoints.forEach(([x, y]) => {
+              const pointElement = document.elementFromPoint(x, y);
+              if (pointElement !== element && !element.contains(pointElement)) {
+                coveredPoints++;
+              }
+            });
+
+            coveragePercent = Math.round((coveredPoints / samplePoints.length) * 100);
+          }
+
+          // Check interactability
+          const computedStyles = window.getComputedStyle(element);
+          const pointerEvents = computedStyles.pointerEvents;
+          const isDisabled = (element as HTMLInputElement | HTMLButtonElement | HTMLTextAreaElement | HTMLSelectElement).disabled || false;
+          const isReadonly = (element as HTMLInputElement | HTMLTextAreaElement).readOnly || false;
+          const ariaDisabled = element.getAttribute('aria-disabled') === 'true';
 
           return {
             viewportRatio,
@@ -97,6 +146,12 @@ export class ElementVisibilityTool extends BrowserToolBase {
             visibility,
             isClipped,
             isCovered,
+            coveringElementInfo,
+            coveragePercent,
+            pointerEvents,
+            isDisabled,
+            isReadonly,
+            ariaDisabled,
           };
         });
 
@@ -134,13 +189,38 @@ export class ElementVisibilityTool extends BrowserToolBase {
         // CSS properties
         output += `opacity: ${visibilityData.opacity}, display: ${visibilityData.display}, visibility: ${visibilityData.visibility}\n`;
 
+        // Interactability section
+        const interactabilityIssues: string[] = [];
+        if (visibilityData.isDisabled) {
+          interactabilityIssues.push('disabled');
+        }
+        if (visibilityData.isReadonly) {
+          interactabilityIssues.push('readonly');
+        }
+        if (visibilityData.ariaDisabled) {
+          interactabilityIssues.push('aria-disabled');
+        }
+        if (visibilityData.pointerEvents === 'none') {
+          interactabilityIssues.push('pointer-events: none');
+        }
+
+        if (interactabilityIssues.length > 0) {
+          output += `⚠ interactability: ${interactabilityIssues.join(', ')}\n`;
+        }
+
         // Issues section
         const issues: string[] = [];
         if (visibilityData.isClipped) {
           issues.push('  ✗ clipped by parent overflow:hidden');
         }
         if (visibilityData.isCovered) {
-          issues.push('  ✗ covered by another element');
+          const coverageInfo = visibilityData.coveragePercent > 0
+            ? ` (~${visibilityData.coveragePercent}% covered)`
+            : '';
+          issues.push(`  ✗ covered by another element${coverageInfo}`);
+          if (visibilityData.coveringElementInfo) {
+            issues.push(`    Covering: ${visibilityData.coveringElementInfo}`);
+          }
         }
         if (needsScroll) {
           issues.push('  ⚠ needs scroll to bring into view');
@@ -151,9 +231,20 @@ export class ElementVisibilityTool extends BrowserToolBase {
           output += issues.join('\n') + '\n';
         }
 
-        // Suggestion
+        // Suggestions
+        const suggestions: string[] = [];
         if (needsScroll) {
-          output += '\n→ Call playwright_scroll_to_element before clicking';
+          suggestions.push('→ Call playwright_scroll_to_element before clicking');
+        }
+        if (visibilityData.isCovered) {
+          suggestions.push('→ Element may be behind modal, overlay, or fixed header');
+        }
+        if (interactabilityIssues.length > 0) {
+          suggestions.push('→ Element cannot be interacted with in current state');
+        }
+
+        if (suggestions.length > 0) {
+          output += '\n' + suggestions.join('\n');
         }
 
         return createSuccessResponse(output.trim());

@@ -70,6 +70,12 @@ describe('ElementVisibilityTool', () => {
         visibility: 'visible',
         isClipped: false,
         isCovered: false,
+        coveringElementInfo: '',
+        coveragePercent: 0,
+        pointerEvents: 'auto',
+        isDisabled: false,
+        isReadonly: false,
+        ariaDisabled: false,
       })
       .mockResolvedValueOnce('<button#test-button>');
 
@@ -105,6 +111,12 @@ describe('ElementVisibilityTool', () => {
         visibility: 'visible',
         isClipped: false,
         isCovered: false,
+        coveringElementInfo: '',
+        coveragePercent: 0,
+        pointerEvents: 'auto',
+        isDisabled: false,
+        isReadonly: false,
+        ariaDisabled: false,
       })
       .mockResolvedValueOnce('<button#bottom-button>');
 
@@ -133,6 +145,12 @@ describe('ElementVisibilityTool', () => {
         visibility: 'visible',
         isClipped: true,
         isCovered: false,
+        coveringElementInfo: '',
+        coveragePercent: 0,
+        pointerEvents: 'auto',
+        isDisabled: false,
+        isReadonly: false,
+        ariaDisabled: false,
       })
       .mockResolvedValueOnce('<div#clipped-element>');
 
@@ -158,6 +176,12 @@ describe('ElementVisibilityTool', () => {
         visibility: 'visible',
         isClipped: false,
         isCovered: true,
+        coveringElementInfo: '<div.modal-overlay> (z-index: 1000)',
+        coveragePercent: 80,
+        pointerEvents: 'auto',
+        isDisabled: false,
+        isReadonly: false,
+        ariaDisabled: false,
       })
       .mockResolvedValueOnce('<button#covered-button>');
 
@@ -167,6 +191,9 @@ describe('ElementVisibilityTool', () => {
     const response = result.content[0].text as string;
     expect(response).toContain('Issues:');
     expect(response).toContain('✗ covered by another element');
+    expect(response).toContain('~80% covered');
+    expect(response).toContain('Covering: <div.modal-overlay> (z-index: 1000)');
+    expect(response).toContain('→ Element may be behind modal, overlay, or fixed header');
   });
 
   test('should handle testid selector shorthand', async () => {
@@ -183,6 +210,12 @@ describe('ElementVisibilityTool', () => {
         visibility: 'visible',
         isClipped: false,
         isCovered: false,
+        coveringElementInfo: '',
+        coveragePercent: 0,
+        pointerEvents: 'auto',
+        isDisabled: false,
+        isReadonly: false,
+        ariaDisabled: false,
       })
       .mockResolvedValueOnce('<button data-testid="submit-button">');
 
@@ -232,6 +265,12 @@ describe('ElementVisibilityTool', () => {
         visibility: 'visible',
         isClipped: false,
         isCovered: false,
+        coveringElementInfo: '',
+        coveragePercent: 0,
+        pointerEvents: 'auto',
+        isDisabled: false,
+        isReadonly: false,
+        ariaDisabled: false,
       })
       .mockResolvedValueOnce('<div#partial-element>');
 
@@ -258,6 +297,12 @@ describe('ElementVisibilityTool', () => {
         visibility: 'visible',
         isClipped: false,
         isCovered: false,
+        coveringElementInfo: '',
+        coveragePercent: 0,
+        pointerEvents: 'auto',
+        isDisabled: false,
+        isReadonly: false,
+        ariaDisabled: false,
       })
       .mockResolvedValueOnce('<div#faded-element>');
 
@@ -316,6 +361,12 @@ describe('ElementVisibilityTool', () => {
         visibility: 'visible',
         isClipped: false,
         isCovered: false,
+        coveringElementInfo: '',
+        coveragePercent: 0,
+        pointerEvents: 'auto',
+        isDisabled: false,
+        isReadonly: false,
+        ariaDisabled: false,
       })
       .mockResolvedValueOnce('<button class="submit">');
 
@@ -330,5 +381,97 @@ describe('ElementVisibilityTool', () => {
     // Should still show visibility info for first element
     expect(response).toContain('Visibility: <button class="submit">');
     expect(response).toContain('✓ visible');
+  });
+
+  test('should detect disabled element', async () => {
+    const args = { selector: '#disabled-button' };
+
+    mockLocatorCount.mockResolvedValue(1);
+    mockLocatorIsVisible.mockResolvedValue(true);
+    mockLocatorEvaluate
+      .mockResolvedValueOnce({
+        viewportRatio: 1.0,
+        isInViewport: true,
+        opacity: 1,
+        display: 'block',
+        visibility: 'visible',
+        isClipped: false,
+        isCovered: false,
+        coveringElementInfo: '',
+        coveragePercent: 0,
+        pointerEvents: 'auto',
+        isDisabled: true,
+        isReadonly: false,
+        ariaDisabled: false,
+      })
+      .mockResolvedValueOnce('<button#disabled-button>');
+
+    const result = await visibilityTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+    const response = result.content[0].text as string;
+    expect(response).toContain('⚠ interactability: disabled');
+    expect(response).toContain('→ Element cannot be interacted with in current state');
+  });
+
+  test('should detect pointer-events none element', async () => {
+    const args = { selector: '#no-pointer' };
+
+    mockLocatorCount.mockResolvedValue(1);
+    mockLocatorIsVisible.mockResolvedValue(true);
+    mockLocatorEvaluate
+      .mockResolvedValueOnce({
+        viewportRatio: 1.0,
+        isInViewport: true,
+        opacity: 1,
+        display: 'block',
+        visibility: 'visible',
+        isClipped: false,
+        isCovered: false,
+        coveringElementInfo: '',
+        coveragePercent: 0,
+        pointerEvents: 'none',
+        isDisabled: false,
+        isReadonly: false,
+        ariaDisabled: false,
+      })
+      .mockResolvedValueOnce('<div#no-pointer>');
+
+    const result = await visibilityTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+    const response = result.content[0].text as string;
+    expect(response).toContain('⚠ interactability: pointer-events: none');
+    expect(response).toContain('→ Element cannot be interacted with in current state');
+  });
+
+  test('should detect multiple interactability issues', async () => {
+    const args = { selector: '#complex-disabled' };
+
+    mockLocatorCount.mockResolvedValue(1);
+    mockLocatorIsVisible.mockResolvedValue(true);
+    mockLocatorEvaluate
+      .mockResolvedValueOnce({
+        viewportRatio: 1.0,
+        isInViewport: true,
+        opacity: 1,
+        display: 'block',
+        visibility: 'visible',
+        isClipped: false,
+        isCovered: false,
+        coveringElementInfo: '',
+        coveragePercent: 0,
+        pointerEvents: 'auto',
+        isDisabled: true,
+        isReadonly: true,
+        ariaDisabled: true,
+      })
+      .mockResolvedValueOnce('<input#complex-disabled>');
+
+    const result = await visibilityTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+    const response = result.content[0].text as string;
+    expect(response).toContain('⚠ interactability: disabled, readonly, aria-disabled');
   });
 });

@@ -49,6 +49,7 @@ describe('GetTestIdsTool', () => {
         'data-testid': ['submit-button', 'email-input', 'password-input'],
         'data-test': ['legacy-form', 'old-button'],
       },
+      duplicates: {},
     });
 
     const result = await getTestIdsTool.execute(args, mockContext);
@@ -71,6 +72,7 @@ describe('GetTestIdsTool', () => {
         'data-testid': ['login-button'],
         'data-cy': ['cypress-login', 'cypress-submit'],
       },
+      duplicates: {},
     });
 
     const result = await getTestIdsTool.execute(args, mockContext);
@@ -89,6 +91,7 @@ describe('GetTestIdsTool', () => {
     mockPageEvaluate.mockResolvedValue({
       totalCount: 0,
       byAttribute: {},
+      duplicates: {},
     });
 
     const result = await getTestIdsTool.execute(args, mockContext);
@@ -114,6 +117,7 @@ describe('GetTestIdsTool', () => {
       byAttribute: {
         'data-testid': manyTestIds,
       },
+      duplicates: {},
     });
 
     const result = await getTestIdsTool.execute(args, mockContext);
@@ -135,6 +139,7 @@ describe('GetTestIdsTool', () => {
       byAttribute: {
         'data-testid': someTestIds,
       },
+      duplicates: {},
     });
 
     const result = await getTestIdsTool.execute(args, mockContext);
@@ -155,6 +160,7 @@ describe('GetTestIdsTool', () => {
         'data-testid': ['main-form', 'submit-btn', 'cancel-btn'],
         'data-cy': ['e2e-login'],
       },
+      duplicates: {},
     });
 
     const result = await getTestIdsTool.execute(args, mockContext);
@@ -176,6 +182,7 @@ describe('GetTestIdsTool', () => {
         'data-testid': ['login-form'],
         'data-cy': ['cypress-test'],
       },
+      duplicates: {},
     });
 
     const result = await getTestIdsTool.execute(args, mockContext);
@@ -193,6 +200,7 @@ describe('GetTestIdsTool', () => {
       byAttribute: {
         'data-test': ['my-element'],
       },
+      duplicates: {},
     });
 
     const result = await getTestIdsTool.execute(args, mockContext);
@@ -238,6 +246,7 @@ describe('GetTestIdsTool', () => {
         'data-automation': ['auto-id'],
         'data-e2e': ['e2e-id'],
       },
+      duplicates: {},
     });
 
     const result = await getTestIdsTool.execute(args, mockContext);
@@ -247,5 +256,51 @@ describe('GetTestIdsTool', () => {
       ['data-qa', 'data-automation', 'data-e2e']
     );
     expect(result.isError).toBe(false);
+  });
+
+  test('should detect and warn about duplicate test IDs', async () => {
+    const args = {};
+
+    mockPageEvaluate.mockResolvedValue({
+      totalCount: 5,
+      byAttribute: {
+        'data-testid': ['main-header', 'submit-button', 'main-header'],
+        'data-test': ['duplicate-id', 'duplicate-id'],
+      },
+      duplicates: {
+        'data-testid': {
+          'main-header': 2,
+        },
+        'data-test': {
+          'duplicate-id': 2,
+        },
+      },
+    });
+
+    const result = await getTestIdsTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('⚠ Warning: Duplicate test IDs found');
+    expect(result.content[0].text).toContain('data-testid: "main-header" appears 2 times');
+    expect(result.content[0].text).toContain('data-test: "duplicate-id" appears 2 times');
+    expect(result.content[0].text).toContain('Flaky tests');
+    expect(result.content[0].text).toContain('Ambiguous interactions');
+  });
+
+  test('should not show duplicate warning when no duplicates exist', async () => {
+    const args = {};
+
+    mockPageEvaluate.mockResolvedValue({
+      totalCount: 3,
+      byAttribute: {
+        'data-testid': ['unique-1', 'unique-2', 'unique-3'],
+      },
+      duplicates: {},
+    });
+
+    const result = await getTestIdsTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).not.toContain('⚠ Warning: Duplicate test IDs');
   });
 });

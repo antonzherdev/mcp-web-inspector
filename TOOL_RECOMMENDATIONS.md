@@ -36,6 +36,8 @@
 - ✅ Added `showAll` parameter to `playwright_get_test_ids` for complete test ID listings
 - ✅ Added `showAttributes` parameter to `playwright_query_selector_all` for attribute inspection
 - ✅ **Implemented 3 high-priority tools**: `playwright_find_by_text`, `playwright_get_computed_styles`, `playwright_element_exists`
+- ✅ **Enhanced `playwright_element_visibility`** with coverage detection (~% covered), covering element details, and interactability state (disabled, readonly, pointer-events)
+- ✅ **Enhanced `playwright_get_test_ids`** with duplicate test ID detection and warnings
 
 See `IMPLEMENTATION_SUMMARY.md` for full implementation details and test coverage.
 
@@ -54,7 +56,7 @@ See `IMPLEMENTATION_SUMMARY.md` for full implementation details and test coverag
 
 ## Recommended New Tools (from Production Testing Assessment)
 
-Based on comprehensive testing with real-world applications (Next.js PWA, GitHub, Anthropic), the following tools would add significant value:
+Based on comprehensive testing with real-world applications (Next.js PWA, GitHub, Anthropic) conducted on 2025-10-19, the following tools would add significant value:
 
 ### 🔴 High Priority - Layout & Debugging Tools
 
@@ -189,6 +191,34 @@ Vertical: ✗ overflow detected
 ---
 
 ### 🟢 Low Priority - Accessibility & Advanced Features
+
+#### `playwright_get_form_data` - Form Field Extraction
+**Use case:** Extract all form fields and their current values for testing
+
+```typescript
+{
+  selector?: string;  // Form selector, defaults to first form
+}
+```
+
+**Returns:** Compact text format
+```
+Form Fields (2 inputs, 1 button):
+
+email (input[type=email])
+  value: "user@example.com"
+  placeholder: "Enter your email"
+  required: true
+
+password (input[type=password])
+  value: "••••••••"
+  placeholder: "Enter your password"
+  required: true
+```
+
+**Why this matters:** Quickly understand form structure and state for testing. Essential for debugging form submission issues.
+
+---
 
 #### `playwright_accessibility_tree` - Accessibility Inspection
 **Use case:** Testing accessibility, understanding semantic structure for screen readers
@@ -1596,7 +1626,7 @@ All tools accepting `selector` parameter support these shorthand formats:
 - **Selector normalization** - Test ID shortcuts (testid:, data-test:, data-cy:) ✅
 
 ### 📋 Recommended for Implementation
-14 tools remain, deduplicated and prioritized:
+15 tools remain, deduplicated and prioritized:
 
 **🔴 High Priority (1 tool):**
 1. `playwright_list_iframes` - Iframe discovery (payment forms, chat widgets)
@@ -1610,19 +1640,20 @@ All tools accepting `selector` parameter support these shorthand formats:
 7. `playwright_get_request_details` - Request detail inspector
 8. `playwright_wait_for_element` - State-based waiting
 
-**🟢 Low Priority (6 tools):**
-9. `playwright_accessibility_tree` - A11y testing
-10. `playwright_get_cookies` / `playwright_set_cookie` - Cookie management (2 tools)
-11. `playwright_wait_for_network_idle` - Network settling
-12. `playwright_get_element_text` - Text extraction
-13. `playwright_get_performance_timing` - Performance metrics
-14. `playwright_get_local_storage` / `playwright_get_session_storage` - Storage inspection (2 tools)
+**🟢 Low Priority (7 tools):**
+9. `playwright_get_form_data` - Form field extraction (NEW from assessment)
+10. `playwright_accessibility_tree` - A11y testing
+11. `playwright_get_cookies` / `playwright_set_cookie` - Cookie management (2 tools)
+12. `playwright_wait_for_network_idle` - Network settling
+13. `playwright_get_element_text` - Text extraction
+14. `playwright_get_performance_timing` - Performance metrics
+15. `playwright_get_local_storage` / `playwright_get_session_storage` - Storage inspection (2 tools)
 
 **❌ Not Recommended (2 superseded tools):**
 - `playwright_get_element_attributes` → Use `query_selector_all` with `showAttributes`
 - `playwright_get_accessibility_snapshot` → Use `playwright_accessibility_tree`
 
-**Total: 22 tools** (8 implemented + 14 recommended)
+**Total: 23 tools** (8 implemented + 15 recommended)
 
 ---
 

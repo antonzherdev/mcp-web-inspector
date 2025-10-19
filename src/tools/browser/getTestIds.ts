@@ -9,6 +9,11 @@ interface TestIdDiscoveryResult {
   byAttribute: {
     [attribute: string]: string[];
   };
+  duplicates: {
+    [attribute: string]: {
+      [value: string]: number;
+    };
+  };
 }
 
 /**
@@ -30,28 +35,46 @@ export class GetTestIdsTool extends BrowserToolBase {
         // Discover all test IDs on the page
         const discoveryData = await page.evaluate((attrs: string[]) => {
           const byAttribute: { [key: string]: string[] } = {};
+          const duplicates: { [key: string]: { [value: string]: number } } = {};
           let totalCount = 0;
 
           attrs.forEach((attr) => {
             const elements = document.querySelectorAll(`[${attr}]`);
             const values: string[] = [];
+            const counts: { [value: string]: number } = {};
 
             elements.forEach((el) => {
               const value = el.getAttribute(attr);
               if (value) {
                 values.push(value);
                 totalCount++;
+
+                // Track duplicates
+                counts[value] = (counts[value] || 0) + 1;
               }
             });
 
             if (values.length > 0) {
               byAttribute[attr] = values;
+
+              // Store duplicates (values that appear more than once)
+              const attrDuplicates: { [value: string]: number } = {};
+              Object.entries(counts).forEach(([value, count]) => {
+                if (count > 1) {
+                  attrDuplicates[value] = count;
+                }
+              });
+
+              if (Object.keys(attrDuplicates).length > 0) {
+                duplicates[attr] = attrDuplicates;
+              }
             }
           });
 
           return {
             totalCount,
             byAttribute,
+            duplicates,
           };
         }, attributes);
 
@@ -95,6 +118,26 @@ export class GetTestIdsTool extends BrowserToolBase {
 
             lines.push('');
           });
+
+          // Add duplicate warnings
+          const hasDuplicates = Object.keys(discoveryData.duplicates).length > 0;
+          if (hasDuplicates) {
+            lines.push('⚠ Warning: Duplicate test IDs found (test IDs should be unique):');
+            lines.push('');
+
+            Object.entries(discoveryData.duplicates).forEach(([attr, dups]) => {
+              Object.entries(dups).forEach(([value, count]) => {
+                lines.push(`  ${attr}: "${value}" appears ${count} times`);
+              });
+            });
+
+            lines.push('');
+            lines.push('💡 Duplicate test IDs can cause:');
+            lines.push('   - Flaky tests (selectors match multiple elements)');
+            lines.push('   - Ambiguous interactions (which element to click?)');
+            lines.push('   - Use playwright_query_selector_all to see all matches');
+            lines.push('');
+          }
 
           // Add usage tip
           lines.push('💡 Tip: Use these test IDs with selector shortcuts:');
