@@ -511,6 +511,24 @@ export function createToolDefinitions() {
         required: [],
       },
     },
+    {
+      name: "playwright_query_selector_all",
+      description: "Test a selector and return detailed information about all matched elements. Essential for selector debugging and finding the right element to interact with. Returns compact text format with element tag, position, text content, visibility status, and interaction capability. Shows why elements are hidden (display:none, opacity:0, zero size). Supports testid shortcuts (e.g., 'testid:submit-button'). Use limit parameter to control how many matches to show (default: 10).",
+      inputSchema: {
+        type: "object",
+        properties: {
+          selector: {
+            type: "string",
+            description: "CSS selector, text selector, or testid shorthand to test (e.g., 'button.submit', 'testid:login-form', 'text=Sign In')"
+          },
+          limit: {
+            type: "number",
+            description: "Maximum number of elements to return detailed info for (default: 10, recommended max: 50)"
+          }
+        },
+        required: ["selector"],
+      },
+    },
   ] as const satisfies Tool[];
 }
 
@@ -541,7 +559,8 @@ export const BROWSER_TOOLS = [
   "playwright_element_visibility",
   "playwright_element_position",
   "playwright_inspect_dom",
-  "playwright_get_test_ids"
+  "playwright_get_test_ids",
+  "playwright_query_selector_all"
 ];
 
 // API Request tools for conditional launch

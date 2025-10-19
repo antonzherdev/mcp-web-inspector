@@ -53,6 +53,7 @@ OPENAI_API_KEY=your-key npx mcp-eval src/evals/evals.ts src/tools/codegen/index.
 #### Element Inspection & Debugging
 - `playwright_inspect_dom` - **PRIMARY TOOL** - Progressive DOM inspection with semantic filtering, automatic wrapper drilling (maxDepth: 5 default), and spatial layout detection. Returns only meaningful elements (semantic HTML, test IDs, ARIA roles, interactive elements) while skipping non-semantic wrappers. Supports visual content (svg, canvas, audio, iframe). Use for understanding page structure.
 - `playwright_get_test_ids` - Discover all test identifiers on the page (data-testid, data-test, data-cy, etc.). Returns compact text list grouped by attribute type. Essential for test-driven workflows.
+- `playwright_query_selector_all` - Test a selector and return detailed information about all matched elements. Essential for selector debugging and finding the right element to interact with. Returns compact text format with element tag, position, text content, visibility status, and diagnostic info (display:none, opacity:0, zero size). Supports testid shortcuts and limit parameter (default: 10).
 - `playwright_element_visibility` - Check if element is visible with detailed diagnostics (viewport, clipping, coverage, scroll needed)
 - `playwright_element_position` - Get element position and size (x, y, width, height, viewport status)
 
