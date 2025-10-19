@@ -98,6 +98,10 @@ export class InspectDomTool extends BrowserToolBase {
                 'table',
                 'img',
                 'video',
+                'audio',
+                'svg',
+                'canvas',
+                'iframe',
                 'dialog',
                 'details',
                 'summary',
@@ -206,46 +210,72 @@ export class InspectDomTool extends BrowserToolBase {
               return { counts, interactiveCounts };
             };
 
-            for (const child of allChildren) {
-              const childInfo = getElementInfo(child);
-              const tag = child.tagName.toLowerCase();
+            // Get maxDepth from arguments, default to 5
+            const maxDepthLimit = typeof args.maxDepth === 'number' ? args.maxDepth : 5;
 
-              // Count all children for summary (even hidden/non-semantic)
-              elementCounts[tag] = (elementCounts[tag] || 0) + 1;
-              if (isInteractive(child)) {
-                interactiveCounts[tag] = (interactiveCounts[tag] || 0) + 1;
+            // Recursive helper to collect semantic children, drilling through non-semantic wrappers
+            const collectSemanticChildren = (elements: Element[], depth: number = 0): void => {
+
+              for (const child of elements) {
+                const childInfo = getElementInfo(child);
+                const tag = child.tagName.toLowerCase();
+
+                // Count all immediate children for summary (depth 0 only)
+                if (depth === 0) {
+                  elementCounts[tag] = (elementCounts[tag] || 0) + 1;
+                }
+
+                // Skip hidden elements unless includeHidden is true
+                if (!hidden && !childInfo.isVisible) {
+                  if (depth === 0) skippedWrappers++;
+                  continue;
+                }
+
+                // Check if this element is semantic
+                const isSemantic = isSemanticElement(child);
+
+                if (isSemantic) {
+                  // This is a semantic element - add it to the list and stop drilling
+                  const text = child.textContent?.trim().slice(0, 100) || '';
+                  const testId =
+                    child.getAttribute('data-testid') ||
+                    child.getAttribute('data-test') ||
+                    child.getAttribute('data-cy') ||
+                    undefined;
+
+                  const semanticChild = {
+                    tag: child.tagName.toLowerCase(),
+                    selector: getSelector(child),
+                    testId,
+                    role: child.getAttribute('role') || undefined,
+                    text,
+                    position: childInfo.rect,
+                    isVisible: childInfo.isVisible,
+                    isInteractive: isInteractive(child),
+                    childCount: child.children.length,
+                  };
+
+                  semanticChildren.push(semanticChild);
+
+                  // Count this semantic element in interactiveCounts if it's interactive
+                  if (isInteractive(child)) {
+                    interactiveCounts[tag] = (interactiveCounts[tag] || 0) + 1;
+                  }
+                } else if (depth < maxDepthLimit) {
+                  // This is a non-semantic wrapper - drill through it to find semantic children
+                  if (depth === 0) skippedWrappers++;
+
+                  // Recursively look for semantic children inside this wrapper
+                  collectSemanticChildren(Array.from(child.children), depth + 1);
+                } else {
+                  // Hit max depth - count as skipped wrapper
+                  if (depth === 0) skippedWrappers++;
+                }
               }
+            };
 
-              // Skip hidden elements unless includeHidden is true
-              if (!hidden && !childInfo.isVisible) {
-                skippedWrappers++;
-                continue;
-              }
-
-              // Check if semantic
-              if (isSemanticElement(child)) {
-                const text = child.textContent?.trim().slice(0, 100) || '';
-                const testId =
-                  child.getAttribute('data-testid') ||
-                  child.getAttribute('data-test') ||
-                  child.getAttribute('data-cy') ||
-                  undefined;
-
-                semanticChildren.push({
-                  tag: child.tagName.toLowerCase(),
-                  selector: getSelector(child),
-                  testId,
-                  role: child.getAttribute('role') || undefined,
-                  text,
-                  position: childInfo.rect,
-                  isVisible: childInfo.isVisible,
-                  isInteractive: isInteractive(child),
-                  childCount: child.children.length,
-                });
-              } else {
-                skippedWrappers++;
-              }
-            }
+            // Start collecting semantic children from immediate children
+            collectSemanticChildren(allChildren);
 
             // For body/main containers, also count elements in entire tree
             const targetTag = target.tagName.toLowerCase();
@@ -403,6 +433,24 @@ export class InspectDomTool extends BrowserToolBase {
           lines.push('  - Adding semantic HTML: <header>, <main>, <nav>, <button>');
           lines.push('  - Adding test IDs: data-testid="submit-button"');
           lines.push('  - Adding ARIA roles: role="button", role="navigation"');
+
+          // Add drill-down suggestions when Page Overview shows interactive but Children shows none
+          if (treeCounts && Object.keys(interactiveCounts).length === 0 && Object.keys(treeCounts.interactiveCounts).length > 0) {
+            lines.push('');
+            lines.push('💡 Try drilling down to find interactive elements:');
+
+            const currentSelector = args.selector || 'body';
+            // Suggest specific selectors based on what's in the tree
+            if (treeCounts.interactiveCounts.button && treeCounts.interactiveCounts.button > 0) {
+              lines.push(`   playwright_inspect_dom({ selector: "${currentSelector} button" })`);
+            }
+            if (treeCounts.interactiveCounts.input && treeCounts.interactiveCounts.input > 0) {
+              lines.push(`   playwright_inspect_dom({ selector: "${currentSelector} input" })`);
+            }
+            if (treeCounts.interactiveCounts.a && treeCounts.interactiveCounts.a > 0) {
+              lines.push(`   playwright_inspect_dom({ selector: "${currentSelector} a" })`);
+            }
+          }
         } else {
           lines.push(
             `Children (${stats.shownCount} of ${stats.semanticCount}${stats.skippedWrappers > 0 ? `, skipped ${stats.skippedWrappers} wrappers` : ''}):`

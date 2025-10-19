@@ -698,4 +698,393 @@ describe('InspectDomTool', () => {
     expect(result.content[0].text).toContain('5 links');
     expect(result.content[0].text).toContain('Test Coverage: 8 elements');
   });
+
+  test('should show interactive summary for nested elements in wrapper divs', async () => {
+    // This is the header scenario from reassessment Test 5
+    const args = { selector: 'testid:main-header' };
+
+    mockPageEvaluate.mockResolvedValue({
+      target: {
+        tag: 'header',
+        selector: '[data-testid="main-header"]',
+        position: { x: 256, y: 0, width: 640, height: 64 },
+        isVisible: true,
+      },
+      children: [],
+      stats: {
+        totalChildren: 1,
+        semanticCount: 0,
+        shownCount: 0,
+        omittedCount: 0,
+        skippedWrappers: 1,
+      },
+      elementCounts: { div: 1 },
+      // After fix: interactiveCounts now includes elements found in wrapper div's subtree
+      interactiveCounts: { button: 5, input: 1 },
+      treeCounts: null,
+      layoutPattern: 'unknown',
+    });
+
+    const result = await inspectDomTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+
+    // Should now show interactive elements summary
+    expect(result.content[0].text).toContain('Interactive Elements Found:');
+    expect(result.content[0].text).toContain('5 buttons');
+    expect(result.content[0].text).toContain('1 input');
+    expect(result.content[0].text).toContain('💡 Tip:');
+  });
+
+  test('should count interactive elements in wrapper div children', async () => {
+    // Simulates the form scenario where inputs are nested in wrapper divs
+    const args = { selector: 'form' };
+
+    mockPageEvaluate.mockResolvedValue({
+      target: {
+        tag: 'form',
+        selector: 'form',
+        position: { x: 441, y: 271, width: 398, height: 184 },
+        isVisible: true,
+      },
+      children: [
+        {
+          tag: 'button',
+          selector: 'button',
+          text: 'Login',
+          position: { x: 441, y: 419, width: 398, height: 36 },
+          isVisible: true,
+          isInteractive: true,
+          childCount: 0,
+        },
+      ],
+      stats: {
+        totalChildren: 3,
+        semanticCount: 1,
+        shownCount: 1,
+        omittedCount: 0,
+        skippedWrappers: 2,
+      },
+      elementCounts: { div: 2, button: 1 },
+      // After fix: Now counts the button AND the 2 inputs nested in wrapper divs
+      interactiveCounts: { button: 1, input: 2 },
+      treeCounts: null,
+      layoutPattern: 'unknown',
+    });
+
+    const result = await inspectDomTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+
+    // Shows both the direct button child AND the nested inputs
+    expect(result.content[0].text).toContain('2 wrapper divs were skipped');
+    expect(result.content[0].text).toContain('💡 Tip:');
+    // The button is shown as a direct child
+    expect(result.content[0].text).toContain('[0] <button');
+  });
+
+  test('should provide drill-down suggestions when Page Overview shows interactive but Children shows none', async () => {
+    // Dashboard scenario: Page Overview shows 57 buttons, but Children shows 0 semantic
+    const args = { selector: 'testid:main-layout' };
+
+    mockPageEvaluate.mockResolvedValue({
+      target: {
+        tag: 'div',
+        selector: '[data-testid="main-layout"]',
+        position: { x: 0, y: 0, width: 1200, height: 800 },
+        isVisible: true,
+      },
+      children: [],
+      stats: {
+        totalChildren: 20,
+        semanticCount: 0,
+        shownCount: 0,
+        omittedCount: 0,
+        skippedWrappers: 20,
+      },
+      elementCounts: { div: 20 },
+      interactiveCounts: {}, // Empty because all immediate children are wrappers
+      treeCounts: {
+        counts: { div: 50, button: 57, input: 2, textarea: 1, header: 2 },
+        interactiveCounts: { button: 57, input: 2, textarea: 1 },
+        testIdCount: 4,
+      },
+      layoutPattern: 'unknown',
+    });
+
+    const result = await inspectDomTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+
+    // Should show Page Overview with the tree counts
+    expect(result.content[0].text).toContain('Page Overview:');
+    expect(result.content[0].text).toContain('57 buttons');
+
+    // Should suggest specific ways to access those 57 buttons
+    expect(result.content[0].text).toContain('💡 Try drilling down to find interactive elements:');
+    expect(result.content[0].text).toContain('playwright_inspect_dom({ selector: "testid:main-layout button" })');
+    expect(result.content[0].text).toContain('playwright_inspect_dom({ selector: "testid:main-layout input" })');
+  });
+
+  test('should drill through wrapper divs to show nested semantic children', async () => {
+    // Real-world scenario: header > div > buttons
+    // The recursive logic now drills through the wrapper div to find the buttons
+    const args = { selector: 'header' };
+
+    mockPageEvaluate.mockResolvedValue({
+      target: {
+        tag: 'header',
+        selector: 'header',
+        position: { x: 0, y: 0, width: 1200, height: 64 },
+        isVisible: true,
+      },
+      // After fix: The buttons found by drilling through the wrapper
+      children: [
+        {
+          tag: 'button',
+          selector: 'button',
+          text: 'Menu',
+          position: { x: 10, y: 12, width: 40, height: 40 },
+          isVisible: true,
+          isInteractive: true,
+          childCount: 0,
+        },
+        {
+          tag: 'button',
+          selector: 'button',
+          text: 'Search',
+          position: { x: 60, y: 12, width: 40, height: 40 },
+          isVisible: true,
+          isInteractive: true,
+          childCount: 0,
+        },
+        {
+          tag: 'button',
+          selector: 'button',
+          text: 'Settings',
+          position: { x: 110, y: 12, width: 40, height: 40 },
+          isVisible: true,
+          isInteractive: true,
+          childCount: 0,
+        },
+      ],
+      stats: {
+        totalChildren: 1,
+        semanticCount: 3,  // Found 3 semantic children by drilling through wrapper
+        shownCount: 3,
+        omittedCount: 0,
+        skippedWrappers: 1,  // Still counted the wrapper as skipped
+      },
+      elementCounts: { div: 1 },
+      interactiveCounts: { button: 3 },
+      treeCounts: null,
+      layoutPattern: 'horizontal',
+    });
+
+    const result = await inspectDomTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+
+    // Should now show the 3 buttons that were found by drilling through the wrapper
+    expect(result.content[0].text).toContain('Children (3');
+    expect(result.content[0].text).toContain('[0] <button');
+    expect(result.content[0].text).toContain('[1] <button');
+    expect(result.content[0].text).toContain('[2] <button');
+    expect(result.content[0].text).toContain('⚡ interactive');
+    expect(result.content[0].text).toContain('skipped 1 wrapper');
+  });
+
+  test('should drill through ANY non-semantic wrapper, not just div/span', async () => {
+    // Edge case: <fieldset> is NOT in semanticTags, so it should be drilled through
+    const args = { selector: 'form' };
+
+    mockPageEvaluate.mockResolvedValue({
+      target: {
+        tag: 'form',
+        selector: 'form',
+        position: { x: 0, y: 0, width: 400, height: 300 },
+        isVisible: true,
+      },
+      // Buttons nested in a <fieldset> wrapper (which is NOT in semanticTags)
+      children: [
+        {
+          tag: 'button',
+          selector: 'button',
+          text: 'Submit',
+          position: { x: 10, y: 250, width: 100, height: 40 },
+          isVisible: true,
+          isInteractive: true,
+          childCount: 0,
+        },
+        {
+          tag: 'button',
+          selector: 'button',
+          text: 'Cancel',
+          position: { x: 120, y: 250, width: 100, height: 40 },
+          isVisible: true,
+          isInteractive: true,
+          childCount: 0,
+        },
+      ],
+      stats: {
+        totalChildren: 1,
+        semanticCount: 2,  // Found 2 buttons by drilling through fieldset
+        shownCount: 2,
+        omittedCount: 0,
+        skippedWrappers: 1,  // The fieldset wrapper
+      },
+      elementCounts: { fieldset: 1 },
+      interactiveCounts: { button: 2 },  // Counted as we found them
+      treeCounts: null,
+      layoutPattern: 'horizontal',
+    });
+
+    const result = await inspectDomTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+
+    // Should drill through fieldset (non-semantic) to find buttons
+    expect(result.content[0].text).toContain('Children (2');
+    expect(result.content[0].text).toContain('[0] <button');
+    expect(result.content[0].text).toContain('[1] <button');
+    expect(result.content[0].text).toContain('skipped 1 wrapper');
+  });
+
+  test('should NOT drill through semantic containers like section/article', async () => {
+    // Important: semantic containers should be shown, not drilled through
+    const args = { selector: 'main' };
+
+    mockPageEvaluate.mockResolvedValue({
+      target: {
+        tag: 'main',
+        selector: 'main',
+        position: { x: 0, y: 0, width: 1200, height: 800 },
+        isVisible: true,
+      },
+      // Section is semantic - show it, don't drill through
+      children: [
+        {
+          tag: 'section',
+          selector: 'section',
+          text: 'Content section with buttons inside',
+          position: { x: 0, y: 0, width: 1200, height: 400 },
+          isVisible: true,
+          isInteractive: false,
+          childCount: 5,  // Has children but we don't drill through
+        },
+        {
+          tag: 'article',
+          selector: 'article',
+          text: 'Article content',
+          position: { x: 0, y: 400, width: 1200, height: 400 },
+          isVisible: true,
+          isInteractive: false,
+          childCount: 3,
+        },
+      ],
+      stats: {
+        totalChildren: 2,
+        semanticCount: 2,
+        shownCount: 2,
+        omittedCount: 0,
+        skippedWrappers: 0,  // No wrappers, both children are semantic
+      },
+      elementCounts: { section: 1, article: 1 },
+      interactiveCounts: {},
+      treeCounts: null,
+      layoutPattern: 'vertical',
+    });
+
+    const result = await inspectDomTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+
+    // Should show section and article, NOT drill through them
+    expect(result.content[0].text).toContain('Children (2 of 2');
+    expect(result.content[0].text).toContain('[0] <section');
+    expect(result.content[0].text).toContain('[1] <article');
+    expect(result.content[0].text).not.toContain('skipped');
+  });
+
+  test('should respect custom maxDepth parameter for deep nesting', async () => {
+    // Pathological case: div > div > div > div > div > button
+    // Default maxDepth=3 would stop, but maxDepth=5 should find it
+    const args = { selector: 'header', maxDepth: 5 };
+
+    mockPageEvaluate.mockResolvedValue({
+      target: {
+        tag: 'header',
+        selector: 'header',
+        position: { x: 0, y: 0, width: 1200, height: 64 },
+        isVisible: true,
+      },
+      // Button found at depth 5 (5 wrapper divs deep)
+      children: [
+        {
+          tag: 'button',
+          selector: 'button',
+          text: 'Deep Button',
+          position: { x: 10, y: 10, width: 100, height: 40 },
+          isVisible: true,
+          isInteractive: true,
+          childCount: 0,
+        },
+      ],
+      stats: {
+        totalChildren: 1,
+        semanticCount: 1,
+        shownCount: 1,
+        omittedCount: 0,
+        skippedWrappers: 1,  // The top-level wrapper
+      },
+      elementCounts: { div: 1 },
+      interactiveCounts: { button: 1 },
+      treeCounts: null,
+      layoutPattern: 'unknown',
+    });
+
+    const result = await inspectDomTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+
+    // Should find the button at depth 5
+    expect(result.content[0].text).toContain('[0] <button');
+    expect(result.content[0].text).toContain('Deep Button');
+  });
+
+  test('should stop at maxDepth=1 to prevent any drilling', async () => {
+    // Use case: Only want immediate children, no drilling
+    const args = { selector: 'header', maxDepth: 1 };
+
+    mockPageEvaluate.mockResolvedValue({
+      target: {
+        tag: 'header',
+        selector: 'header',
+        position: { x: 0, y: 0, width: 1200, height: 64 },
+        isVisible: true,
+      },
+      // With maxDepth=1, wrapper div is not drilled through
+      // But we still count interactive elements in the wrapper for the summary
+      children: [],
+      stats: {
+        totalChildren: 1,
+        semanticCount: 0,
+        shownCount: 0,
+        omittedCount: 0,
+        skippedWrappers: 1,
+      },
+      elementCounts: { div: 1 },
+      interactiveCounts: {},  // Empty because maxDepth=1 prevents drilling to count them
+      treeCounts: null,
+      layoutPattern: 'unknown',
+    });
+
+    const result = await inspectDomTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+
+    // Should NOT drill through the wrapper, so no children shown
+    expect(result.content[0].text).toContain('Children (0 semantic');
+    expect(result.content[0].text).toContain('skipped 1 wrapper');
+  });
 });

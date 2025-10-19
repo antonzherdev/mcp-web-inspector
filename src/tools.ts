@@ -473,7 +473,7 @@ export function createToolDefinitions() {
     },
     {
       name: "playwright_inspect_dom",
-      description: "Progressive DOM inspection with semantic filtering and spatial layout info. This is the PRIMARY tool for understanding page structure. Returns immediate semantic children only (header, nav, main, form, button, elements with test IDs, ARIA roles, etc.) while skipping wrapper divs. Use without selector for page overview, then drill down by calling again with a child's selector. Returns compact text format with position, visibility, and layout pattern detection. Supports testid shortcuts.",
+      description: "Progressive DOM inspection with semantic filtering and spatial layout info. This is the PRIMARY tool for understanding page structure. Returns immediate semantic children only (header, nav, main, form, button, elements with test IDs, ARIA roles, etc.) while automatically drilling through non-semantic wrapper elements (div, span, etc.) up to maxDepth levels. Use without selector for page overview, then drill down by calling again with a child's selector. Returns compact text format with position, visibility, and layout pattern detection. Supports testid shortcuts.",
       inputSchema: {
         type: "object",
         properties: {
@@ -488,6 +488,10 @@ export function createToolDefinitions() {
           maxChildren: {
             type: "number",
             description: "Maximum number of children to show (default: 20)"
+          },
+          maxDepth: {
+            type: "number",
+            description: "Maximum depth to drill through non-semantic wrapper elements when looking for semantic children (default: 5). Increase for extremely deeply nested components, decrease to 1 to see only immediate children without drilling."
           }
         },
         required: [],
