@@ -4,14 +4,15 @@
 
 ## 🎉 Implementation Status
 
-**Completed:** 3 tools + selector normalization helper
-**Total Remaining:** 16 tools
+**Completed:** 4 tools + selector normalization helper
+**Total Remaining:** 15 tools
 
 ### ✅ Recently Implemented
-- `playwright_inspect_dom` - **PRIMARY TOOL** - Progressive DOM inspection with semantic filtering ✅ **NEW**
-- `playwright_element_visibility` - Comprehensive visibility diagnostics
-- `playwright_element_position` - Element coordinates and dimensions
-- `BrowserToolBase.normalizeSelector()` - Test ID shorthand support
+- `playwright_inspect_dom` - **PRIMARY TOOL** - Progressive DOM inspection with semantic filtering ✅
+- `playwright_get_test_ids` - Discover all test identifiers on the page ✅ **NEW**
+- `playwright_element_visibility` - Comprehensive visibility diagnostics ✅
+- `playwright_element_position` - Element coordinates and dimensions ✅
+- `BrowserToolBase.normalizeSelector()` - Test ID shorthand support ✅
 
 See `IMPLEMENTATION_SUMMARY.md` for full implementation details and test coverage.
 
@@ -189,8 +190,12 @@ Each call returns only immediate semantic children - this keeps responses readab
 
 ## Test ID Discovery Tool
 
-### 🔴 NEW: `playwright_get_test_ids`
+### ✅ IMPLEMENTED: `playwright_get_test_ids`
 Discover all test identifiers on the page (data-testid, data-test, data-cy, etc.).
+
+**Status:** Fully implemented and tested ✅
+**File:** `src/tools/browser/getTestIds.ts`
+**Tests:** `src/__tests__/tools/browser/getTestIds.test.ts` (13 test cases passing)
 
 **Parameters:**
 ```typescript
@@ -870,36 +875,36 @@ All tools accepting `selector` parameter support these shorthand formats:
 
 ### ✅ Completed Tools
 - **`playwright_inspect_dom`** - Progressive DOM discovery with semantic filtering ✅ **DONE**
+- **`playwright_get_test_ids`** - Discover all test identifiers on the page ✅ **DONE**
 - **`playwright_element_visibility`** - Debug why clicks fail ✅ **DONE**
 - **`playwright_element_position`** - Find where to click/interact ✅ **DONE**
 - **Selector normalization** - Test ID shortcuts (testid:, data-test:, data-cy:) ✅ **DONE**
 
 ### Phase 1 - Critical Tools (Next to Implement)
-1. **`playwright_get_test_ids`** - Enable test-driven workflows
-2. **`playwright_query_selector_all`** - Essential for selector debugging (may be superseded by inspect_dom)
-3. **`playwright_list_iframes`** - Fills critical gap
-4. **`playwright_element_exists`** - Most common check
+1. **`playwright_query_selector_all`** - Essential for selector debugging (may be superseded by inspect_dom)
+2. **`playwright_list_iframes`** - Fills critical gap
+3. **`playwright_element_exists`** - Most common check
 
 ### Phase 2 - High-Value Tools
-5. **`playwright_list_network_requests`** - Common debugging need
-6. **`playwright_get_request_details`** - Pair with list tool
-7. **`playwright_wait_for_element`** - Better than sleep
-8. **`playwright_element_interaction_state`** - Debug form issues
+4. **`playwright_list_network_requests`** - Common debugging need
+5. **`playwright_get_request_details`** - Pair with list tool
+6. **`playwright_wait_for_element`** - Better than sleep
+7. **`playwright_element_interaction_state`** - Debug form issues
 
 ### Phase 3 - Quality of Life
-9. **`playwright_get_cookies`** / **`playwright_set_cookie`** - Auth workflows
-10. **`playwright_get_element_attributes`** - Deep inspection
-11. **`playwright_wait_for_network_idle`** - Reliable waits
-12. **`playwright_get_element_text`** - Focused extraction
+8. **`playwright_get_cookies`** / **`playwright_set_cookie`** - Auth workflows
+9. **`playwright_get_element_attributes`** - Deep inspection
+10. **`playwright_wait_for_network_idle`** - Reliable waits
+11. **`playwright_get_element_text`** - Focused extraction
 
 ### Phase 4 - Advanced Features
-13. **`playwright_get_accessibility_snapshot`** - A11y testing
-14. **`playwright_get_performance_timing`** - Performance analysis
-15. **`playwright_get_local_storage`** / **`playwright_get_session_storage`**
+12. **`playwright_get_accessibility_snapshot`** - A11y testing
+13. **`playwright_get_performance_timing`** - Performance analysis
+14. **`playwright_get_local_storage`** / **`playwright_get_session_storage`**
 
 **Total Recommended: 19 tools**
-**Implemented: 3 tools** (playwright_inspect_dom, playwright_element_visibility, playwright_element_position)
-**Remaining: 16 tools**
+**Implemented: 4 tools** (playwright_inspect_dom, playwright_get_test_ids, playwright_element_visibility, playwright_element_position)
+**Remaining: 15 tools**
 
 ---
 

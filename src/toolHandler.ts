@@ -36,6 +36,7 @@ import {
 import { ElementVisibilityTool } from './tools/browser/elementVisibility.js';
 import { ElementPositionTool } from './tools/browser/elementPosition.js';
 import { InspectDomTool } from './tools/browser/inspectDom.js';
+import { GetTestIdsTool } from './tools/browser/getTestIds.js';
 import {
   GetRequestTool,
   PostRequestTool,
@@ -106,6 +107,7 @@ let clickAndSwitchTabTool: ClickAndSwitchTabTool;
 let elementVisibilityTool: ElementVisibilityTool;
 let elementPositionTool: ElementPositionTool;
 let inspectDomTool: InspectDomTool;
+let getTestIdsTool: GetTestIdsTool;
 
 
 interface BrowserSettings {
@@ -355,6 +357,7 @@ function initializeTools(server: any) {
   if (!elementVisibilityTool) elementVisibilityTool = new ElementVisibilityTool(server);
   if (!elementPositionTool) elementPositionTool = new ElementPositionTool(server);
   if (!inspectDomTool) inspectDomTool = new InspectDomTool(server);
+  if (!getTestIdsTool) getTestIdsTool = new GetTestIdsTool(server);
 }
 
 /**
@@ -567,6 +570,9 @@ export async function handleToolCall(
 
       case "playwright_inspect_dom":
         return await inspectDomTool.execute(args, context);
+
+      case "playwright_get_test_ids":
+        return await getTestIdsTool.execute(args, context);
 
       default:
         return {

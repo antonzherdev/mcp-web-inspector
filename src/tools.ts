@@ -497,6 +497,20 @@ export function createToolDefinitions() {
         required: [],
       },
     },
+    {
+      name: "playwright_get_test_ids",
+      description: "Discover all test identifiers on the page (data-testid, data-test, data-cy, etc.). Returns a compact text list grouped by attribute type. Essential for test-driven workflows and understanding what elements can be reliably selected. Use the returned test IDs with selector shortcuts like 'testid:submit-button'.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          attributes: {
+            type: "string",
+            description: "Comma-separated list of test ID attributes to search for (default: 'data-testid,data-test,data-cy')"
+          }
+        },
+        required: [],
+      },
+    },
   ] as const satisfies Tool[];
 }
 
@@ -526,7 +540,8 @@ export const BROWSER_TOOLS = [
   "playwright_click_and_switch_tab",
   "playwright_element_visibility",
   "playwright_element_position",
-  "playwright_inspect_dom"
+  "playwright_inspect_dom",
+  "playwright_get_test_ids"
 ];
 
 // API Request tools for conditional launch
