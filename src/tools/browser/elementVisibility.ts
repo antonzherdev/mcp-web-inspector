@@ -97,24 +97,60 @@ export class ElementVisibilityTool extends BrowserToolBase {
         // Determine if scroll is needed
         const needsScroll = isVisible && !visibilityData.isInViewport;
 
-        const result = {
-          // Playwright checks
-          isVisible,
-          isInViewport: visibilityData.isInViewport,
-          viewportRatio: Math.round(visibilityData.viewportRatio * 100) / 100, // Round to 2 decimals
+        // Get element tag name for output
+        const tagInfo = await locator.evaluate((el) => {
+          const tagName = el.tagName.toLowerCase();
+          const testId = el.getAttribute('data-testid') || el.getAttribute('data-test') || el.getAttribute('data-cy');
+          const id = el.id ? `#${el.id}` : '';
+          const classes = el.className && typeof el.className === 'string' ? `.${el.className.split(' ').filter(c => c).join('.')}` : '';
 
-          // CSS properties
-          opacity: visibilityData.opacity,
-          display: visibilityData.display,
-          visibility: visibilityData.visibility,
+          let descriptor = `<${tagName}`;
+          if (testId) descriptor += ` data-testid="${testId}"`;
+          else if (id) descriptor += id;
+          else if (classes) descriptor += classes;
+          descriptor += '>';
 
-          // Failure diagnostics
-          isClipped: visibilityData.isClipped,
-          isCovered: visibilityData.isCovered,
-          needsScroll,
-        };
+          return descriptor;
+        });
 
-        return createSuccessResponse(JSON.stringify(result, null, 2));
+        // Build compact text format
+        const viewportPercent = Math.round(visibilityData.viewportRatio * 100);
+        let output = `Visibility: ${tagInfo}\n\n`;
+
+        // Status line
+        const visibleSymbol = isVisible ? '✓' : '✗';
+        const viewportSymbol = visibilityData.isInViewport ? '✓' : '✗';
+        const viewportText = visibilityData.isInViewport
+          ? `in viewport${viewportPercent < 100 ? ` (${viewportPercent}% visible)` : ''}`
+          : `not in viewport${viewportPercent > 0 ? ` (${viewportPercent}% visible)` : ''}`;
+        output += `${visibleSymbol} ${isVisible ? 'visible' : 'hidden'}, ${viewportSymbol} ${viewportText}\n`;
+
+        // CSS properties
+        output += `opacity: ${visibilityData.opacity}, display: ${visibilityData.display}, visibility: ${visibilityData.visibility}\n`;
+
+        // Issues section
+        const issues: string[] = [];
+        if (visibilityData.isClipped) {
+          issues.push('  ✗ clipped by parent overflow:hidden');
+        }
+        if (visibilityData.isCovered) {
+          issues.push('  ✗ covered by another element');
+        }
+        if (needsScroll) {
+          issues.push('  ⚠ needs scroll to bring into view');
+        }
+
+        if (issues.length > 0) {
+          output += '\nIssues:\n';
+          output += issues.join('\n') + '\n';
+        }
+
+        // Suggestion
+        if (needsScroll) {
+          output += '\n→ Call playwright_scroll_to_element before clicking';
+        }
+
+        return createSuccessResponse(output.trim());
       } catch (error) {
         return createErrorResponse(`Failed to check visibility: ${(error as Error).message}`);
       }

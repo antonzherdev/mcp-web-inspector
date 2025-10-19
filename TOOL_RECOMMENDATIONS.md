@@ -10,9 +10,9 @@
 ### ✅ Recently Implemented
 - `playwright_inspect_dom` - **PRIMARY TOOL** - Progressive DOM inspection with semantic filtering ✅
 - `playwright_get_test_ids` - Discover all test identifiers on the page ✅
-- `playwright_query_selector_all` - Test selectors and debug element matches ✅ **NEW**
-- `playwright_element_visibility` - Comprehensive visibility diagnostics ✅
-- `playwright_element_position` - Element coordinates and dimensions ✅
+- `playwright_query_selector_all` - Test selectors and debug element matches ✅
+- `playwright_element_visibility` - Comprehensive visibility diagnostics with **compact text format** ✅ **UPDATED**
+- `playwright_element_position` - Element coordinates and dimensions with **compact text format** ✅ **UPDATED**
 - `BrowserToolBase.normalizeSelector()` - Test ID shorthand support ✅
 
 See `IMPLEMENTATION_SUMMARY.md` for full implementation details and test coverage.
@@ -22,11 +22,11 @@ See `IMPLEMENTATION_SUMMARY.md` for full implementation details and test coverag
 ## Key Design Changes from Original Recommendations
 
 1. **Split complex tools** - Tools with 5+ parameters or nested returns split into focused tools
-2. **Token-efficient responses** - Compact text format preferred over JSON (60-75% token savings)
+2. **Token-efficient responses** - Compact text format preferred over JSON (60-75% token savings) ✅ **Now implemented in visibility & position tools**
 3. **Semantic filtering** - Skip wrapper divs, return only meaningful elements
 4. **Single selector parameter** - Use string normalization instead of multiple selector types
 5. **Primitive types** - Avoid nested objects in parameters where possible
-6. **Symbols over words** - Use ✓✗⚡→↓ instead of verbose field names
+6. **Symbols over words** - Use ✓✗⚡→↓ instead of verbose field names ✅ **Now implemented in visibility & position tools**
 
 ---
 
@@ -301,9 +301,9 @@ Or if not found:
 ### ✅ 3. `playwright_element_visibility` (SPLIT from get_element_state) - **IMPLEMENTED**
 Check if an element is visible to the user. **CRITICAL for debugging click/interaction failures.**
 
-**Implementation:** `src/tools/browser/elementInspection.ts`
-**Tests:** `src/__tests__/tools/browser/elementInspection.test.ts`
-**Status:** Fully implemented and tested (13 test cases passing)
+**Implementation:** `src/tools/browser/elementVisibility.ts`
+**Tests:** `src/__tests__/tools/browser/elementVisibility.test.ts`
+**Status:** Fully implemented and tested (13 test cases passing) ✅
 
 **Parameters:**
 ```typescript
@@ -312,22 +312,7 @@ Check if an element is visible to the user. **CRITICAL for debugging click/inter
 }
 ```
 
-**Returns (Current - JSON):**
-```typescript
-{
-  isVisible: boolean;
-  isInViewport: boolean;
-  viewportRatio: number;
-  opacity: number;
-  display: string;
-  visibility: string;
-  isClipped: boolean;
-  isCovered: boolean;
-  needsScroll: boolean;
-}
-```
-
-**Recommended: Compact text format** (for future update)
+**Returns: Compact text format** ✅
 ```
 Visibility: <button data-testid="submit">
 
@@ -341,7 +326,7 @@ Issues:
 → Call playwright_scroll_to_element before clicking
 ```
 
-**Token efficiency:** ~100 tokens vs ~180 tokens (current JSON) = **44% savings**
+**Token efficiency:** ~100 tokens vs ~180 tokens (JSON format) = **44% savings** ✅
 
 **Real-world debugging:**
 - `✓ visible, ✗ not in viewport` → Element needs scroll
@@ -356,9 +341,9 @@ Issues:
 ### ✅ 4. `playwright_element_position` (SPLIT from get_element_state) - **IMPLEMENTED**
 Get the position and size of an element.
 
-**Implementation:** `src/tools/browser/elementInspection.ts`
-**Tests:** `src/__tests__/tools/browser/elementInspection.test.ts`
-**Status:** Fully implemented and tested (6 test cases passing)
+**Implementation:** `src/tools/browser/elementPosition.ts`
+**Tests:** `src/__tests__/tools/browser/elementPosition.test.ts`
+**Status:** Fully implemented and tested (6 test cases passing) ✅
 
 **Parameters:**
 ```typescript
@@ -367,24 +352,13 @@ Get the position and size of an element.
 }
 ```
 
-**Returns (Current - JSON):**
-```typescript
-{
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  inViewport: boolean;
-}
-```
-
-**Recommended: Compact text format** (for future update)
+**Returns: Compact text format** ✅
 ```
 Position: <button data-testid="submit">
 @ (260,100) 120x40px, ✓ in viewport
 ```
 
-**Token efficiency:** ~30 tokens vs ~100 tokens (current JSON) = **70% savings**
+**Token efficiency:** ~30 tokens vs ~100 tokens (JSON format) = **70% savings** ✅
 
 **Why split:** Focused only on layout/position. Separate from visibility concerns. Ultra-compact format ideal for simple geometry data.
 
@@ -882,8 +856,8 @@ All tools accepting `selector` parameter support these shorthand formats:
 - **`playwright_inspect_dom`** - Progressive DOM discovery with semantic filtering ✅ **DONE**
 - **`playwright_get_test_ids`** - Discover all test identifiers on the page ✅ **DONE**
 - **`playwright_query_selector_all`** - Selector debugging and element inspection ✅ **DONE**
-- **`playwright_element_visibility`** - Debug why clicks fail ✅ **DONE**
-- **`playwright_element_position`** - Find where to click/interact ✅ **DONE**
+- **`playwright_element_visibility`** - Debug why clicks fail (compact text format) ✅ **DONE** 🎨 **UPDATED**
+- **`playwright_element_position`** - Find where to click/interact (compact text format) ✅ **DONE** 🎨 **UPDATED**
 - **Selector normalization** - Test ID shortcuts (testid:, data-test:, data-cy:) ✅ **DONE**
 
 ### Phase 1 - Critical Tools (Next to Implement)
@@ -922,7 +896,8 @@ All tools accepting `selector` parameter support these shorthand formats:
 | `set_cookies` | 1 (array) | 1 (single) | Array → single, call multiple times |
 | `list_iframes` | 1 | 0 | Removed optional param for simplicity |
 | `get_test_ids` | - | NEW | Enable test-driven workflows |
-| `element_visibility` | - | Split from position | Tool name matches returns (no bounding box) |
+| `element_visibility` | JSON output | Compact text ✅ | 44% token savings with symbols |
+| `element_position` | JSON output | Compact text ✅ | 70% token savings with symbols |
 
 ---
 

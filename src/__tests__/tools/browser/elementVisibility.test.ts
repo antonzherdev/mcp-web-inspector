@@ -56,15 +56,17 @@ describe('ElementVisibilityTool', () => {
 
     mockLocatorCount.mockResolvedValue(1);
     mockLocatorIsVisible.mockResolvedValue(true);
-    mockLocatorEvaluate.mockResolvedValue({
-      viewportRatio: 1.0,
-      isInViewport: true,
-      opacity: 1,
-      display: 'block',
-      visibility: 'visible',
-      isClipped: false,
-      isCovered: false,
-    });
+    mockLocatorEvaluate
+      .mockResolvedValueOnce({
+        viewportRatio: 1.0,
+        isInViewport: true,
+        opacity: 1,
+        display: 'block',
+        visibility: 'visible',
+        isClipped: false,
+        isCovered: false,
+      })
+      .mockResolvedValueOnce('<button#test-button>');
 
     const result = await visibilityTool.execute(args, mockContext);
 
@@ -74,11 +76,14 @@ describe('ElementVisibilityTool', () => {
     expect(mockLocatorEvaluate).toHaveBeenCalled();
     expect(result.isError).toBe(false);
 
-    const response = JSON.parse(result.content[0].text as string);
-    expect(response.isVisible).toBe(true);
-    expect(response.isInViewport).toBe(true);
-    expect(response.viewportRatio).toBe(1.0);
-    expect(response.needsScroll).toBe(false);
+    const response = result.content[0].text as string;
+    expect(response).toContain('Visibility: <button#test-button>');
+    expect(response).toContain('✓ visible');
+    expect(response).toContain('✓ in viewport');
+    expect(response).toContain('opacity: 1');
+    expect(response).toContain('display: block');
+    expect(response).toContain('visibility: visible');
+    expect(response).not.toContain('Issues:');
   });
 
   test('should detect element that needs scrolling', async () => {
@@ -86,23 +91,27 @@ describe('ElementVisibilityTool', () => {
 
     mockLocatorCount.mockResolvedValue(1);
     mockLocatorIsVisible.mockResolvedValue(true);
-    mockLocatorEvaluate.mockResolvedValue({
-      viewportRatio: 0.0,
-      isInViewport: false,
-      opacity: 1,
-      display: 'block',
-      visibility: 'visible',
-      isClipped: false,
-      isCovered: false,
-    });
+    mockLocatorEvaluate
+      .mockResolvedValueOnce({
+        viewportRatio: 0.0,
+        isInViewport: false,
+        opacity: 1,
+        display: 'block',
+        visibility: 'visible',
+        isClipped: false,
+        isCovered: false,
+      })
+      .mockResolvedValueOnce('<button#bottom-button>');
 
     const result = await visibilityTool.execute(args, mockContext);
 
     expect(result.isError).toBe(false);
-    const response = JSON.parse(result.content[0].text as string);
-    expect(response.isVisible).toBe(true);
-    expect(response.isInViewport).toBe(false);
-    expect(response.needsScroll).toBe(true);
+    const response = result.content[0].text as string;
+    expect(response).toContain('✓ visible');
+    expect(response).toContain('✗ not in viewport');
+    expect(response).toContain('Issues:');
+    expect(response).toContain('⚠ needs scroll to bring into view');
+    expect(response).toContain('→ Call playwright_scroll_to_element before clicking');
   });
 
   test('should detect clipped element', async () => {
@@ -110,21 +119,24 @@ describe('ElementVisibilityTool', () => {
 
     mockLocatorCount.mockResolvedValue(1);
     mockLocatorIsVisible.mockResolvedValue(true);
-    mockLocatorEvaluate.mockResolvedValue({
-      viewportRatio: 0.0,
-      isInViewport: false,
-      opacity: 1,
-      display: 'block',
-      visibility: 'visible',
-      isClipped: true,
-      isCovered: false,
-    });
+    mockLocatorEvaluate
+      .mockResolvedValueOnce({
+        viewportRatio: 0.0,
+        isInViewport: false,
+        opacity: 1,
+        display: 'block',
+        visibility: 'visible',
+        isClipped: true,
+        isCovered: false,
+      })
+      .mockResolvedValueOnce('<div#clipped-element>');
 
     const result = await visibilityTool.execute(args, mockContext);
 
     expect(result.isError).toBe(false);
-    const response = JSON.parse(result.content[0].text as string);
-    expect(response.isClipped).toBe(true);
+    const response = result.content[0].text as string;
+    expect(response).toContain('Issues:');
+    expect(response).toContain('✗ clipped by parent overflow:hidden');
   });
 
   test('should detect covered element', async () => {
@@ -132,21 +144,24 @@ describe('ElementVisibilityTool', () => {
 
     mockLocatorCount.mockResolvedValue(1);
     mockLocatorIsVisible.mockResolvedValue(true);
-    mockLocatorEvaluate.mockResolvedValue({
-      viewportRatio: 1.0,
-      isInViewport: true,
-      opacity: 1,
-      display: 'block',
-      visibility: 'visible',
-      isClipped: false,
-      isCovered: true,
-    });
+    mockLocatorEvaluate
+      .mockResolvedValueOnce({
+        viewportRatio: 1.0,
+        isInViewport: true,
+        opacity: 1,
+        display: 'block',
+        visibility: 'visible',
+        isClipped: false,
+        isCovered: true,
+      })
+      .mockResolvedValueOnce('<button#covered-button>');
 
     const result = await visibilityTool.execute(args, mockContext);
 
     expect(result.isError).toBe(false);
-    const response = JSON.parse(result.content[0].text as string);
-    expect(response.isCovered).toBe(true);
+    const response = result.content[0].text as string;
+    expect(response).toContain('Issues:');
+    expect(response).toContain('✗ covered by another element');
   });
 
   test('should handle testid selector shorthand', async () => {
@@ -154,20 +169,24 @@ describe('ElementVisibilityTool', () => {
 
     mockLocatorCount.mockResolvedValue(1);
     mockLocatorIsVisible.mockResolvedValue(true);
-    mockLocatorEvaluate.mockResolvedValue({
-      viewportRatio: 1.0,
-      isInViewport: true,
-      opacity: 1,
-      display: 'block',
-      visibility: 'visible',
-      isClipped: false,
-      isCovered: false,
-    });
+    mockLocatorEvaluate
+      .mockResolvedValueOnce({
+        viewportRatio: 1.0,
+        isInViewport: true,
+        opacity: 1,
+        display: 'block',
+        visibility: 'visible',
+        isClipped: false,
+        isCovered: false,
+      })
+      .mockResolvedValueOnce('<button data-testid="submit-button">');
 
     const result = await visibilityTool.execute(args, mockContext);
 
     expect(mockPageLocator).toHaveBeenCalledWith('[data-testid="submit-button"]');
     expect(result.isError).toBe(false);
+    const response = result.content[0].text as string;
+    expect(response).toContain('Visibility: <button data-testid="submit-button">');
   });
 
   test('should return error when element not found', async () => {
@@ -199,23 +218,25 @@ describe('ElementVisibilityTool', () => {
 
     mockLocatorCount.mockResolvedValue(1);
     mockLocatorIsVisible.mockResolvedValue(true);
-    mockLocatorEvaluate.mockResolvedValue({
-      viewportRatio: 0.3,
-      isInViewport: true,
-      opacity: 1,
-      display: 'block',
-      visibility: 'visible',
-      isClipped: false,
-      isCovered: false,
-    });
+    mockLocatorEvaluate
+      .mockResolvedValueOnce({
+        viewportRatio: 0.3,
+        isInViewport: true,
+        opacity: 1,
+        display: 'block',
+        visibility: 'visible',
+        isClipped: false,
+        isCovered: false,
+      })
+      .mockResolvedValueOnce('<div#partial-element>');
 
     const result = await visibilityTool.execute(args, mockContext);
 
     expect(result.isError).toBe(false);
-    const response = JSON.parse(result.content[0].text as string);
-    expect(response.viewportRatio).toBe(0.3);
-    expect(response.isInViewport).toBe(true);
-    expect(response.needsScroll).toBe(false);
+    const response = result.content[0].text as string;
+    expect(response).toContain('✓ visible');
+    expect(response).toContain('✓ in viewport (30% visible)');
+    expect(response).not.toContain('Issues:');
   });
 
   test('should handle element with low opacity', async () => {
@@ -223,21 +244,23 @@ describe('ElementVisibilityTool', () => {
 
     mockLocatorCount.mockResolvedValue(1);
     mockLocatorIsVisible.mockResolvedValue(true);
-    mockLocatorEvaluate.mockResolvedValue({
-      viewportRatio: 1.0,
-      isInViewport: true,
-      opacity: 0.5,
-      display: 'block',
-      visibility: 'visible',
-      isClipped: false,
-      isCovered: false,
-    });
+    mockLocatorEvaluate
+      .mockResolvedValueOnce({
+        viewportRatio: 1.0,
+        isInViewport: true,
+        opacity: 0.5,
+        display: 'block',
+        visibility: 'visible',
+        isClipped: false,
+        isCovered: false,
+      })
+      .mockResolvedValueOnce('<div#faded-element>');
 
     const result = await visibilityTool.execute(args, mockContext);
 
     expect(result.isError).toBe(false);
-    const response = JSON.parse(result.content[0].text as string);
-    expect(response.opacity).toBe(0.5);
+    const response = result.content[0].text as string;
+    expect(response).toContain('opacity: 0.5');
   });
 
   test('should handle disconnected browser', async () => {

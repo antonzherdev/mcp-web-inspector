@@ -61,7 +61,10 @@ describe('ElementPositionTool', () => {
       width: 300,
       height: 50,
     });
-    mockLocatorEvaluate.mockResolvedValue(true);
+    mockLocatorEvaluate.mockResolvedValue({
+      inViewport: true,
+      descriptor: '<div#test-element>'
+    });
 
     const result = await positionTool.execute(args, mockContext);
 
@@ -70,12 +73,10 @@ describe('ElementPositionTool', () => {
     expect(mockLocatorBoundingBox).toHaveBeenCalled();
     expect(result.isError).toBe(false);
 
-    const response = JSON.parse(result.content[0].text as string);
-    expect(response.x).toBe(100);
-    expect(response.y).toBe(200);
-    expect(response.width).toBe(300);
-    expect(response.height).toBe(50);
-    expect(response.inViewport).toBe(true);
+    const response = result.content[0].text as string;
+    expect(response).toContain('Position: <div#test-element>');
+    expect(response).toContain('@ (100,200) 300x50px');
+    expect(response).toContain('✓ in viewport');
   });
 
   test('should handle testid selector shorthand', async () => {
@@ -88,12 +89,17 @@ describe('ElementPositionTool', () => {
       width: 100,
       height: 100,
     });
-    mockLocatorEvaluate.mockResolvedValue(true);
+    mockLocatorEvaluate.mockResolvedValue({
+      inViewport: true,
+      descriptor: '<form data-testid="login-form">'
+    });
 
     const result = await positionTool.execute(args, mockContext);
 
     expect(mockPageLocator).toHaveBeenCalledWith('[data-test="login-form"]');
     expect(result.isError).toBe(false);
+    const response = result.content[0].text as string;
+    expect(response).toContain('Position: <form data-testid="login-form">');
   });
 
   test('should return error when element not found', async () => {
@@ -142,16 +148,16 @@ describe('ElementPositionTool', () => {
       width: 345.678,
       height: 90.123,
     });
-    mockLocatorEvaluate.mockResolvedValue(false);
+    mockLocatorEvaluate.mockResolvedValue({
+      inViewport: false,
+      descriptor: '<div#decimal-coords>'
+    });
 
     const result = await positionTool.execute(args, mockContext);
 
     expect(result.isError).toBe(false);
-    const response = JSON.parse(result.content[0].text as string);
-    expect(response.x).toBe(123);
-    expect(response.y).toBe(789);
-    expect(response.width).toBe(346);
-    expect(response.height).toBe(90);
+    const response = result.content[0].text as string;
+    expect(response).toContain('@ (123,789) 346x90px');
   });
 
   test('should detect element outside viewport', async () => {
@@ -164,14 +170,17 @@ describe('ElementPositionTool', () => {
       width: 300,
       height: 100,
     });
-    mockLocatorEvaluate.mockResolvedValue(false);
+    mockLocatorEvaluate.mockResolvedValue({
+      inViewport: false,
+      descriptor: '<div#below-fold>'
+    });
 
     const result = await positionTool.execute(args, mockContext);
 
     expect(result.isError).toBe(false);
-    const response = JSON.parse(result.content[0].text as string);
-    expect(response.inViewport).toBe(false);
-    expect(response.y).toBe(2000);
+    const response = result.content[0].text as string;
+    expect(response).toContain('@ (0,2000) 300x100px');
+    expect(response).toContain('✗ outside viewport');
   });
 
   test('should handle disconnected browser', async () => {
