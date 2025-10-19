@@ -603,6 +603,29 @@ export function createToolDefinitions() {
         required: ["selector"],
       },
     },
+    {
+      name: "playwright_compare_positions",
+      description: "Compare positions and alignment of two elements. Validates layout consistency by checking if elements are aligned (top, left, right, bottom) or have the same dimensions (width, height). Essential for visual regression testing and ensuring consistent spacing across components. Returns compact text format with alignment status and difference in pixels.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          selector1: {
+            type: "string",
+            description: "CSS selector, text selector, or testid shorthand for the first element (e.g., 'testid:main-header', '#header')"
+          },
+          selector2: {
+            type: "string",
+            description: "CSS selector, text selector, or testid shorthand for the second element (e.g., 'testid:chat-header', '#secondary-header')"
+          },
+          checkAlignment: {
+            type: "string",
+            description: "What to check: 'top', 'left', 'right', 'bottom' (edge alignment), or 'width', 'height' (dimension matching)",
+            enum: ["top", "left", "right", "bottom", "width", "height"]
+          }
+        },
+        required: ["selector1", "selector2", "checkAlignment"],
+      },
+    },
   ] as const satisfies Tool[];
 }
 
@@ -637,7 +660,8 @@ export const BROWSER_TOOLS = [
   "playwright_query_selector_all",
   "playwright_find_by_text",
   "playwright_get_computed_styles",
-  "playwright_element_exists"
+  "playwright_element_exists",
+  "playwright_compare_positions"
 ];
 
 // API Request tools for conditional launch

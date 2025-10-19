@@ -36,6 +36,7 @@ A Model Context Protocol server that provides browser automation capabilities us
 - **`playwright_find_by_text`** - Find elements by text content with exact/partial matching and case sensitivity options. Essential for pages without test IDs.
 - **`playwright_get_computed_styles`** - Get computed CSS styles for debugging layout issues. Returns styles grouped by category (Layout, Visibility, Spacing, Typography).
 - **`playwright_element_exists`** - Ultra-lightweight check if element exists (returns simple ✓ exists or ✗ not found status)
+- **`playwright_compare_positions`** - Compare positions and alignment of two elements. Validates layout consistency by checking if elements are aligned (top, left, right, bottom) or have the same dimensions (width, height). Essential for visual regression testing.
 - **Test ID shortcuts** - Use `testid:submit-button` instead of `[data-testid="submit-button"]` in any selector parameter
 
 <a href="https://glama.ai/mcp/servers/yh4lgtwgbe"><img width="380" height="200" src="https://glama.ai/mcp/servers/yh4lgtwgbe/badge" alt="mcp-playwright MCP server" /></a>

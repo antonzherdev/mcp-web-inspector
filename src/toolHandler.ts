@@ -41,6 +41,7 @@ import { QuerySelectorAllTool } from './tools/browser/querySelectorAll.js';
 import { FindByTextTool } from './tools/browser/findByText.js';
 import { GetComputedStylesTool } from './tools/browser/computedStyles.js';
 import { ElementExistsTool } from './tools/browser/elementExists.js';
+import { ComparePositionsTool } from './tools/browser/comparePositions.js';
 import {
   GetRequestTool,
   PostRequestTool,
@@ -116,6 +117,7 @@ let querySelectorAllTool: QuerySelectorAllTool;
 let findByTextTool: FindByTextTool;
 let getComputedStylesTool: GetComputedStylesTool;
 let elementExistsTool: ElementExistsTool;
+let comparePositionsTool: ComparePositionsTool;
 
 
 interface BrowserSettings {
@@ -370,6 +372,7 @@ function initializeTools(server: any) {
   if (!findByTextTool) findByTextTool = new FindByTextTool(server);
   if (!getComputedStylesTool) getComputedStylesTool = new GetComputedStylesTool(server);
   if (!elementExistsTool) elementExistsTool = new ElementExistsTool(server);
+  if (!comparePositionsTool) comparePositionsTool = new ComparePositionsTool(server);
 }
 
 /**
@@ -597,6 +600,9 @@ export async function handleToolCall(
 
       case "playwright_element_exists":
         return await elementExistsTool.execute(args, context);
+
+      case "playwright_compare_positions":
+        return await comparePositionsTool.execute(args, context);
 
       default:
         return {

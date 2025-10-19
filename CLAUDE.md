@@ -59,6 +59,7 @@ OPENAI_API_KEY=your-key npx mcp-eval src/evals/evals.ts src/tools/codegen/index.
 - `playwright_find_by_text` - Find elements by text content (partial or exact match, case-sensitive/insensitive). Essential for pages without test IDs. Returns elements with position, visibility, and interaction state.
 - `playwright_get_computed_styles` - Get computed CSS styles for an element. Returns styles grouped by category (Layout, Visibility, Spacing, Typography). Useful for debugging layout issues and understanding why elements behave unexpectedly.
 - `playwright_element_exists` - Ultra-lightweight existence check (< 50 chars response). Returns ✓ exists or ✗ not found. Most common check before interaction.
+- `playwright_compare_positions` - Compare positions and alignment of two elements. Validates layout consistency by checking if elements are aligned (top, left, right, bottom) or have the same dimensions (width, height). Returns compact text format with alignment status and difference in pixels. Essential for visual regression testing.
 
 #### Content Extraction
 - `playwright_screenshot` - Take screenshots (full page or element, base64 or PNG file)
