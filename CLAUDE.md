@@ -51,6 +51,7 @@ OPENAI_API_KEY=your-key npx mcp-eval src/evals/evals.ts src/tools/codegen/index.
 - `playwright_click_and_switch_tab` - Click link and switch to new tab
 
 #### Element Inspection & Debugging
+- `playwright_inspect_dom` - **PRIMARY TOOL** - Progressive DOM inspection with semantic filtering, automatic wrapper drilling (maxDepth: 5 default), and spatial layout detection. Returns only meaningful elements (semantic HTML, test IDs, ARIA roles, interactive elements) while skipping non-semantic wrappers. Supports visual content (svg, canvas, audio, iframe). Use for understanding page structure.
 - `playwright_element_visibility` - Check if element is visible with detailed diagnostics (viewport, clipping, coverage, scroll needed)
 - `playwright_element_position` - Get element position and size (x, y, width, height, viewport status)
 
@@ -252,3 +253,27 @@ All browser tools support test ID shortcuts via `normalizeSelector()`:
 - `data-test:login-form` → `[data-test="login-form"]`
 - `data-cy:username` → `[data-cy="username"]`
 - Regular CSS selectors pass through unchanged
+
+### DOM Inspection Tool
+
+The `playwright_inspect_dom` tool is the **primary tool for understanding page structure**. Key features:
+
+**Semantic Filtering** - Automatically shows only meaningful elements:
+- Semantic HTML: `header`, `nav`, `main`, `article`, `section`, `aside`, `footer`, `form`, `button`, `input`, `select`, `textarea`, `a`, `h1-h6`, `p`, `ul`, `ol`, `li`, `table`, `img`, `video`, `audio`, `svg`, `canvas`, `iframe`, `dialog`, `details`, `summary`
+- Elements with test IDs: `data-testid`, `data-test`, `data-cy`
+- Elements with ARIA roles
+- Interactive elements: `onclick`, `contenteditable`
+
+**Automatic Wrapper Drilling** - Recursively drills through non-semantic wrappers (div, span, fieldset, etc.) up to `maxDepth` levels (default: 5) to find semantic children. This handles deeply nested UI framework components (Material-UI, Ant Design, Chakra UI).
+
+**Parameters**:
+- `selector` (optional): CSS selector or testid shorthand. Omit for page overview (defaults to body).
+- `includeHidden` (optional, default: false): Include hidden elements in results
+- `maxChildren` (optional, default: 20): Maximum number of children to show
+- `maxDepth` (optional, default: 5): Maximum depth to drill through non-semantic wrapper elements. Increase for extremely deeply nested components, decrease to 1 to see only immediate children without drilling.
+
+**Progressive Workflow**:
+1. `playwright_inspect_dom({})` → See page sections (header, main, footer)
+2. `playwright_inspect_dom({ selector: "main" })` → See main content children
+3. `playwright_inspect_dom({ selector: "testid:login-form" })` → See form fields
+4. Use selectors from output with interaction tools (click, fill, etc.)

@@ -26,8 +26,9 @@
 
 A Model Context Protocol server that provides browser automation capabilities using Playwright. This server enables LLMs to interact with web pages, take screenshots, generate test code, web scrape pages, execute JavaScript, and debug element visibility issues in a real browser environment.
 
-## ✨ New: Element Debugging Tools
+## ✨ New: DOM Inspection & Element Debugging Tools
 
+- **`playwright_inspect_dom`** - **PRIMARY TOOL** - Progressive DOM inspection with semantic filtering and automatic wrapper drilling (maxDepth: 5). Recursively drills through non-semantic wrappers (div, span, etc.) to find meaningful elements (semantic HTML, test IDs, ARIA roles, interactive elements, svg, canvas, audio, iframe). Essential for understanding modern web app structure.
 - **`playwright_element_visibility`** - Debug why clicks fail with detailed visibility diagnostics (viewport intersection, clipping detection, coverage analysis)
 - **`playwright_element_position`** - Get precise element coordinates and dimensions
 - **Test ID shortcuts** - Use `testid:submit-button` instead of `[data-testid="submit-button"]` in any selector parameter

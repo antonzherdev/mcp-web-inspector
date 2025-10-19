@@ -51,7 +51,7 @@ This is the **primary tool for understanding page structure**, replacing the nee
 - Semantic filtering (skips wrapper divs)
 
 **Semantic Elements** (what gets returned, non-semantic wrappers skipped):
-- Semantic HTML: `header`, `nav`, `main`, `article`, `section`, `aside`, `footer`, `form`, `button`, `input`, `select`, `textarea`, `a`, `h1-h6`, `p`, `ul`, `ol`, `li`, `table`, `img`, `video`, `dialog`
+- Semantic HTML: `header`, `nav`, `main`, `article`, `section`, `aside`, `footer`, `form`, `button`, `input`, `select`, `textarea`, `a`, `h1-h6`, `p`, `ul`, `ol`, `li`, `table`, `img`, `video`, `audio`, `svg`, `canvas`, `iframe`, `dialog`, `details`, `summary`
 - Elements with test IDs: `data-testid`, `data-test`, `data-cy`
 - Elements with ARIA roles: `role="button"`, `role="dialog"`, etc.
 - Interactive elements: Elements with `onclick`, `contenteditable`
@@ -63,10 +63,18 @@ This is the **primary tool for understanding page structure**, replacing the nee
   selector?: string;        // Omit for page overview, provide to zoom into element
   includeHidden?: boolean;  // Default: false
   maxChildren?: number;     // Limit children shown (default: 20)
+  maxDepth?: number;        // Maximum depth to drill through non-semantic wrappers (default: 5)
 }
 ```
 
-**Note:** Depth is always 1 (immediate semantic children only). To drill deeper, call the tool again with a child's selector. This keeps output readable and token-efficient.
+**Automatic Wrapper Drilling:** The tool recursively drills through non-semantic wrapper elements (div, span, fieldset, etc.) up to `maxDepth` levels (default: 5) to find semantic children. This handles deeply nested UI framework components:
+- Plain HTML / Tailwind CSS: 1-3 levels (covered by default)
+- Bootstrap: 2-4 levels (covered by default)
+- Material-UI: 5-7 levels (mostly covered, use maxDepth: 7 for complex components)
+- Ant Design: 6-8 levels (use maxDepth: 7-8 for complex components)
+- Chakra UI: 4-6 levels (covered by default)
+
+Set `maxDepth: 1` to see only immediate children without drilling. Increase for pathological nesting cases.
 
 **Handling Poorly Structured DOM:**
 
