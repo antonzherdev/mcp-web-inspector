@@ -402,12 +402,12 @@ export async function handleToolCall(
     // Record tool action if there's an active session
     const recorder = ActionRecorder.getInstance();
     const activeSession = recorder.getActiveSession();
-    if (activeSession && name !== 'playwright_close') {
+    if (activeSession && name !== 'close') {
       recorder.recordAction(name, args);
     }
 
     // Special case for browser close to ensure it always works
-    if (name === "playwright_close") {
+    if (name === "close") {
       if (browser) {
         try {
           if (browser.isConnected()) {
@@ -458,7 +458,7 @@ export async function handleToolCall(
         width: args.width,
         height: args.height
       },
-      userAgent: name === "playwright_custom_user_agent" ? args.userAgent : undefined,
+      userAgent: name === "set_user_agent" ? args.userAgent : undefined,
       headless: args.headless,
       browserType: args.browserType || 'chromium'
     };
@@ -496,112 +496,112 @@ export async function handleToolCall(
     // Route to appropriate tool
     switch (name) {
       // Browser tools
-      case "playwright_navigate":
+      case "navigate":
         return await navigationTool.execute(args, context);
         
-      case "playwright_screenshot":
+      case "screenshot":
         return await screenshotTool.execute(args, context);
         
-      case "playwright_close":
+      case "close":
         return await closeBrowserTool.execute(args, context);
         
-      case "playwright_console_logs":
+      case "get_console_logs":
         return await consoleLogsTool.execute(args, context);
         
-      case "playwright_click":
+      case "click":
         return await clickTool.execute(args, context);
         
-      case "playwright_iframe_click":
+      case "iframe_click":
         return await iframeClickTool.execute(args, context);
 
-      case "playwright_iframe_fill":
+      case "iframe_fill":
         return await iframeFillTool.execute(args, context);
         
-      case "playwright_fill":
+      case "fill":
         return await fillTool.execute(args, context);
         
-      case "playwright_select":
+      case "select":
         return await selectTool.execute(args, context);
         
-      case "playwright_hover":
+      case "hover":
         return await hoverTool.execute(args, context);
 
-      case "playwright_upload_file":
+      case "upload_file":
         return await uploadFileTool.execute(args, context);
         
-      case "playwright_evaluate":
+      case "evaluate":
         return await evaluateTool.execute(args, context);
 
-      case "playwright_expect_response":
+      case "expect_response":
         return await expectResponseTool.execute(args, context);
 
-      case "playwright_assert_response":
+      case "assert_response":
         return await assertResponseTool.execute(args, context);
 
-      case "playwright_custom_user_agent":
+      case "set_user_agent":
         return await customUserAgentTool.execute(args, context);
         
-      case "playwright_get_visible_text":
+      case "get_text":
         return await visibleTextTool.execute(args, context);
       
-      case "playwright_get_visible_html":
+      case "get_html":
         return await visibleHtmlTool.execute(args, context);
         
       // API tools
-      case "playwright_get":
+      case "get":
         return await getRequestTool.execute(args, context);
         
-      case "playwright_post":
+      case "post":
         return await postRequestTool.execute(args, context);
         
-      case "playwright_put":
+      case "put":
         return await putRequestTool.execute(args, context);
         
-      case "playwright_patch":
+      case "patch":
         return await patchRequestTool.execute(args, context);
         
-      case "playwright_delete":
+      case "delete":
         return await deleteRequestTool.execute(args, context);
       
       // New tools
-      case "playwright_go_back":
+      case "go_back":
         return await goBackTool.execute(args, context);
-      case "playwright_go_forward":
+      case "go_forward":
         return await goForwardTool.execute(args, context);
-      case "playwright_drag":
+      case "drag":
         return await dragTool.execute(args, context);
-      case "playwright_press_key":
+      case "press_key":
         return await pressKeyTool.execute(args, context);
-      case "playwright_save_as_pdf":
+      case "save_pdf":
         return await saveAsPdfTool.execute(args, context);
-      case "playwright_click_and_switch_tab":
+      case "click_and_switch_tab":
         return await clickAndSwitchTabTool.execute(args, context);
 
-      case "playwright_element_visibility":
+      case "check_visibility":
         return await elementVisibilityTool.execute(args, context);
 
-      case "playwright_element_position":
+      case "get_position":
         return await elementPositionTool.execute(args, context);
 
-      case "playwright_inspect_dom":
+      case "inspect_dom":
         return await inspectDomTool.execute(args, context);
 
-      case "playwright_get_test_ids":
+      case "get_test_ids":
         return await getTestIdsTool.execute(args, context);
 
-      case "playwright_query_selector_all":
+      case "query_selector":
         return await querySelectorAllTool.execute(args, context);
 
-      case "playwright_find_by_text":
+      case "find_by_text":
         return await findByTextTool.execute(args, context);
 
-      case "playwright_get_computed_styles":
+      case "get_styles":
         return await getComputedStylesTool.execute(args, context);
 
-      case "playwright_element_exists":
+      case "element_exists":
         return await elementExistsTool.execute(args, context);
 
-      case "playwright_compare_positions":
+      case "compare_positions":
         return await comparePositionsTool.execute(args, context);
 
       default:

@@ -27,17 +27,13 @@ describe('Tool Definitions', () => {
     });
   });
 
-  test('API_TOOLS should contain API-related tool names', () => {
+  test('API_TOOLS should be empty array (removed from web inspector)', () => {
     expect(Array.isArray(API_TOOLS)).toBe(true);
-    expect(API_TOOLS.length).toBeGreaterThan(0);
-    
-    API_TOOLS.forEach(toolName => {
-      expect(toolDefinitions.some(tool => tool.name === toolName)).toBe(true);
-    });
+    expect(API_TOOLS.length).toBe(0);
   });
 
   test('should validate navigate tool schema', () => {
-    const navigateTool = toolDefinitions.find(tool => tool.name === 'playwright_navigate');
+    const navigateTool = toolDefinitions.find(tool => tool.name === 'navigate');
     expect(navigateTool).toBeDefined();
     expect(navigateTool!.inputSchema.properties).toHaveProperty('url');
     expect(navigateTool!.inputSchema.properties).toHaveProperty('waitUntil');
@@ -49,21 +45,21 @@ describe('Tool Definitions', () => {
   });
 
   test('should validate go_back tool schema', () => {
-    const goBackTool = toolDefinitions.find(tool => tool.name === 'playwright_go_back');
+    const goBackTool = toolDefinitions.find(tool => tool.name === 'go_back');
     expect(goBackTool).toBeDefined();
     expect(goBackTool!.inputSchema.properties).toEqual({});
     expect(goBackTool!.inputSchema.required).toEqual([]);
   });
 
   test('should validate go_forward tool schema', () => {
-    const goForwardTool = toolDefinitions.find(tool => tool.name === 'playwright_go_forward');
+    const goForwardTool = toolDefinitions.find(tool => tool.name === 'go_forward');
     expect(goForwardTool).toBeDefined();
     expect(goForwardTool!.inputSchema.properties).toEqual({});
     expect(goForwardTool!.inputSchema.required).toEqual([]);
   });
 
   test('should validate drag tool schema', () => {
-    const dragTool = toolDefinitions.find(tool => tool.name === 'playwright_drag');
+    const dragTool = toolDefinitions.find(tool => tool.name === 'drag');
     expect(dragTool).toBeDefined();
     expect(dragTool!.inputSchema.properties).toHaveProperty('sourceSelector');
     expect(dragTool!.inputSchema.properties).toHaveProperty('targetSelector');
@@ -71,29 +67,51 @@ describe('Tool Definitions', () => {
   });
 
   test('should validate press_key tool schema', () => {
-    const pressKeyTool = toolDefinitions.find(tool => tool.name === 'playwright_press_key');
+    const pressKeyTool = toolDefinitions.find(tool => tool.name === 'press_key');
     expect(pressKeyTool).toBeDefined();
     expect(pressKeyTool!.inputSchema.properties).toHaveProperty('key');
     expect(pressKeyTool!.inputSchema.properties).toHaveProperty('selector');
     expect(pressKeyTool!.inputSchema.required).toEqual(['key']);
   });
 
-  test('should validate save_as_pdf tool schema', () => {
-    const saveAsPdfTool = toolDefinitions.find(tool => tool.name === 'playwright_save_as_pdf');
-    expect(saveAsPdfTool).toBeDefined();
-    expect(saveAsPdfTool!.inputSchema.properties).toHaveProperty('outputPath');
-    expect(saveAsPdfTool!.inputSchema.properties).toHaveProperty('filename');
-    expect(saveAsPdfTool!.inputSchema.properties).toHaveProperty('format');
-    expect(saveAsPdfTool!.inputSchema.properties).toHaveProperty('printBackground');
-    expect(saveAsPdfTool!.inputSchema.properties).toHaveProperty('margin');
-    expect(saveAsPdfTool!.inputSchema.required).toEqual(['outputPath']);
-  });
-
   test('should validate upload_file tool schema', () => {
-    const uploadFileTool = toolDefinitions.find(tool => tool.name === 'playwright_upload_file');
+    const uploadFileTool = toolDefinitions.find(tool => tool.name === 'upload_file');
     expect(uploadFileTool).toBeDefined();
     expect(uploadFileTool!.inputSchema.properties).toHaveProperty('selector');
     expect(uploadFileTool!.inputSchema.properties).toHaveProperty('filePath');
     expect(uploadFileTool!.inputSchema.required).toEqual(['selector', 'filePath']);
+  });
+
+  test('should have 25 tools in BROWSER_TOOLS export', () => {
+    expect(BROWSER_TOOLS.length).toBe(25);
+  });
+
+  test('should have all tool definitions available (41 total including non-exported)', () => {
+    // All tools are still defined in createToolDefinitions(), but only 25 are exported via BROWSER_TOOLS
+    expect(toolDefinitions.length).toBe(41);
+  });
+
+  test('BROWSER_TOOLS should only contain web inspection tools', () => {
+    const expectedTools = [
+      'navigate', 'go_back', 'go_forward', 'screenshot', 'close',
+      'inspect_dom', 'get_test_ids', 'query_selector', 'find_by_text',
+      'check_visibility', 'get_position', 'compare_positions', 'element_exists',
+      'get_styles', 'get_text', 'get_html', 'get_console_logs',
+      'click', 'fill', 'hover', 'select', 'upload_file', 'drag', 'press_key',
+      'evaluate'
+    ];
+
+    expect(BROWSER_TOOLS.sort()).toEqual(expectedTools.sort());
+  });
+
+  test('should not export removed tools in BROWSER_TOOLS', () => {
+    const removedTools = ['get', 'post', 'put', 'patch', 'delete', 'save_pdf',
+                          'start_codegen_session', 'end_codegen_session',
+                          'iframe_click', 'iframe_fill', 'click_and_switch_tab',
+                          'expect_response', 'assert_response', 'set_user_agent'];
+
+    removedTools.forEach(toolName => {
+      expect(BROWSER_TOOLS.includes(toolName)).toBe(false);
+    });
   });
 }); 

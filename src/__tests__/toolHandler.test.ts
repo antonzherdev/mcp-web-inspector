@@ -380,12 +380,12 @@ describe('Tool Handler', () => {
     process.env.CHROME_EXECUTABLE_PATH = mockExecutablePath;
 
     // Call the navigation tool to trigger browser launch
-    await handleToolCall('playwright_navigate', { url: 'about:blank' }, mockServer);
+    await handleToolCall('navigate', { url: 'about:blank' }, mockServer);
 
     // This is a proxy for checking if the executable path is being used.
     // A more direct test would require exporting ensureBrowser and spying on it.
     // For now, we will just check if the tool call succeeds.
-    const result = await handleToolCall('playwright_navigate', { url: 'about:blank' }, mockServer);
+    const result = await handleToolCall('navigate', { url: 'about:blank' }, mockServer);
     expect(result.content[0].text).toContain('Navigated to');
 
     // Clean up
@@ -394,7 +394,7 @@ describe('Tool Handler', () => {
 
   test('should not launch browser for API tools', async () => {
     const ensureBrowser = jest.spyOn(require('../toolHandler'), 'ensureBrowser');
-    await handleToolCall('playwright_get', { url: 'https://api.restful-api.dev/objects' }, mockServer);
+    await handleToolCall('get', { url: 'https://api.restful-api.dev/objects' }, mockServer);
     expect(ensureBrowser).not.toHaveBeenCalled();
     ensureBrowser.mockRestore();
   });
