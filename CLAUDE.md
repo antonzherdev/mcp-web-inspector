@@ -8,29 +8,48 @@ This is a Model Context Protocol (MCP) server that provides browser automation c
 
 Server name: `playwright-mcp` (important for tool name length constraints - some clients like Cursor have a 60-character limit for `server_name:tool_name`)
 
-## Session Persistence
+## Command Line Options
+
+### Session Persistence
 
 **By default**, browser session data (cookies, localStorage, sessionStorage) is automatically saved and persists across browser restarts.
+
+**Available flags:**
+
+- `--no-save-session` - Disable session persistence (start fresh each time)
+- `--user-data-dir <path>` - Customize where session data is stored (default: `./.mcp-web-inspector`)
+
+**Examples:**
+
+```bash
+# Default behavior - sessions saved in ./.mcp-web-inspector
+mcp-web-inspector
+
+# Disable session persistence
+mcp-web-inspector --no-save-session
+
+# Custom session directory
+mcp-web-inspector --user-data-dir ./my-custom-sessions
+
+# Both flags together
+mcp-web-inspector --user-data-dir /tmp/browser-sessions
+```
 
 ### Default Behavior
 - Session data is saved in `./.mcp-web-inspector/` directory
 - Browser maintains logged-in state between sessions
 - No configuration needed - just works out of the box
 
-### Disabling Session Persistence
-
-If you prefer the browser to start fresh each time (no persistent state), use the `--no-save-session` flag:
-
-```bash
-mcp-web-inspector --no-save-session
-```
-
 ### Clearing Saved Sessions
 
-To clear saved session data, simply delete the `./.mcp-web-inspector/` directory:
+To clear saved session data, simply delete the session directory:
 
 ```bash
+# Default directory
 rm -rf ./.mcp-web-inspector
+
+# Custom directory
+rm -rf ./my-custom-sessions
 ```
 
 ## Development Commands

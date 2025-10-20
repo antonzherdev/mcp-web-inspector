@@ -273,29 +273,22 @@ If your tool supports MCP but isn't listed here, consult its documentation for t
 
 ## Command Line Options
 
-Web Inspector MCP supports command line flags to customize behavior:
+Customize server behavior with command line flags:
 
-### `--no-save-session`
+- **`--no-save-session`** - Disable automatic session persistence (start with fresh browser state each time)
+- **`--user-data-dir <path>`** - Custom directory for session data (default: `./.mcp-web-inspector`)
 
-Disable automatic session persistence. By default, browser sessions (cookies, localStorage, sessionStorage) are saved. Use this flag to start with a fresh browser state each time.
-
-**Example Configuration:**
-
+**Example usage:**
 ```json
 {
   "mcpServers": {
     "web-inspector": {
       "command": "npx",
-      "args": ["-y", "mcp-web-inspector", "--no-save-session"]
+      "args": ["-y", "mcp-web-inspector", "--user-data-dir", "./my-sessions"]
     }
   }
 }
 ```
-
-**When to use:**
-- Testing with clean state required for each session
-- Avoiding interference from previous test data
-- Privacy-sensitive testing scenarios
 
 ---
 

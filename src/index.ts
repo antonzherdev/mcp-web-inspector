@@ -14,15 +14,20 @@ const { values } = parseArgs({
       type: 'boolean',
       default: false,
     },
+    'user-data-dir': {
+      type: 'string',
+      default: './.mcp-web-inspector',
+    },
   },
   strict: false,
 });
 
 // Configure session settings (session saving is enabled by default)
-setSessionConfig({
+const sessionConfig = {
   saveSession: !Boolean(values['no-save-session']),
-  userDataDir: './.mcp-web-inspector',
-});
+  userDataDir: String(values['user-data-dir'] || './.mcp-web-inspector'),
+};
+setSessionConfig(sessionConfig);
 
 async function runServer() {
   const server = new Server(
@@ -38,8 +43,8 @@ async function runServer() {
     }
   );
 
-  // Create tool definitions
-  const TOOLS = createToolDefinitions();
+  // Create tool definitions with session config
+  const TOOLS = createToolDefinitions(sessionConfig);
 
   // Setup request handlers
   setupRequestHandlers(server, TOOLS);

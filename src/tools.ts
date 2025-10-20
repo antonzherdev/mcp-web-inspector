@@ -1,7 +1,18 @@
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import { codegenTools } from './tools/codegen';
 
-export function createToolDefinitions() {
+interface SessionConfig {
+  saveSession: boolean;
+  userDataDir: string;
+}
+
+export function createToolDefinitions(sessionConfig?: SessionConfig) {
+  // Build dynamic navigate description based on session config
+  const sessionEnabled = sessionConfig?.saveSession ?? true;
+  const navigateDescription = sessionEnabled
+    ? `Navigate to a URL. Browser sessions (cookies, localStorage, sessionStorage) are automatically saved in ${sessionConfig?.userDataDir || './.mcp-web-inspector/'} directory and persist across restarts. To clear saved sessions, delete the directory.`
+    : "Navigate to a URL. Browser starts fresh each time with no persistent session state (started with --no-save-session flag).";
+
   return [
     // Codegen tools
     {
@@ -77,7 +88,7 @@ export function createToolDefinitions() {
     },
     {
       name: "navigate",
-      description: "Navigate to a URL. Browser sessions (cookies, localStorage, sessionStorage) are automatically saved in ./.mcp-web-inspector/ directory and persist across restarts. To disable session persistence, start the server with --no-save-session flag. To clear saved sessions, delete the ./.mcp-web-inspector/ directory.",
+      description: navigateDescription,
       inputSchema: {
         type: "object",
         properties: {
