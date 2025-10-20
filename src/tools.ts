@@ -4,13 +4,17 @@ import { codegenTools } from './tools/codegen';
 interface SessionConfig {
   saveSession: boolean;
   userDataDir: string;
+  screenshotsDir: string;
 }
 
 export function createToolDefinitions(sessionConfig?: SessionConfig) {
   // Build dynamic navigate description based on session config
   const sessionEnabled = sessionConfig?.saveSession ?? true;
+  const userDataDir = sessionConfig?.userDataDir || './.mcp-web-inspector/user-data';
+  const screenshotsDir = sessionConfig?.screenshotsDir || './.mcp-web-inspector/screenshots';
+
   const navigateDescription = sessionEnabled
-    ? `Navigate to a URL. Browser sessions (cookies, localStorage, sessionStorage) are automatically saved in ${sessionConfig?.userDataDir || './.mcp-web-inspector/'} directory and persist across restarts. To clear saved sessions, delete the directory.`
+    ? `Navigate to a URL. Browser sessions (cookies, localStorage, sessionStorage) are automatically saved in ${userDataDir} directory and persist across restarts. To clear saved sessions, delete the directory.`
     : "Navigate to a URL. Browser starts fresh each time with no persistent session state (started with --no-save-session flag).";
 
   return [
@@ -105,18 +109,26 @@ export function createToolDefinitions(sessionConfig?: SessionConfig) {
     },
     {
       name: "screenshot",
-      description: "Take a screenshot of the current page or a specific element",
+      description: `Take a screenshot of the current page or a specific element. Screenshots are saved to ${screenshotsDir} by default. Example: { name: "login-page", fullPage: true } or { name: "submit-btn", selector: "testid:submit" }`,
       inputSchema: {
         type: "object",
         properties: {
-          name: { type: "string", description: "Name for the screenshot" },
-          selector: { type: "string", description: "CSS selector for element to screenshot" },
-          width: { type: "number", description: "Width in pixels (default: 800)" },
-          height: { type: "number", description: "Height in pixels (default: 600)" },
-          storeBase64: { type: "boolean", description: "Store screenshot in base64 format (default: true)" },
-          fullPage: { type: "boolean", description: "Store screenshot of the entire page (default: false)" },
-          savePng: { type: "boolean", description: "Save screenshot as PNG file (default: false)" },
-          downloadsDir: { type: "string", description: "Custom downloads directory path (default: user's Downloads folder)" },
+          name: {
+            type: "string",
+            description: "Name for the screenshot file (without extension). Example: 'login-page' or 'error-state'"
+          },
+          selector: {
+            type: "string",
+            description: "CSS selector or testid shorthand for element to screenshot. Example: '#submit-button' or 'testid:login-form'. Omit to capture full viewport."
+          },
+          fullPage: {
+            type: "boolean",
+            description: "Capture entire scrollable page instead of just viewport (default: false)"
+          },
+          downloadsDir: {
+            type: "string",
+            description: `Custom directory for saving screenshot (default: ${screenshotsDir}). Example: './my-screenshots'`
+          },
         },
         required: ["name"],
       },

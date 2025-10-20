@@ -292,15 +292,22 @@ Customize server behavior with command line flags:
 
 ---
 
-## Session Persistence
+## Session Persistence & Data Storage
 
-**By default**, browser session data (cookies, localStorage, sessionStorage) is automatically saved and persists across browser restarts. No configuration needed!
+**By default**, browser session data and screenshots are automatically saved and organized in `./.mcp-web-inspector/`:
+
+```
+.mcp-web-inspector/
+  ├── user-data/       # Browser sessions (cookies, localStorage, sessionStorage)
+  └── screenshots/     # Screenshot files
+```
 
 ### How It Works
 
-- Session data is saved in `./.mcp-web-inspector/` directory
+- Session data persists across browser restarts
+- Screenshots are saved to the screenshots directory
 - Browser maintains logged-in state between sessions
-- Works out of the box - just navigate and your sessions are saved
+- Works out of the box - just navigate and your data is saved
 
 ### Benefits
 
@@ -343,11 +350,17 @@ claude mcp add web-inspector --scope user -- npx -y mcp-web-inspector --no-save-
 }
 ```
 
-### Clearing Saved Sessions
+### Clearing Data
 
-To clear saved session data, simply delete the directory:
+To clear all saved data (sessions and screenshots):
 ```bash
 rm -rf ./.mcp-web-inspector
+```
+
+To clear only sessions or screenshots:
+```bash
+rm -rf ./.mcp-web-inspector/user-data      # Clear sessions only
+rm -rf ./.mcp-web-inspector/screenshots    # Clear screenshots only
 ```
 
 ---

@@ -23,9 +23,11 @@ const { values } = parseArgs({
 });
 
 // Configure session settings (session saving is enabled by default)
+const baseDir = String(values['user-data-dir'] || './.mcp-web-inspector');
 const sessionConfig = {
   saveSession: !Boolean(values['no-save-session']),
-  userDataDir: String(values['user-data-dir'] || './.mcp-web-inspector'),
+  userDataDir: `${baseDir}/user-data`,
+  screenshotsDir: `${baseDir}/screenshots`,
 };
 setSessionConfig(sessionConfig);
 

@@ -4,6 +4,7 @@ import * as os from 'node:os';
 import type { Page } from 'playwright';
 import { BrowserToolBase } from './base.js';
 import { ToolContext, ToolResponse, createSuccessResponse } from '../common/types.js';
+import { getScreenshotsDir } from '../../toolHandler.js';
 
 const defaultDownloadsPath = path.join(os.homedir(), 'Downloads');
 
@@ -42,7 +43,8 @@ export class ScreenshotTool extends BrowserToolBase {
       // Generate output path
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const filename = `${args.name || 'screenshot'}-${timestamp}.png`;
-      const downloadsDir = args.downloadsDir || defaultDownloadsPath;
+      // Use screenshots directory from config, fall back to downloadsDir arg, then default Downloads
+      const downloadsDir = args.downloadsDir || getScreenshotsDir();
 
       if (!fs.existsSync(downloadsDir)) {
         fs.mkdirSync(downloadsDir, { recursive: true });

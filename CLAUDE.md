@@ -36,17 +36,29 @@ mcp-web-inspector --user-data-dir /tmp/browser-sessions
 ```
 
 ### Default Behavior
-- Session data is saved in `./.mcp-web-inspector/` directory
-- Browser maintains logged-in state between sessions
+
+Data is organized in `./.mcp-web-inspector/`:
+```
+.mcp-web-inspector/
+  ├── user-data/       # Browser sessions (cookies, localStorage, sessionStorage)
+  └── screenshots/     # Screenshot files
+```
+
+- Browser sessions persist across restarts
+- Screenshots saved to dedicated directory
 - No configuration needed - just works out of the box
 
-### Clearing Saved Sessions
-
-To clear saved session data, simply delete the session directory:
+### Clearing Saved Data
 
 ```bash
-# Default directory
+# Clear all data (default directory)
 rm -rf ./.mcp-web-inspector
+
+# Clear only sessions
+rm -rf ./.mcp-web-inspector/user-data
+
+# Clear only screenshots
+rm -rf ./.mcp-web-inspector/screenshots
 
 # Custom directory
 rm -rf ./my-custom-sessions

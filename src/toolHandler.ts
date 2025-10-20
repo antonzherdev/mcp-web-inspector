@@ -63,11 +63,13 @@ let currentBrowserType: 'chromium' | 'firefox' | 'webkit' = 'chromium';
 interface SessionConfig {
   saveSession: boolean;
   userDataDir: string;
+  screenshotsDir: string;
 }
 
 let sessionConfig: SessionConfig = {
   saveSession: false,
-  userDataDir: './.mcp-web-inspector',
+  userDataDir: './.mcp-web-inspector/user-data',
+  screenshotsDir: './.mcp-web-inspector/screenshots',
 };
 
 /**
@@ -75,6 +77,13 @@ let sessionConfig: SessionConfig = {
  */
 export function setSessionConfig(config: Partial<SessionConfig>) {
   sessionConfig = { ...sessionConfig, ...config };
+}
+
+/**
+ * Gets the screenshots directory
+ */
+export function getScreenshotsDir(): string {
+  return sessionConfig.screenshotsDir;
 }
 
 /**
