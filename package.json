@@ -1,15 +1,15 @@
 {
-  "name": "@executeautomation/playwright-mcp-server",
-  "version": "1.0.6",
-  "description": "Model Context Protocol servers for Playwright",
+  "name": "mcp-web-inspector",
+  "version": "0.1.0",
+  "description": "Web Inspector MCP: Give LLMs visual superpowers to see, debug, and test any web page.",
   "license": "MIT",
-  "author": "ExecuteAutomation, Ltd (https://executeautomation.com)",
-  "homepage": "https://executeautomation.github.io/mcp-playwright/",
-  "bugs": "https://github.com/executeautomation/mcp-playwright/issues",
+  "author": "Anton",
+  "homepage": "https://github.com/antonzherdev/mcp-web-inspector",
+  "bugs": "https://github.com/antonzherdev/mcp-web-inspector/issues",
   "types": "dist/index.d.ts",
   "type": "module",
   "bin": {
-    "playwright-mcp-server": "dist/index.js"
+    "mcp-web-inspector": "dist/index.js"
   },
   "files": [
     "dist"
@@ -24,7 +24,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/executeautomation/mcp-playwright.git"
+    "url": "https://github.com/antonzherdev/mcp-web-inspector.git"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.11.1",
@@ -37,10 +37,16 @@
     "uuid": "11.1.0"
   },
   "keywords": [
+    "mcp",
+    "web-inspector",
+    "debugging",
+    "testing",
     "playwright",
     "automation",
     "AI",
-    "Claude MCP"
+    "Claude MCP",
+    "DOM inspection",
+    "element debugging"
   ],
   "devDependencies": {
     "@types/jest": "^29.5.14",

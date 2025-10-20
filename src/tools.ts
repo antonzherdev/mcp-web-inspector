@@ -76,7 +76,7 @@ export function createToolDefinitions() {
       }
     },
     {
-      name: "playwright_navigate",
+      name: "navigate",
       description: "Navigate to a URL",
       inputSchema: {
         type: "object",
@@ -93,7 +93,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_screenshot",
+      name: "screenshot",
       description: "Take a screenshot of the current page or a specific element",
       inputSchema: {
         type: "object",
@@ -111,7 +111,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_click",
+      name: "click",
       description: "Click an element on the page",
       inputSchema: {
         type: "object",
@@ -122,7 +122,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_iframe_click",
+      name: "iframe_click",
       description: "Click an element in an iframe on the page",
       inputSchema: {
         type: "object",
@@ -134,7 +134,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_iframe_fill",
+      name: "iframe_fill",
       description: "Fill an element in an iframe on the page",
       inputSchema: {
         type: "object",
@@ -147,7 +147,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_fill",
+      name: "fill",
       description: "fill out an input field",
       inputSchema: {
         type: "object",
@@ -159,7 +159,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_select",
+      name: "select",
       description: "Select an element on the page with Select tag",
       inputSchema: {
         type: "object",
@@ -171,7 +171,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_hover",
+      name: "hover",
       description: "Hover an element on the page",
       inputSchema: {
         type: "object",
@@ -182,7 +182,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_upload_file",
+      name: "upload_file",
       description: "Upload a file to an input[type='file'] element on the page",
       inputSchema: {
         type: "object",
@@ -194,7 +194,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_evaluate",
+      name: "evaluate",
       description: "Execute JavaScript in the browser console",
       inputSchema: {
         type: "object",
@@ -205,7 +205,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_console_logs",
+      name: "get_console_logs",
       description: "Retrieve console logs from the browser with filtering options",
       inputSchema: {
         type: "object",
@@ -232,7 +232,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_close",
+      name: "close",
       description: "Close the browser and release all resources",
       inputSchema: {
         type: "object",
@@ -241,7 +241,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_get",
+      name: "get",
       description: "Perform an HTTP GET request",
       inputSchema: {
         type: "object",
@@ -252,7 +252,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_post",
+      name: "post",
       description: "Perform an HTTP POST request",
       inputSchema: {
         type: "object",
@@ -270,7 +270,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_put",
+      name: "put",
       description: "Perform an HTTP PUT request",
       inputSchema: {
         type: "object",
@@ -282,7 +282,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_patch",
+      name: "patch",
       description: "Perform an HTTP PATCH request",
       inputSchema: {
         type: "object",
@@ -294,7 +294,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_delete",
+      name: "delete",
       description: "Perform an HTTP DELETE request",
       inputSchema: {
         type: "object",
@@ -305,7 +305,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_expect_response",
+      name: "expect_response",
       description: "Ask Playwright to start waiting for a HTTP response. This tool initiates the wait operation but does not wait for its completion.",
       inputSchema: {
         type: "object",
@@ -317,7 +317,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_assert_response",
+      name: "assert_response",
       description: "Wait for and validate a previously initiated HTTP response wait operation.",
       inputSchema: {
         type: "object",
@@ -329,7 +329,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_custom_user_agent",
+      name: "set_user_agent",
       description: "Set a custom User Agent for the browser",
       inputSchema: {
         type: "object",
@@ -340,7 +340,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_get_visible_text",
+      name: "get_text",
       description: "Get the visible text content of the current page",
       inputSchema: {
         type: "object",
@@ -349,7 +349,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_get_visible_html",
+      name: "get_html",
       description: "Get the HTML content of the current page. By default, all <script> tags are removed from the output unless removeScripts is explicitly set to false.",
       inputSchema: {
         type: "object",
@@ -367,7 +367,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_go_back",
+      name: "go_back",
       description: "Navigate back in browser history",
       inputSchema: {
         type: "object",
@@ -376,7 +376,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_go_forward",
+      name: "go_forward",
       description: "Navigate forward in browser history",
       inputSchema: {
         type: "object",
@@ -385,7 +385,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_drag",
+      name: "drag",
       description: "Drag an element to a target location",
       inputSchema: {
         type: "object",
@@ -397,7 +397,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_press_key",
+      name: "press_key",
       description: "Press a keyboard key",
       inputSchema: {
         type: "object",
@@ -409,7 +409,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_save_as_pdf",
+      name: "save_pdf",
       description: "Save the current page as a PDF file",
       inputSchema: {
         type: "object",
@@ -433,7 +433,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_click_and_switch_tab",
+      name: "click_and_switch_tab",
       description: "Click a link and switch to the newly opened tab",
       inputSchema: {
         type: "object",
@@ -444,7 +444,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_element_visibility",
+      name: "check_visibility",
       description: "Check if an element is visible to the user. CRITICAL for debugging click/interaction failures. Returns detailed visibility information including viewport intersection, clipping by overflow:hidden, and whether element needs scrolling. Supports testid shortcuts (e.g., 'testid:submit-button').",
       inputSchema: {
         type: "object",
@@ -458,7 +458,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_element_position",
+      name: "get_position",
       description: "Get the position and size of an element. Returns x, y coordinates and width/height in pixels. Useful for finding where to click or checking element layout. Supports testid shortcuts (e.g., 'testid:submit-button').",
       inputSchema: {
         type: "object",
@@ -472,7 +472,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_inspect_dom",
+      name: "inspect_dom",
       description: "Progressive DOM inspection with semantic filtering and spatial layout info. This is the PRIMARY tool for understanding page structure. Returns immediate semantic children only (header, nav, main, form, button, elements with test IDs, ARIA roles, etc.) while automatically drilling through non-semantic wrapper elements (div, span, etc.) up to maxDepth levels. Use without selector for page overview, then drill down by calling again with a child's selector. Returns compact text format with position, visibility, and layout pattern detection. Supports testid shortcuts.",
       inputSchema: {
         type: "object",
@@ -498,7 +498,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_get_test_ids",
+      name: "get_test_ids",
       description: "Discover all test identifiers on the page (data-testid, data-test, data-cy, etc.). Returns a compact text list grouped by attribute type. Essential for test-driven workflows and understanding what elements can be reliably selected. Use the returned test IDs with selector shortcuts like 'testid:submit-button'.",
       inputSchema: {
         type: "object",
@@ -516,7 +516,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_query_selector_all",
+      name: "query_selector",
       description: "Test a selector and return detailed information about all matched elements. Essential for selector debugging and finding the right element to interact with. Returns compact text format with element tag, position, text content, visibility status, and interaction capability. Shows why elements are hidden (display:none, opacity:0, zero size). Supports testid shortcuts (e.g., 'testid:submit-button'). Use limit parameter to control how many matches to show (default: 10). NEW: Use onlyVisible parameter to filter results (true=visible only, false=hidden only, undefined=all).",
       inputSchema: {
         type: "object",
@@ -542,7 +542,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_find_by_text",
+      name: "find_by_text",
       description: "Find elements by their text content. Essential for finding elements without good selectors, especially in poorly structured DOM. Returns elements with position, visibility, and interaction state. Supports exact match, case-sensitive search, and NEW: regex pattern matching for advanced text searching (e.g., '/\\d+ items?/' to find elements with numbers).",
       inputSchema: {
         type: "object",
@@ -572,7 +572,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_get_computed_styles",
+      name: "get_styles",
       description: "Get computed CSS styles for an element. Essential for understanding why elements behave unexpectedly and debugging layout issues. Returns styles grouped by category (Layout, Visibility, Spacing, Typography). Use properties parameter to request specific CSS properties, or omit for common layout properties.",
       inputSchema: {
         type: "object",
@@ -590,7 +590,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_element_exists",
+      name: "element_exists",
       description: "Quick check if an element exists on the page. Ultra-lightweight alternative to query_selector_all when you only need existence confirmation. Returns simple exists/not found status. Most common check before attempting interaction. Supports testid shortcuts.",
       inputSchema: {
         type: "object",
@@ -604,7 +604,7 @@ export function createToolDefinitions() {
       },
     },
     {
-      name: "playwright_compare_positions",
+      name: "compare_positions",
       description: "Compare positions and alignment of two elements. Validates layout consistency by checking if elements are aligned (top, left, right, bottom) or have the same dimensions (width, height). Essential for visual regression testing and ensuring consistent spacing across components. Returns compact text format with alignment status and difference in pixels.",
       inputSchema: {
         type: "object",
@@ -629,57 +629,58 @@ export function createToolDefinitions() {
   ] as const satisfies Tool[];
 }
 
-// Browser-requiring tools for conditional browser launch
+// Web inspection and debugging tools (browser-requiring)
 export const BROWSER_TOOLS = [
-  "playwright_navigate",
-  "playwright_screenshot",
-  "playwright_click",
-  "playwright_iframe_click",
-  "playwright_iframe_fill",
-  "playwright_fill",
-  "playwright_select",
-  "playwright_hover",
-  "playwright_upload_file",
-  "playwright_evaluate",
-  "playwright_close",
-  "playwright_expect_response",
-  "playwright_assert_response",
-  "playwright_custom_user_agent",
-  "playwright_get_visible_text",
-  "playwright_get_visible_html",
-  "playwright_go_back",
-  "playwright_go_forward",
-  "playwright_drag",
-  "playwright_press_key",
-  "playwright_save_as_pdf",
-  "playwright_click_and_switch_tab",
-  "playwright_element_visibility",
-  "playwright_element_position",
-  "playwright_inspect_dom",
-  "playwright_get_test_ids",
-  "playwright_query_selector_all",
-  "playwright_find_by_text",
-  "playwright_get_computed_styles",
-  "playwright_element_exists",
-  "playwright_compare_positions"
+  // Navigation & Control
+  "navigate",
+  "go_back",
+  "go_forward",
+  "screenshot",
+
+  // DOM Inspection (PRIMARY)
+  "inspect_dom",
+  "get_test_ids",
+  "query_selector",
+  "find_by_text",
+
+  // Visibility & Position
+  "check_visibility",
+  "get_position",
+  "compare_positions",
+  "element_exists",
+
+  // Style & Content
+  "get_styles",
+  "get_text",
+  "get_html",
+  "get_console_logs",
+
+  // Interactions (for debugging/testing workflows)
+  "click",
+  "fill",
+  "hover",
+  "select",
+  "upload_file",
+  "drag",
+  "press_key",
+
+  // JavaScript Execution
+  "evaluate",
+
+  // Cleanup
+  "close"
 ];
 
-// API Request tools for conditional launch
-export const API_TOOLS = [
-  "playwright_get",
-  "playwright_post",
-  "playwright_put",
-  "playwright_delete",
-  "playwright_patch"
-];
+// Removed tools (not needed for web inspection/debugging):
+// - HTTP API tools: get, post, put, patch, delete (use dedicated HTTP clients instead)
+// - Code generation: start_codegen_session, end_codegen_session, get_codegen_session, clear_codegen_session
+// - iFrame interactions: iframe_click, iframe_fill (can be added back if needed)
+// - Tab management: click_and_switch_tab
+// - Network: expect_response, assert_response
+// - Other: set_user_agent, save_pdf
 
-// Codegen tools
-export const CODEGEN_TOOLS = [
-  'start_codegen_session',
-  'end_codegen_session',
-  'get_codegen_session',
-  'clear_codegen_session'
-];
+export const API_TOOLS: string[] = [];
+export const CODEGEN_TOOLS: string[] = [];
 
 // All available tools
 export const tools = [
