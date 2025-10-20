@@ -4,6 +4,25 @@ import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createToolDefinitions } from "./tools.js";
 import { setupRequestHandlers } from "./requestHandler.js";
+import { parseArgs } from "node:util";
+import { setSessionConfig } from "./toolHandler.js";
+
+// Parse command line arguments
+const { values } = parseArgs({
+  options: {
+    'no-save-session': {
+      type: 'boolean',
+      default: false,
+    },
+  },
+  strict: false,
+});
+
+// Configure session settings (session saving is enabled by default)
+setSessionConfig({
+  saveSession: !Boolean(values['no-save-session']),
+  userDataDir: './.mcp-web-inspector',
+});
 
 async function runServer() {
   const server = new Server(

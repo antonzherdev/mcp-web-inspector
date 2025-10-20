@@ -87,7 +87,7 @@ describe('Tool Definitions', () => {
   });
 
   test('should have all tool definitions available (41 total including non-exported)', () => {
-    // All tools are still defined in createToolDefinitions(), but only 25 are exported via BROWSER_TOOLS
+    // All tools are still defined in createToolDefinitions()
     expect(toolDefinitions.length).toBe(41);
   });
 

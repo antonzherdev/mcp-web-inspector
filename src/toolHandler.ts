@@ -4,13 +4,13 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { BROWSER_TOOLS, API_TOOLS } from './tools.js';
 import type { ToolContext } from './tools/common/types.js';
 import { ActionRecorder } from './tools/codegen/recorder.js';
-import { 
+import {
   startCodegenSession,
   endCodegenSession,
   getCodegenSession,
   clearCodegenSession
 } from './tools/codegen/index.js';
-import { 
+import {
   ScreenshotTool,
   NavigationTool,
   CloseBrowserTool,
@@ -58,6 +58,24 @@ import { ClickAndSwitchTabTool } from './tools/browser/interaction.js';
 let browser: Browser | undefined;
 let page: Page | undefined;
 let currentBrowserType: 'chromium' | 'firefox' | 'webkit' = 'chromium';
+
+// Session configuration
+interface SessionConfig {
+  saveSession: boolean;
+  userDataDir: string;
+}
+
+let sessionConfig: SessionConfig = {
+  saveSession: false,
+  userDataDir: './.mcp-web-inspector',
+};
+
+/**
+ * Sets the session configuration
+ */
+export function setSessionConfig(config: Partial<SessionConfig>) {
+  sessionConfig = { ...sessionConfig, ...config };
+}
 
 /**
  * Resets browser and page variables
@@ -220,30 +238,61 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
       
       const executablePath = process.env.CHROME_EXECUTABLE_PATH;
 
-      browser = await browserInstance.launch({
-        headless,
-        executablePath: executablePath
-      });
-      
-      currentBrowserType = browserType;
+      // Use persistent context if session saving is enabled
+      if (sessionConfig.saveSession) {
+        console.error(`Launching ${browserType} with persistent context at ${sessionConfig.userDataDir}...`);
 
-      // Add cleanup logic when browser is disconnected
-      browser.on('disconnected', () => {
-        console.error("Browser disconnected event triggered");
-        browser = undefined;
-        page = undefined;
-      });
+        const context = await browserInstance.launchPersistentContext(sessionConfig.userDataDir, {
+          headless,
+          executablePath: executablePath,
+          ...userAgent && { userAgent },
+          viewport: {
+            width: viewport?.width ?? 1280,
+            height: viewport?.height ?? 720,
+          },
+          deviceScaleFactor: 1,
+        });
 
-      const context = await browser.newContext({
-        ...userAgent && { userAgent },
-        viewport: {
-          width: viewport?.width ?? 1280,
-          height: viewport?.height ?? 720,
-        },
-        deviceScaleFactor: 1,
-      });
+        // Get the browser instance from the context
+        browser = context.browser()!;
+        currentBrowserType = browserType;
 
-      page = await context.newPage();
+        // Add cleanup logic when browser is disconnected
+        browser.on('disconnected', () => {
+          console.error("Browser disconnected event triggered");
+          browser = undefined;
+          page = undefined;
+        });
+
+        // Get or create the first page
+        const pages = context.pages();
+        page = pages.length > 0 ? pages[0] : await context.newPage();
+      } else {
+        browser = await browserInstance.launch({
+          headless,
+          executablePath: executablePath
+        });
+
+        currentBrowserType = browserType;
+
+        // Add cleanup logic when browser is disconnected
+        browser.on('disconnected', () => {
+          console.error("Browser disconnected event triggered");
+          browser = undefined;
+          page = undefined;
+        });
+
+        const context = await browser.newContext({
+          ...userAgent && { userAgent },
+          viewport: {
+            width: viewport?.width ?? 1280,
+            height: viewport?.height ?? 720,
+          },
+          deviceScaleFactor: 1,
+        });
+
+        page = await context.newPage();
+      }
 
       // Register console message handler
       await registerConsoleMessage(page);
@@ -292,28 +341,61 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
         break;
     }
     
-    browser = await browserInstance.launch({ headless });
-    currentBrowserType = browserType;
-    
-    browser.on('disconnected', () => {
-      console.error("Browser disconnected event triggered (retry)");
-      browser = undefined;
-      page = undefined;
-    });
+    const executablePath = process.env.CHROME_EXECUTABLE_PATH;
 
-    const context = await browser.newContext({
-      ...userAgent && { userAgent },
-      viewport: {
-        width: viewport?.width ?? 1280,
-        height: viewport?.height ?? 720,
-      },
-      deviceScaleFactor: 1,
-    });
+    // Use persistent context if session saving is enabled
+    if (sessionConfig.saveSession) {
+      console.error(`Launching ${browserType} with persistent context at ${sessionConfig.userDataDir} (retry)...`);
 
-    page = await context.newPage();
-    
+      const context = await browserInstance.launchPersistentContext(sessionConfig.userDataDir, {
+        headless,
+        executablePath: executablePath,
+        ...userAgent && { userAgent },
+        viewport: {
+          width: viewport?.width ?? 1280,
+          height: viewport?.height ?? 720,
+        },
+        deviceScaleFactor: 1,
+      });
+
+      browser = context.browser()!;
+      currentBrowserType = browserType;
+
+      browser.on('disconnected', () => {
+        console.error("Browser disconnected event triggered (retry)");
+        browser = undefined;
+        page = undefined;
+      });
+
+      const pages = context.pages();
+      page = pages.length > 0 ? pages[0] : await context.newPage();
+    } else {
+      browser = await browserInstance.launch({
+        headless,
+        executablePath: executablePath
+      });
+      currentBrowserType = browserType;
+
+      browser.on('disconnected', () => {
+        console.error("Browser disconnected event triggered (retry)");
+        browser = undefined;
+        page = undefined;
+      });
+
+      const context = await browser.newContext({
+        ...userAgent && { userAgent },
+        viewport: {
+          width: viewport?.width ?? 1280,
+          height: viewport?.height ?? 720,
+        },
+        deviceScaleFactor: 1,
+      });
+
+      page = await context.newPage();
+    }
+
     await registerConsoleMessage(page);
-    
+
     return page!;
   }
 }

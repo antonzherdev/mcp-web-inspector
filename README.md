@@ -271,6 +271,94 @@ If your tool supports MCP but isn't listed here, consult its documentation for t
 
 ---
 
+## Command Line Options
+
+Web Inspector MCP supports command line flags to customize behavior:
+
+### `--no-save-session`
+
+Disable automatic session persistence. By default, browser sessions (cookies, localStorage, sessionStorage) are saved. Use this flag to start with a fresh browser state each time.
+
+**Example Configuration:**
+
+```json
+{
+  "mcpServers": {
+    "web-inspector": {
+      "command": "npx",
+      "args": ["-y", "mcp-web-inspector", "--no-save-session"]
+    }
+  }
+}
+```
+
+**When to use:**
+- Testing with clean state required for each session
+- Avoiding interference from previous test data
+- Privacy-sensitive testing scenarios
+
+---
+
+## Session Persistence
+
+**By default**, browser session data (cookies, localStorage, sessionStorage) is automatically saved and persists across browser restarts. No configuration needed!
+
+### How It Works
+
+- Session data is saved in `./.mcp-web-inspector/` directory
+- Browser maintains logged-in state between sessions
+- Works out of the box - just navigate and your sessions are saved
+
+### Benefits
+
+- ✅ Test authenticated features without re-logging in each time
+- ✅ Maintain shopping cart state across sessions
+- ✅ Preserve user preferences and settings
+- ✅ Debug logged-in user workflows efficiently
+
+### Disabling Session Persistence
+
+If you prefer the browser to start fresh each time (no persistent state), use the `--no-save-session` flag:
+
+**Claude Code CLI:**
+```bash
+claude mcp add web-inspector --scope user -- npx -y mcp-web-inspector --no-save-session
+```
+
+**Claude Desktop / Windsurf / Cline:**
+```json
+{
+  "mcpServers": {
+    "web-inspector": {
+      "command": "npx",
+      "args": ["-y", "mcp-web-inspector", "--no-save-session"]
+    }
+  }
+}
+```
+
+**Cursor:**
+```json
+{
+  "mcpServers": {
+    "web-inspector": {
+      "command": "npx",
+      "args": ["-y", "mcp-web-inspector", "--no-save-session"],
+      "env": {}
+    }
+  }
+}
+```
+
+### Clearing Saved Sessions
+
+To clear saved session data, simply delete the directory:
+```bash
+rm -rf ./.mcp-web-inspector
+```
+
+---
+
 ## Core Tools
 
 ### 🔍 DOM Inspection & Discovery

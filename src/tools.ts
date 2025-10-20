@@ -77,7 +77,7 @@ export function createToolDefinitions() {
     },
     {
       name: "navigate",
-      description: "Navigate to a URL",
+      description: "Navigate to a URL. Browser sessions (cookies, localStorage, sessionStorage) are automatically saved in ./.mcp-web-inspector/ directory and persist across restarts. To disable session persistence, start the server with --no-save-session flag. To clear saved sessions, delete the ./.mcp-web-inspector/ directory.",
       inputSchema: {
         type: "object",
         properties: {

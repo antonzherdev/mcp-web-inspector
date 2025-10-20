@@ -8,6 +8,31 @@ This is a Model Context Protocol (MCP) server that provides browser automation c
 
 Server name: `playwright-mcp` (important for tool name length constraints - some clients like Cursor have a 60-character limit for `server_name:tool_name`)
 
+## Session Persistence
+
+**By default**, browser session data (cookies, localStorage, sessionStorage) is automatically saved and persists across browser restarts.
+
+### Default Behavior
+- Session data is saved in `./.mcp-web-inspector/` directory
+- Browser maintains logged-in state between sessions
+- No configuration needed - just works out of the box
+
+### Disabling Session Persistence
+
+If you prefer the browser to start fresh each time (no persistent state), use the `--no-save-session` flag:
+
+```bash
+mcp-web-inspector --no-save-session
+```
+
+### Clearing Saved Sessions
+
+To clear saved session data, simply delete the `./.mcp-web-inspector/` directory:
+
+```bash
+rm -rf ./.mcp-web-inspector
+```
+
 ## Development Commands
 
 ### Building

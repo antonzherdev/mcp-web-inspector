@@ -134,3 +134,6 @@ dist
 .DS_Store?
 
 .idea
+
+# Browser session data (persistent context)
+.mcp-web-inspector
