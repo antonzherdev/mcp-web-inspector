@@ -142,7 +142,10 @@ async function registerConsoleMessage(page) {
     if (consoleLogsTool) {
       const message = error.message;
       const stack = error.stack || "";
-      consoleLogsTool.registerConsoleMessage("exception", `${message}\n${stack}`);
+      const truncatedStack = stack
+        ? '\n  ' + stack.split('\n').slice(0, 3).join('\n  ') + '\n  ...[truncated]'
+        : '';
+      consoleLogsTool.registerConsoleMessage("exception", `${message}${truncatedStack}`);
     }
   });
 
@@ -155,8 +158,11 @@ async function registerConsoleMessage(page) {
           : String(reason);
 
       const stack = reason?.stack || "";
+      const truncatedStack = stack
+        ? '\n  ' + stack.split('\n').slice(0, 3).join('\n  ') + '\n  ...[truncated]'
+        : '';
       // Use console.error get "Unhandled Rejection In Promise"
-      console.error(`[Playwright][Unhandled Rejection In Promise] ${message}\n${stack}`);
+      console.error(`[Playwright][Unhandled Rejection In Promise] ${message}${truncatedStack}`);
     });
   });
 }

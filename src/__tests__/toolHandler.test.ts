@@ -344,7 +344,29 @@ describe('Tool Handler', () => {
       expect(logs).toEqual([
         '[log] test log message',
         '[error] test error message',
-        '[exception] test error\ntest stack'
+        '[exception] test error\n  test stack\n  ...[truncated]'
+      ]);
+    });
+
+    test('should truncate long stack traces to 3 lines', async () => {
+      await handleToolCall('playwright_navigate', { url: 'about:blank' }, mockServer);
+
+      // Setup mock handlers
+      const mockHandlers: Record<string, jest.Mock> = {};
+      mockPage.on.mockImplementation((event: string, handler: (arg: any) => void) => {
+        mockHandlers[event] = jest.fn(handler);
+      });
+
+      await registerConsoleMessage(mockPage);
+
+      // Test page error with multi-line stack trace
+      const mockError = new Error('test error');
+      mockError.stack = 'Error: test error\n    at line1\n    at line2\n    at line3\n    at line4\n    at line5';
+      mockHandlers['pageerror'](mockError);
+
+      const logs = getConsoleLogs();
+      expect(logs).toEqual([
+        '[exception] test error\n  Error: test error\n      at line1\n      at line2\n  ...[truncated]'
       ]);
     });
 
