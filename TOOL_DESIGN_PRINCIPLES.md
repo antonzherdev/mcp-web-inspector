@@ -107,6 +107,53 @@ return {
 - Symbols (✓): 1 token vs `"isVisible": true` (3+ tokens)
 - Arrows (→10px): 2 tokens vs `"gapRight": 10` (4+ tokens)
 
+### 4a. **Base64 Images in MCP Tool Responses** ⚠️ CRITICAL LIMITATION
+
+**DO NOT return base64-encoded images in MCP tool responses.**
+
+**Research Finding (2025-01-20):** Claude Code MCP implementation has a critical limitation with base64 images:
+
+| Method | Token Cost | Works in Claude Code? |
+|--------|-----------|----------------------|
+| **User pastes image directly** | ~1,500 tokens | ✅ Yes (efficient) |
+| **MCP tool returns base64** | ~137,411 tokens | ❌ No (exceeds 25k limit) |
+
+**The Problem:**
+- MCP tool responses have a 25,000 token limit (configurable via `MAX_MCP_OUTPUT_TOKENS`)
+- Base64 screenshot data is ~137,411 tokens (raw string length)
+- Claude Code counts the base64 STRING tokens, not efficient image tokens
+- Result: **Tool response fails with error** (Issue #9152)
+
+**Why the Discrepancy:**
+When users paste images into Claude Code, the client converts them to efficient image format (~1,500 tokens). When MCP tools return base64, Claude Code treats it as TEXT and counts every character.
+
+**Correct Approach for Screenshots:**
+```typescript
+// ✅ GOOD - Return file path
+playwright_screenshot({ name: "login" })
+→ "✓ Screenshot saved: .mcp-web-inspector/screenshots/login-2025-01-20.png"
+
+// ❌ BAD - Don't return base64
+playwright_screenshot({ name: "login", returnBase64: true })
+→ { type: "image", data: "iVBORw0KG..." }  // FAILS: exceeds 25k tokens
+```
+
+**User Workflow:**
+1. Tool saves screenshot to file
+2. User opens file in IDE/Finder
+3. If analysis needed, user manually pastes into Claude Code
+4. Claude processes efficiently (~1,500 tokens)
+
+**Alternative (MCP Resources):**
+MCP Resources can contain base64 blobs, but Claude Desktop requires users to **explicitly select resources** before use - no better UX than file-based approach.
+
+**Conclusion:** File paths are the ONLY working solution for binary data (screenshots, PDFs, etc.) in MCP tool responses.
+
+**References:**
+- GitHub Issue #9152: "Image responses token exceeds 25000 tokens"
+- MCP Specification 2025-06-18
+- Research: January 20, 2025
+
 ### 5. **Semantic Data Filtering** ✅ IMPORTANT
 When returning hierarchical data (like DOM trees), filter out noise to reduce tokens.
 
@@ -293,6 +340,7 @@ Before adding a new tool, verify:
 - [ ] Returns token-efficient format (compact text preferred over JSON)
 - [ ] Uses symbols and shorthand (✓✗⚡→↓ vs verbose field names)
 - [ ] Filters semantic data (skips wrapper divs, shows only meaningful elements)
+- [ ] **Does NOT return base64 images** (use file paths instead - see 4a)
 - [ ] Has clear, specific name
 - [ ] Single `selector` parameter (not multiple selector types)
 - [ ] Optional parameters have sensible defaults

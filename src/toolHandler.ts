@@ -1,32 +1,20 @@
 import type { Browser, Page } from 'playwright';
-import { chromium, firefox, webkit, request } from 'playwright';
+import { chromium, firefox, webkit } from 'playwright';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { BROWSER_TOOLS, API_TOOLS } from './tools.js';
+import { BROWSER_TOOLS } from './tools.js';
 import type { ToolContext } from './tools/common/types.js';
-import { ActionRecorder } from './tools/codegen/recorder.js';
-import {
-  startCodegenSession,
-  endCodegenSession,
-  getCodegenSession,
-  clearCodegenSession
-} from './tools/codegen/index.js';
 import {
   ScreenshotTool,
   NavigationTool,
   CloseBrowserTool,
-  ConsoleLogsTool,
-  ExpectResponseTool,
-  AssertResponseTool,
-  CustomUserAgentTool
+  ConsoleLogsTool
 } from './tools/browser/index.js';
 import {
   ClickTool,
-  IframeClickTool,
   FillTool,
   SelectTool,
   HoverTool,
   EvaluateTool,
-  IframeFillTool,
   UploadFileTool
 } from './tools/browser/interaction.js';
 import {
@@ -42,17 +30,8 @@ import { FindByTextTool } from './tools/browser/findByText.js';
 import { GetComputedStylesTool } from './tools/browser/computedStyles.js';
 import { ElementExistsTool } from './tools/browser/elementExists.js';
 import { ComparePositionsTool } from './tools/browser/comparePositions.js';
-import {
-  GetRequestTool,
-  PostRequestTool,
-  PutRequestTool,
-  PatchRequestTool,
-  DeleteRequestTool
-} from './tools/api/requests.js';
 import { GoBackTool, GoForwardTool } from './tools/browser/navigation.js';
 import { DragTool, PressKeyTool } from './tools/browser/interaction.js';
-import { SaveAsPdfTool } from './tools/browser/output.js';
-import { ClickAndSwitchTabTool } from './tools/browser/interaction.js';
 
 // Global state
 let browser: Browser | undefined;
@@ -110,32 +89,17 @@ let navigationTool: NavigationTool;
 let closeBrowserTool: CloseBrowserTool;
 let consoleLogsTool: ConsoleLogsTool;
 let clickTool: ClickTool;
-let iframeClickTool: IframeClickTool;
-let iframeFillTool: IframeFillTool;
 let fillTool: FillTool;
 let selectTool: SelectTool;
 let hoverTool: HoverTool;
 let uploadFileTool: UploadFileTool;
 let evaluateTool: EvaluateTool;
-let expectResponseTool: ExpectResponseTool;
-let assertResponseTool: AssertResponseTool;
-let customUserAgentTool: CustomUserAgentTool;
 let visibleTextTool: VisibleTextTool;
 let visibleHtmlTool: VisibleHtmlTool;
-
-let getRequestTool: GetRequestTool;
-let postRequestTool: PostRequestTool;
-let putRequestTool: PutRequestTool;
-let patchRequestTool: PatchRequestTool;
-let deleteRequestTool: DeleteRequestTool;
-
-// Add these variables at the top with other tool declarations
 let goBackTool: GoBackTool;
 let goForwardTool: GoForwardTool;
 let dragTool: DragTool;
 let pressKeyTool: PressKeyTool;
-let saveAsPdfTool: SaveAsPdfTool;
-let clickAndSwitchTabTool: ClickAndSwitchTabTool;
 let elementVisibilityTool: ElementVisibilityTool;
 let elementPositionTool: ElementPositionTool;
 let inspectDomTool: InspectDomTool;
@@ -409,14 +373,6 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
   }
 }
 
-/**
- * Creates a new API request context
- */
-async function ensureApiContext(url: string) {
-  return await request.newContext({
-    baseURL: url,
-  });
-}
 
 /**
  * Initialize all tool instances
@@ -428,33 +384,17 @@ function initializeTools(server: any) {
   if (!closeBrowserTool) closeBrowserTool = new CloseBrowserTool(server);
   if (!consoleLogsTool) consoleLogsTool = new ConsoleLogsTool(server);
   if (!clickTool) clickTool = new ClickTool(server);
-  if (!iframeClickTool) iframeClickTool = new IframeClickTool(server);
-  if (!iframeFillTool) iframeFillTool = new IframeFillTool(server);
   if (!fillTool) fillTool = new FillTool(server);
   if (!selectTool) selectTool = new SelectTool(server);
   if (!hoverTool) hoverTool = new HoverTool(server);
   if (!uploadFileTool) uploadFileTool = new UploadFileTool(server);
   if (!evaluateTool) evaluateTool = new EvaluateTool(server);
-  if (!expectResponseTool) expectResponseTool = new ExpectResponseTool(server);
-  if (!assertResponseTool) assertResponseTool = new AssertResponseTool(server);
-  if (!customUserAgentTool) customUserAgentTool = new CustomUserAgentTool(server);
   if (!visibleTextTool) visibleTextTool = new VisibleTextTool(server);
   if (!visibleHtmlTool) visibleHtmlTool = new VisibleHtmlTool(server);
-  
-  // API tools
-  if (!getRequestTool) getRequestTool = new GetRequestTool(server);
-  if (!postRequestTool) postRequestTool = new PostRequestTool(server);
-  if (!putRequestTool) putRequestTool = new PutRequestTool(server);
-  if (!patchRequestTool) patchRequestTool = new PatchRequestTool(server);
-  if (!deleteRequestTool) deleteRequestTool = new DeleteRequestTool(server);
-
-  // Initialize new tools
   if (!goBackTool) goBackTool = new GoBackTool(server);
   if (!goForwardTool) goForwardTool = new GoForwardTool(server);
   if (!dragTool) dragTool = new DragTool(server);
   if (!pressKeyTool) pressKeyTool = new PressKeyTool(server);
-  if (!saveAsPdfTool) saveAsPdfTool = new SaveAsPdfTool(server);
-  if (!clickAndSwitchTabTool) clickAndSwitchTabTool = new ClickAndSwitchTabTool(server);
   if (!elementVisibilityTool) elementVisibilityTool = new ElementVisibilityTool(server);
   if (!elementPositionTool) elementPositionTool = new ElementPositionTool(server);
   if (!inspectDomTool) inspectDomTool = new InspectDomTool(server);
@@ -478,24 +418,6 @@ export async function handleToolCall(
   initializeTools(server);
 
   try {
-    // Handle codegen tools
-    switch (name) {
-      case 'start_codegen_session':
-        return await handleCodegenResult(startCodegenSession.handler(args));
-      case 'end_codegen_session':
-        return await handleCodegenResult(endCodegenSession.handler(args));
-      case 'get_codegen_session':
-        return await handleCodegenResult(getCodegenSession.handler(args));
-      case 'clear_codegen_session':
-        return await handleCodegenResult(clearCodegenSession.handler(args));
-    }
-
-    // Record tool action if there's an active session
-    const recorder = ActionRecorder.getInstance();
-    const activeSession = recorder.getActiveSession();
-    if (activeSession && name !== 'close') {
-      recorder.recordAction(name, args);
-    }
 
     // Special case for browser close to ensure it always works
     if (name === "close") {
@@ -569,21 +491,6 @@ export async function handleToolCall(
     }
   }
 
-    // Set up API context if needed
-    if (API_TOOLS.includes(name)) {
-      try {
-        context.apiContext = await ensureApiContext(args.url);
-      } catch (error) {
-        return {
-          content: [{
-            type: "text",
-            text: `Failed to initialize API context: ${(error as Error).message}`,
-          }],
-          isError: true,
-        };
-      }
-    }
-
     // Route to appropriate tool
     switch (name) {
       // Browser tools
@@ -601,13 +508,7 @@ export async function handleToolCall(
         
       case "click":
         return await clickTool.execute(args, context);
-        
-      case "iframe_click":
-        return await iframeClickTool.execute(args, context);
 
-      case "iframe_fill":
-        return await iframeFillTool.execute(args, context);
-        
       case "fill":
         return await fillTool.execute(args, context);
         
@@ -623,38 +524,12 @@ export async function handleToolCall(
       case "evaluate":
         return await evaluateTool.execute(args, context);
 
-      case "expect_response":
-        return await expectResponseTool.execute(args, context);
-
-      case "assert_response":
-        return await assertResponseTool.execute(args, context);
-
-      case "set_user_agent":
-        return await customUserAgentTool.execute(args, context);
-        
       case "get_text":
         return await visibleTextTool.execute(args, context);
       
       case "get_html":
         return await visibleHtmlTool.execute(args, context);
-        
-      // API tools
-      case "get":
-        return await getRequestTool.execute(args, context);
-        
-      case "post":
-        return await postRequestTool.execute(args, context);
-        
-      case "put":
-        return await putRequestTool.execute(args, context);
-        
-      case "patch":
-        return await patchRequestTool.execute(args, context);
-        
-      case "delete":
-        return await deleteRequestTool.execute(args, context);
-      
-      // New tools
+
       case "go_back":
         return await goBackTool.execute(args, context);
       case "go_forward":
@@ -663,10 +538,6 @@ export async function handleToolCall(
         return await dragTool.execute(args, context);
       case "press_key":
         return await pressKeyTool.execute(args, context);
-      case "save_pdf":
-        return await saveAsPdfTool.execute(args, context);
-      case "click_and_switch_tab":
-        return await clickAndSwitchTabTool.execute(args, context);
 
       case "check_visibility":
         return await elementVisibilityTool.execute(args, context);
@@ -739,29 +610,6 @@ export async function handleToolCall(
   }
 }
 
-/**
- * Helper function to handle codegen tool results
- */
-async function handleCodegenResult(resultPromise: Promise<any>): Promise<CallToolResult> {
-  try {
-    const result = await resultPromise;
-    return {
-      content: [{
-        type: "text",
-        text: JSON.stringify(result),
-      }],
-      isError: false,
-    };
-  } catch (error) {
-    return {
-      content: [{
-        type: "text",
-        text: error instanceof Error ? error.message : String(error),
-      }],
-      isError: true,
-    };
-  }
-}
 
 /**
  * Get console logs

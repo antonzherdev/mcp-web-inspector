@@ -34,8 +34,8 @@ setSessionConfig(sessionConfig);
 async function runServer() {
   const server = new Server(
     {
-      name: "playwright-mcp",
-      version: "1.0.6",
+      name: "mcp-web-inspector",
+      version: "0.1.0",
     },
     {
       capabilities: {

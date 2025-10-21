@@ -81,12 +81,6 @@ npm run test:custom    # Run tests using custom script (node run-tests.cjs)
 node run-tests.cjs     # Alternative way to run tests with coverage
 ```
 
-### Running Evals
-The evals package loads an MCP client that runs index.ts directly (no rebuild needed between tests):
-```bash
-OPENAI_API_KEY=your-key npx mcp-eval src/evals/evals.ts src/tools/codegen/index.ts
-```
-
 ## Available Tools
 
 ### Browser Tools
@@ -142,12 +136,6 @@ OPENAI_API_KEY=your-key npx mcp-eval src/evals/evals.ts src/tools/codegen/index.
 - `playwright_patch` - HTTP PATCH request
 - `playwright_delete` - HTTP DELETE request
 
-### Code Generation Tools
-- `start_codegen_session` - Start recording Playwright actions for test generation
-- `end_codegen_session` - End session and generate Playwright test file
-- `get_codegen_session` - Get session information
-- `clear_codegen_session` - Clear session without generating test
-
 ## Architecture
 
 ### Server Structure (MCP Protocol)
@@ -166,17 +154,13 @@ The server follows the Model Context Protocol specification:
    - Manages global browser state (browser, page, currentBrowserType)
    - Implements `ensureBrowser()` to lazily launch browsers with reconnection handling
    - Routes tool calls to appropriate tool instances
-   - Handles browser/API context setup based on tool requirements
-   - Integrates with ActionRecorder for codegen sessions
    - Contains browser cleanup and error recovery logic
 
 ### Tool Organization
 
-Tools are organized into three categories defined in `src/tools.ts`:
+All tools are browser automation tools defined in `src/tools.ts`:
 
-- **BROWSER_TOOLS**: Tools requiring a Playwright browser instance (navigate, click, screenshot, etc.)
-- **API_TOOLS**: HTTP request tools using Playwright's API request context (GET, POST, PUT, PATCH, DELETE)
-- **CODEGEN_TOOLS**: Test generation session management (start, end, get, clear)
+- **BROWSER_TOOLS**: All available tools requiring a Playwright browser instance (navigate, click, screenshot, inspect_dom, etc.)
 
 All browser tools extend `BrowserToolBase` (`src/tools/browser/base.ts`) which provides:
 - `safeExecute()`: Wrapper with browser connection validation and error handling
@@ -212,22 +196,6 @@ The `ensureBrowser()` function handles:
 - Viewport, user agent, and headless mode configuration
 - Retry logic for initialization failures
 
-### Code Generation (Codegen)
-
-The codegen system (`src/tools/codegen/`) records Playwright actions and generates test files:
-
-- **ActionRecorder** (`recorder.ts`): Singleton tracking active sessions and recording actions
-- **PlaywrightGenerator** (`generator.ts`): Converts recorded actions to Playwright test code
-- **Codegen Tools** (`index.ts`): MCP tools for session management (start/end/get/clear)
-
-Sessions store:
-- Unique sessionId
-- CodegenOptions (outputPath, testNamePrefix, includeComments)
-- Recorded actions array
-- Timestamps
-
-Generated tests are written to the configured outputPath as executable Playwright tests.
-
 ### File Structure
 
 ```
@@ -238,24 +206,16 @@ src/
 ├── tools.ts                # Tool definitions and categorization
 ├── tools/
 │   ├── common/types.ts     # Shared interfaces (ToolContext, ToolResponse)
-│   ├── browser/            # Browser automation tools
-│   │   ├── base.ts         # BrowserToolBase class with normalizeSelector()
-│   │   ├── interaction.ts  # Click, fill, select, hover, etc.
-│   │   ├── navigation.ts   # Navigate, go back/forward
-│   │   ├── screenshot.ts   # Screenshot tool
-│   │   ├── console.ts      # Console logs retrieval
-│   │   ├── visiblePage.ts  # Get visible text/HTML
-│   │   ├── output.ts       # PDF generation
-│   │   ├── elementInspection.ts  # Element visibility and position tools
-│   │   └── ...
-│   ├── api/                # HTTP request tools
-│   │   ├── base.ts         # Base API tool class
-│   │   └── requests.ts     # GET, POST, PUT, PATCH, DELETE
-│   └── codegen/            # Test generation
-│       ├── recorder.ts     # Action recording
-│       ├── generator.ts    # Playwright test code generation
-│       ├── index.ts        # Codegen tool definitions
-│       └── types.ts        # Codegen interfaces
+│   └── browser/            # Browser automation tools
+│       ├── base.ts         # BrowserToolBase class with normalizeSelector()
+│       ├── interaction.ts  # Click, fill, select, hover, etc.
+│       ├── navigation.ts   # Navigate, go back/forward
+│       ├── screenshot.ts   # Screenshot tool
+│       ├── console.ts      # Console logs retrieval
+│       ├── visiblePage.ts  # Get visible text/HTML
+│       ├── output.ts       # PDF generation
+│       ├── elementInspection.ts  # Element visibility and position tools
+│       └── ...
 └── __tests__/              # Jest test suites
     └── tools/
         └── browser/
@@ -291,12 +251,12 @@ src/
 ## Contributing Notes
 
 When adding new tools:
-1. Choose appropriate category (BROWSER_TOOLS, API_TOOLS, or CODEGEN_TOOLS)
-2. Extend `BrowserToolBase` for browser tools or `ApiToolBase` for API tools
+1. All tools are browser automation tools (BROWSER_TOOLS)
+2. Extend `BrowserToolBase` for browser tools
 3. Add tool definition to `createToolDefinitions()` in `src/tools.ts`
 4. Add case to switch statement in `handleToolCall()` in `src/toolHandler.ts`
 5. Initialize tool instance in `initializeTools()` function
-6. Add tests in `src/__tests__/tools/` matching the tool category
+6. Add tests in `src/__tests__/tools/browser/`
 
 ### Tool Design Best Practices
 

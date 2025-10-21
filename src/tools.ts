@@ -1,5 +1,4 @@
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
-import { codegenTools } from './tools/codegen';
 
 interface SessionConfig {
   saveSession: boolean;
@@ -18,78 +17,6 @@ export function createToolDefinitions(sessionConfig?: SessionConfig) {
     : "Navigate to a URL. Browser starts fresh each time with no persistent session state (started with --no-save-session flag).";
 
   return [
-    // Codegen tools
-    {
-      name: "start_codegen_session",
-      description: "Start a new code generation session to record Playwright actions",
-      inputSchema: {
-        type: "object",
-        properties: {
-          options: {
-            type: "object",
-            description: "Code generation options",
-            properties: {
-              outputPath: { 
-                type: "string", 
-                description: "Directory path where generated tests will be saved (use absolute path)" 
-              },
-              testNamePrefix: { 
-                type: "string", 
-                description: "Prefix to use for generated test names (default: 'GeneratedTest')" 
-              },
-              includeComments: { 
-                type: "boolean", 
-                description: "Whether to include descriptive comments in generated tests" 
-              }
-            },
-            required: ["outputPath"]
-          }
-        },
-        required: ["options"]
-      }
-    },
-    {
-      name: "end_codegen_session",
-      description: "End a code generation session and generate the test file",
-      inputSchema: {
-        type: "object",
-        properties: {
-          sessionId: { 
-            type: "string", 
-            description: "ID of the session to end" 
-          }
-        },
-        required: ["sessionId"]
-      }
-    },
-    {
-      name: "get_codegen_session",
-      description: "Get information about a code generation session",
-      inputSchema: {
-        type: "object",
-        properties: {
-          sessionId: { 
-            type: "string", 
-            description: "ID of the session to retrieve" 
-          }
-        },
-        required: ["sessionId"]
-      }
-    },
-    {
-      name: "clear_codegen_session",
-      description: "Clear a code generation session without generating a test",
-      inputSchema: {
-        type: "object",
-        properties: {
-          sessionId: { 
-            type: "string", 
-            description: "ID of the session to clear" 
-          }
-        },
-        required: ["sessionId"]
-      }
-    },
     {
       name: "navigate",
       description: navigateDescription,
@@ -142,31 +69,6 @@ export function createToolDefinitions(sessionConfig?: SessionConfig) {
           selector: { type: "string", description: "CSS selector for the element to click" },
         },
         required: ["selector"],
-      },
-    },
-    {
-      name: "iframe_click",
-      description: "Click an element in an iframe on the page",
-      inputSchema: {
-        type: "object",
-        properties: {
-          iframeSelector: { type: "string", description: "CSS selector for the iframe containing the element to click" },
-          selector: { type: "string", description: "CSS selector for the element to click" },
-        },
-        required: ["iframeSelector", "selector"],
-      },
-    },
-    {
-      name: "iframe_fill",
-      description: "Fill an element in an iframe on the page",
-      inputSchema: {
-        type: "object",
-        properties: {
-          iframeSelector: { type: "string", description: "CSS selector for the iframe containing the element to fill" },
-          selector: { type: "string", description: "CSS selector for the element to fill" },
-          value: { type: "string", description: "Value to fill" },
-        },
-        required: ["iframeSelector", "selector", "value"],
       },
     },
     {
@@ -264,105 +166,6 @@ export function createToolDefinitions(sessionConfig?: SessionConfig) {
       },
     },
     {
-      name: "get",
-      description: "Perform an HTTP GET request",
-      inputSchema: {
-        type: "object",
-        properties: {
-          url: { type: "string", description: "URL to perform GET operation" }
-        },
-        required: ["url"],
-      },
-    },
-    {
-      name: "post",
-      description: "Perform an HTTP POST request",
-      inputSchema: {
-        type: "object",
-        properties: {
-          url: { type: "string", description: "URL to perform POST operation" },
-          value: { type: "string", description: "Data to post in the body" },
-          token: { type: "string", description: "Bearer token for authorization" },
-          headers: { 
-            type: "object", 
-            description: "Additional headers to include in the request",
-            additionalProperties: { type: "string" }
-          }
-        },
-        required: ["url", "value"],
-      },
-    },
-    {
-      name: "put",
-      description: "Perform an HTTP PUT request",
-      inputSchema: {
-        type: "object",
-        properties: {
-          url: { type: "string", description: "URL to perform PUT operation" },
-          value: { type: "string", description: "Data to PUT in the body" },
-        },
-        required: ["url", "value"],
-      },
-    },
-    {
-      name: "patch",
-      description: "Perform an HTTP PATCH request",
-      inputSchema: {
-        type: "object",
-        properties: {
-          url: { type: "string", description: "URL to perform PUT operation" },
-          value: { type: "string", description: "Data to PATCH in the body" },
-        },
-        required: ["url", "value"],
-      },
-    },
-    {
-      name: "delete",
-      description: "Perform an HTTP DELETE request",
-      inputSchema: {
-        type: "object",
-        properties: {
-          url: { type: "string", description: "URL to perform DELETE operation" }
-        },
-        required: ["url"],
-      },
-    },
-    {
-      name: "expect_response",
-      description: "Ask Playwright to start waiting for a HTTP response. This tool initiates the wait operation but does not wait for its completion.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          id: { type: "string", description: "Unique & arbitrary identifier to be used for retrieving this response later with `Playwright_assert_response`." },
-          url: { type: "string", description: "URL pattern to match in the response." }
-        },
-        required: ["id", "url"],
-      },
-    },
-    {
-      name: "assert_response",
-      description: "Wait for and validate a previously initiated HTTP response wait operation.",
-      inputSchema: {
-        type: "object",
-        properties: {
-          id: { type: "string", description: "Identifier of the HTTP response initially expected using `Playwright_expect_response`." },
-          value: { type: "string", description: "Data to expect in the body of the HTTP response. If provided, the assertion will fail if this value is not found in the response body." }
-        },
-        required: ["id"],
-      },
-    },
-    {
-      name: "set_user_agent",
-      description: "Set a custom User Agent for the browser",
-      inputSchema: {
-        type: "object",
-        properties: {
-          userAgent: { type: "string", description: "Custom User Agent for the Playwright browser instance" }
-        },
-        required: ["userAgent"],
-      },
-    },
-    {
       name: "get_text",
       description: "Get the visible text content of the current page",
       inputSchema: {
@@ -429,41 +232,6 @@ export function createToolDefinitions(sessionConfig?: SessionConfig) {
           selector: { type: "string", description: "Optional CSS selector to focus before pressing key" }
         },
         required: ["key"],
-      },
-    },
-    {
-      name: "save_pdf",
-      description: "Save the current page as a PDF file",
-      inputSchema: {
-        type: "object",
-        properties: {
-          outputPath: { type: "string", description: "Directory path where PDF will be saved" },
-          filename: { type: "string", description: "Name of the PDF file (default: page.pdf)" },
-          format: { type: "string", description: "Page format (e.g. 'A4', 'Letter')" },
-          printBackground: { type: "boolean", description: "Whether to print background graphics" },
-          margin: {
-            type: "object",
-            description: "Page margins",
-            properties: {
-              top: { type: "string" },
-              right: { type: "string" },
-              bottom: { type: "string" },
-              left: { type: "string" }
-            }
-          }
-        },
-        required: ["outputPath"],
-      },
-    },
-    {
-      name: "click_and_switch_tab",
-      description: "Click a link and switch to the newly opened tab",
-      inputSchema: {
-        type: "object",
-        properties: {
-          selector: { type: "string", description: "CSS selector for the link to click" },
-        },
-        required: ["selector"],
       },
     },
     {
@@ -702,12 +470,5 @@ export const BROWSER_TOOLS = [
 // - Network: expect_response, assert_response
 // - Other: set_user_agent, save_pdf
 
-export const API_TOOLS: string[] = [];
-export const CODEGEN_TOOLS: string[] = [];
-
-// All available tools
-export const tools = [
-  ...BROWSER_TOOLS,
-  ...API_TOOLS,
-  ...CODEGEN_TOOLS
-];
+// All available tools (browser tools only)
+export const tools = BROWSER_TOOLS;

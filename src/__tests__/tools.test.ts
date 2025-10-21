@@ -1,4 +1,4 @@
-import { createToolDefinitions, BROWSER_TOOLS, API_TOOLS } from '../tools';
+import { createToolDefinitions, BROWSER_TOOLS } from '../tools';
 
 describe('Tool Definitions', () => {
   const toolDefinitions = createToolDefinitions();
@@ -27,10 +27,6 @@ describe('Tool Definitions', () => {
     });
   });
 
-  test('API_TOOLS should be empty array (removed from web inspector)', () => {
-    expect(Array.isArray(API_TOOLS)).toBe(true);
-    expect(API_TOOLS.length).toBe(0);
-  });
 
   test('should validate navigate tool schema', () => {
     const navigateTool = toolDefinitions.find(tool => tool.name === 'navigate');
@@ -86,9 +82,9 @@ describe('Tool Definitions', () => {
     expect(BROWSER_TOOLS.length).toBe(25);
   });
 
-  test('should have all tool definitions available (41 total including non-exported)', () => {
-    // All tools are still defined in createToolDefinitions()
-    expect(toolDefinitions.length).toBe(41);
+  test('should have all tool definitions available (25 total - browser tools only)', () => {
+    // Removed HTTP API, codegen, iframe, and other unused tools
+    expect(toolDefinitions.length).toBe(25);
   });
 
   test('BROWSER_TOOLS should only contain web inspection tools', () => {
