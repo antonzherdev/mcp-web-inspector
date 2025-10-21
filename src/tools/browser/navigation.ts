@@ -26,17 +26,18 @@ export class NavigationTool extends BrowserToolBase {
       );
     }
 
+    this.recordNavigation();
     return this.safeExecute(context, async (page) => {
       try {
         await page.goto(args.url, {
           timeout: args.timeout || 30000,
           waitUntil: args.waitUntil || "load"
         });
-        
+
         return createSuccessResponse(`Navigated to ${args.url}`);
       } catch (error) {
         const errorMessage = (error as Error).message;
-        
+
         // Check for common disconnection errors
         if (
           errorMessage.includes("Target page, context or browser has been closed") ||
@@ -49,7 +50,7 @@ export class NavigationTool extends BrowserToolBase {
             `Browser connection issue: ${errorMessage}. Connection has been reset - please retry your navigation.`
           );
         }
-        
+
         // For other errors, return the standard error
         throw error;
       }
@@ -98,6 +99,7 @@ export class GoBackTool extends BrowserToolBase {
    * Execute the go back tool
    */
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
+    this.recordNavigation();
     return this.safeExecute(context, async (page) => {
       await page.goBack();
       return createSuccessResponse("Navigated back in browser history");
@@ -113,6 +115,7 @@ export class GoForwardTool extends BrowserToolBase {
    * Execute the go forward tool
    */
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
+    this.recordNavigation();
     return this.safeExecute(context, async (page) => {
       await page.goForward();
       return createSuccessResponse("Navigated forward in browser history");

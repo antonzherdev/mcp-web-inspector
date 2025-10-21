@@ -823,4 +823,18 @@ export function getScreenshots(): Map<string, string> {
   return screenshotTool?.getScreenshots() ?? new Map();
 }
 
+/**
+ * Update last interaction timestamp
+ */
+export function updateLastInteractionTimestamp(): void {
+  consoleLogsTool?.updateLastInteractionTimestamp();
+}
+
+/**
+ * Update last navigation timestamp
+ */
+export function updateLastNavigationTimestamp(): void {
+  consoleLogsTool?.updateLastNavigationTimestamp();
+}
+
 export { registerConsoleMessage };

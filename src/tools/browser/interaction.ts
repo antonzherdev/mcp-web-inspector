@@ -9,6 +9,7 @@ export class ClickTool extends BrowserToolBase {
    * Execute the click tool
    */
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
+    this.recordInteraction();
     return this.safeExecute(context, async (page) => {
       const selector = this.normalizeSelector(args.selector);
       await page.click(selector);
@@ -24,7 +25,7 @@ export class ClickAndSwitchTabTool extends BrowserToolBase {
    * Execute the click and switch tab tool
    */
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
-
+    this.recordInteraction();
     return this.safeExecute(context, async (page) => {
       const selector = this.normalizeSelector(args.selector);
       // Listen for a new tab to open
@@ -55,6 +56,7 @@ export class IframeClickTool extends BrowserToolBase {
    * Execute the iframe click tool
    */
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
+    this.recordInteraction();
     return this.safeExecute(context, async (page) => {
       const iframeSelector = this.normalizeSelector(args.iframeSelector);
       const selector = this.normalizeSelector(args.selector);
@@ -77,6 +79,7 @@ export class IframeFillTool extends BrowserToolBase {
    * Execute the iframe fill tool
    */
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
+    this.recordInteraction();
     return this.safeExecute(context, async (page) => {
       const iframeSelector = this.normalizeSelector(args.iframeSelector);
       const selector = this.normalizeSelector(args.selector);
@@ -99,6 +102,7 @@ export class FillTool extends BrowserToolBase {
    * Execute the fill tool
    */
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
+    this.recordInteraction();
     return this.safeExecute(context, async (page) => {
       const selector = this.normalizeSelector(args.selector);
       await page.waitForSelector(selector);
@@ -116,6 +120,7 @@ export class SelectTool extends BrowserToolBase {
    * Execute the select tool
    */
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
+    this.recordInteraction();
     return this.safeExecute(context, async (page) => {
       const selector = this.normalizeSelector(args.selector);
       await page.waitForSelector(selector);
@@ -133,6 +138,7 @@ export class HoverTool extends BrowserToolBase {
    * Execute the hover tool
    */
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
+    this.recordInteraction();
     return this.safeExecute(context, async (page) => {
       const selector = this.normalizeSelector(args.selector);
       await page.waitForSelector(selector);
@@ -150,6 +156,7 @@ export class UploadFileTool extends BrowserToolBase {
    * Execute the upload file tool
    */
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
+    this.recordInteraction();
     return this.safeExecute(context, async (page) => {
         const selector = this.normalizeSelector(args.selector);
         await page.waitForSelector(selector);
@@ -167,9 +174,10 @@ export class EvaluateTool extends BrowserToolBase {
    * Execute the evaluate tool
    */
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
+    this.recordInteraction();
     return this.safeExecute(context, async (page) => {
       const result = await page.evaluate(args.script);
-      
+
       // Convert result to string for display
       let resultStr: string;
       try {
@@ -177,7 +185,7 @@ export class EvaluateTool extends BrowserToolBase {
       } catch (error) {
         resultStr = String(result);
       }
-      
+
       return createSuccessResponse([
         `Executed JavaScript:`,
         `${args.script}`,
@@ -196,6 +204,7 @@ export class DragTool extends BrowserToolBase {
    * Execute the drag tool
    */
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
+    this.recordInteraction();
     return this.safeExecute(context, async (page) => {
       const sourceSelector = this.normalizeSelector(args.sourceSelector);
       const targetSelector = this.normalizeSelector(args.targetSelector);
@@ -233,6 +242,7 @@ export class PressKeyTool extends BrowserToolBase {
    * Execute the key press tool
    */
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
+    this.recordInteraction();
     return this.safeExecute(context, async (page) => {
       if (args.selector) {
         const selector = this.normalizeSelector(args.selector);

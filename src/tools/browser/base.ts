@@ -97,7 +97,7 @@ export abstract class BrowserToolBase implements ToolHandler {
       return await operation(context.page!);
     } catch (error) {
       const errorMessage = (error as Error).message;
-      
+
       // Check for common browser disconnection errors
       if (
         errorMessage.includes("Target page, context or browser has been closed") ||
@@ -111,8 +111,26 @@ export abstract class BrowserToolBase implements ToolHandler {
         resetBrowserState();
         return createErrorResponse(`Browser connection error: ${errorMessage}. Connection has been reset - please retry the operation.`);
       }
-      
+
       return createErrorResponse(`Operation failed: ${errorMessage}`);
     }
+  }
+
+  /**
+   * Record that a user interaction occurred (for console log filtering)
+   */
+  protected recordInteraction(): void {
+    import('../../toolHandler.js').then(({ updateLastInteractionTimestamp }) => {
+      updateLastInteractionTimestamp();
+    });
+  }
+
+  /**
+   * Record that a navigation occurred (for console log filtering)
+   */
+  protected recordNavigation(): void {
+    import('../../toolHandler.js').then(({ updateLastNavigationTimestamp }) => {
+      updateLastNavigationTimestamp();
+    });
   }
 } 

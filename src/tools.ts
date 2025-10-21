@@ -153,6 +153,11 @@ export function createToolDefinitions(sessionConfig?: SessionConfig) {
             type: "number",
             description: "Maximum number of logs to return"
           },
+          since: {
+            type: "string",
+            description: "Filter logs since a specific event: 'last-call' (since last get_console_logs call), 'last-navigation' (since last page navigation), or 'last-interaction' (since last user interaction like click, fill, etc.)",
+            enum: ["last-call", "last-navigation", "last-interaction"]
+          },
           clear: {
             type: "boolean",
             description: "Whether to clear logs after retrieval (default: false)"

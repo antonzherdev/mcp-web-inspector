@@ -114,4 +114,121 @@ describe('ConsoleLogsTool', () => {
     expect(result.isError).toBe(false);
     expect(result.content[0].text).toContain('No console logs matching the criteria');
   });
+
+  test('should filter logs by "since: last-call"', async () => {
+    // Add some initial logs
+    consoleLogsTool.registerConsoleMessage('log', 'Log before first call');
+    consoleLogsTool.registerConsoleMessage('error', 'Error before first call');
+
+    // First call - this will set lastCallTimestamp
+    await consoleLogsTool.execute({}, mockContext);
+
+    // Wait a bit to ensure timestamp difference
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    // Add more logs after the first call
+    consoleLogsTool.registerConsoleMessage('log', 'Log after first call');
+    consoleLogsTool.registerConsoleMessage('warning', 'Warning after first call');
+
+    // Second call with since: 'last-call' should only return logs after the first call
+    const result = await consoleLogsTool.execute({ since: 'last-call' }, mockContext);
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('Retrieved 2 console log(s)');
+    const logsText = result.content.slice(1).map(c => c.text).join('\n');
+    expect(logsText).toContain('Log after first call');
+    expect(logsText).toContain('Warning after first call');
+    expect(logsText).not.toContain('Log before first call');
+    expect(logsText).not.toContain('Error before first call');
+  });
+
+  test('should filter logs by "since: last-navigation"', async () => {
+    // Add some initial logs
+    consoleLogsTool.registerConsoleMessage('log', 'Log before navigation');
+
+    // Simulate a navigation
+    consoleLogsTool.updateLastNavigationTimestamp();
+
+    // Wait a bit to ensure timestamp difference
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    // Add logs after navigation
+    consoleLogsTool.registerConsoleMessage('log', 'Log after navigation');
+    consoleLogsTool.registerConsoleMessage('error', 'Error after navigation');
+
+    // Get logs since last navigation
+    const result = await consoleLogsTool.execute({ since: 'last-navigation' }, mockContext);
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('Retrieved 2 console log(s)');
+    const logsText = result.content.slice(1).map(c => c.text).join('\n');
+    expect(logsText).toContain('Log after navigation');
+    expect(logsText).toContain('Error after navigation');
+    expect(logsText).not.toContain('Log before navigation');
+  });
+
+  test('should filter logs by "since: last-interaction"', async () => {
+    // Add some initial logs
+    consoleLogsTool.registerConsoleMessage('log', 'Log before interaction');
+
+    // Simulate an interaction
+    consoleLogsTool.updateLastInteractionTimestamp();
+
+    // Wait a bit to ensure timestamp difference
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    // Add logs after interaction
+    consoleLogsTool.registerConsoleMessage('log', 'Log after interaction');
+    consoleLogsTool.registerConsoleMessage('warning', 'Warning after interaction');
+
+    // Get logs since last interaction
+    const result = await consoleLogsTool.execute({ since: 'last-interaction' }, mockContext);
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('Retrieved 2 console log(s)');
+    const logsText = result.content.slice(1).map(c => c.text).join('\n');
+    expect(logsText).toContain('Log after interaction');
+    expect(logsText).toContain('Warning after interaction');
+    expect(logsText).not.toContain('Log before interaction');
+  });
+
+  test('should handle invalid "since" value', async () => {
+    consoleLogsTool.registerConsoleMessage('log', 'Test log');
+
+    const result = await consoleLogsTool.execute({ since: 'invalid-value' }, mockContext);
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('Invalid \'since\' value');
+  });
+
+  test('should combine "since" with other filters', async () => {
+    // Add some initial logs
+    consoleLogsTool.registerConsoleMessage('log', 'Log before interaction');
+    consoleLogsTool.registerConsoleMessage('error', 'Error before interaction');
+
+    // Simulate an interaction
+    consoleLogsTool.updateLastInteractionTimestamp();
+
+    // Wait a bit to ensure timestamp difference
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    // Add logs after interaction
+    consoleLogsTool.registerConsoleMessage('log', 'Log after interaction');
+    consoleLogsTool.registerConsoleMessage('error', 'Error after interaction');
+    consoleLogsTool.registerConsoleMessage('warning', 'Warning after interaction');
+
+    // Get only error logs since last interaction
+    const result = await consoleLogsTool.execute({
+      since: 'last-interaction',
+      type: 'error'
+    }, mockContext);
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('Retrieved 1 console log(s)');
+    const logsText = result.content.slice(1).map(c => c.text).join('\n');
+    expect(logsText).toContain('Error after interaction');
+    expect(logsText).not.toContain('Log after interaction');
+    expect(logsText).not.toContain('Warning after interaction');
+    expect(logsText).not.toContain('Error before interaction');
+  });
 }); 
