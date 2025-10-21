@@ -32,6 +32,7 @@ import { ElementExistsTool } from './tools/browser/elementExists.js';
 import { ComparePositionsTool } from './tools/browser/comparePositions.js';
 import { GoBackTool, GoForwardTool } from './tools/browser/navigation.js';
 import { DragTool, PressKeyTool } from './tools/browser/interaction.js';
+import { WaitForElementTool } from './tools/browser/waitForElement.js';
 
 // Global state
 let browser: Browser | undefined;
@@ -109,6 +110,7 @@ let findByTextTool: FindByTextTool;
 let getComputedStylesTool: GetComputedStylesTool;
 let elementExistsTool: ElementExistsTool;
 let comparePositionsTool: ComparePositionsTool;
+let waitForElementTool: WaitForElementTool;
 
 
 interface BrowserSettings {
@@ -410,6 +412,7 @@ function initializeTools(server: any) {
   if (!getComputedStylesTool) getComputedStylesTool = new GetComputedStylesTool(server);
   if (!elementExistsTool) elementExistsTool = new ElementExistsTool(server);
   if (!comparePositionsTool) comparePositionsTool = new ComparePositionsTool(server);
+  if (!waitForElementTool) waitForElementTool = new WaitForElementTool(server);
 }
 
 /**
@@ -571,6 +574,9 @@ export async function handleToolCall(
 
       case "compare_positions":
         return await comparePositionsTool.execute(args, context);
+
+      case "wait_for_element":
+        return await waitForElementTool.execute(args, context);
 
       default:
         return {

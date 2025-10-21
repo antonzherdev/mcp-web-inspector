@@ -417,6 +417,29 @@ export function createToolDefinitions(sessionConfig?: SessionConfig) {
         required: ["selector1", "selector2", "checkAlignment"],
       },
     },
+    {
+      name: "wait_for_element",
+      description: "Wait for an element to reach a specific state (visible, hidden, attached, detached). Better than sleep() for waiting on dynamic content. Returns duration and current element status. Supports testid shortcuts (e.g., 'testid:submit-button').",
+      inputSchema: {
+        type: "object",
+        properties: {
+          selector: {
+            type: "string",
+            description: "CSS selector, text selector, or testid shorthand (e.g., 'testid:submit-button', '#loading-spinner')"
+          },
+          state: {
+            type: "string",
+            description: "State to wait for: 'visible' (default), 'hidden', 'attached', 'detached'",
+            enum: ["visible", "hidden", "attached", "detached"]
+          },
+          timeout: {
+            type: "number",
+            description: "Maximum time to wait in milliseconds (default: 10000)"
+          }
+        },
+        required: ["selector"],
+      },
+    },
   ] as const satisfies Tool[];
 }
 
@@ -439,6 +462,7 @@ export const BROWSER_TOOLS = [
   "get_position",
   "compare_positions",
   "element_exists",
+  "wait_for_element",
 
   // Style & Content
   "get_styles",

@@ -78,13 +78,13 @@ describe('Tool Definitions', () => {
     expect(uploadFileTool!.inputSchema.required).toEqual(['selector', 'filePath']);
   });
 
-  test('should have 25 tools in BROWSER_TOOLS export', () => {
-    expect(BROWSER_TOOLS.length).toBe(25);
+  test('should have 26 tools in BROWSER_TOOLS export', () => {
+    expect(BROWSER_TOOLS.length).toBe(26);
   });
 
-  test('should have all tool definitions available (25 total - browser tools only)', () => {
+  test('should have all tool definitions available (26 total - browser tools only)', () => {
     // Removed HTTP API, codegen, iframe, and other unused tools
-    expect(toolDefinitions.length).toBe(25);
+    expect(toolDefinitions.length).toBe(26);
   });
 
   test('BROWSER_TOOLS should only contain web inspection tools', () => {
@@ -94,7 +94,7 @@ describe('Tool Definitions', () => {
       'check_visibility', 'get_position', 'compare_positions', 'element_exists',
       'get_styles', 'get_text', 'get_html', 'get_console_logs',
       'click', 'fill', 'hover', 'select', 'upload_file', 'drag', 'press_key',
-      'evaluate'
+      'evaluate', 'wait_for_element'
     ];
 
     expect(BROWSER_TOOLS.sort()).toEqual(expectedTools.sort());
