@@ -37,6 +37,7 @@ describe('Tool Definitions', () => {
     expect(navigateTool!.inputSchema.properties).toHaveProperty('width');
     expect(navigateTool!.inputSchema.properties).toHaveProperty('height');
     expect(navigateTool!.inputSchema.properties).toHaveProperty('headless');
+    expect(navigateTool!.inputSchema.properties).toHaveProperty('device');
     expect(navigateTool!.inputSchema.required).toEqual(['url']);
   });
 

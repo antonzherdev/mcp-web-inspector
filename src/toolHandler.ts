@@ -1,5 +1,5 @@
 import type { Browser, Page } from 'playwright';
-import { chromium, firefox, webkit } from 'playwright';
+import { chromium, firefox, webkit, devices } from 'playwright';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { BROWSER_TOOLS } from './tools.js';
 import type { ToolContext } from './tools/common/types.js';
@@ -163,7 +163,20 @@ interface BrowserSettings {
   userAgent?: string;
   headless?: boolean;
   browserType?: 'chromium' | 'firefox' | 'webkit';
+  device?: string;
 }
+
+/**
+ * Device preset mapping to Playwright device descriptors
+ */
+const DEVICE_PRESETS: Record<string, string> = {
+  'iphone-se': 'iPhone SE',
+  'iphone-14': 'iPhone 14',
+  'iphone-14-pro': 'iPhone 14 Pro',
+  'pixel-5': 'Pixel 5',
+  'ipad': 'iPad (gen 7)',
+  'samsung-s21': 'Galaxy S21'
+};
 
 /**
  * Register network event listeners
@@ -282,8 +295,8 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
 
     // Launch new browser if needed
     if (!browser) {
-      const { viewport, userAgent, headless = false, browserType = 'chromium' } = browserSettings ?? {};
-      
+      const { viewport, userAgent, headless = false, browserType = 'chromium', device } = browserSettings ?? {};
+
       // If browser type is changing, force a new browser instance
       if (browser && currentBrowserType !== browserType) {
         try {
@@ -293,9 +306,21 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
         }
         resetBrowserState();
       }
-      
+
+      // Get device configuration if device preset is specified
+      let deviceConfig = null;
+      if (device && DEVICE_PRESETS[device]) {
+        const playwrightDeviceName = DEVICE_PRESETS[device];
+        deviceConfig = devices[playwrightDeviceName];
+        if (deviceConfig) {
+          console.error(`Using device preset: ${device} (${playwrightDeviceName})`);
+        } else {
+          console.error(`Warning: Device preset ${playwrightDeviceName} not found in Playwright devices`);
+        }
+      }
+
       console.error(`Launching new ${browserType} browser instance...`);
-      
+
       // Use the appropriate browser engine
       let browserInstance;
       switch (browserType) {
@@ -310,23 +335,34 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
           browserInstance = chromium;
           break;
       }
-      
+
       const executablePath = process.env.CHROME_EXECUTABLE_PATH;
+
+      // Prepare context options
+      const contextOptions: any = {
+        headless,
+        executablePath: executablePath,
+      };
+
+      // If device config exists, use it; otherwise use manual viewport/userAgent
+      if (deviceConfig) {
+        Object.assign(contextOptions, deviceConfig);
+      } else {
+        if (userAgent) {
+          contextOptions.userAgent = userAgent;
+        }
+        contextOptions.viewport = {
+          width: viewport?.width ?? 1280,
+          height: viewport?.height ?? 720,
+        };
+        contextOptions.deviceScaleFactor = 1;
+      }
 
       // Use persistent context if session saving is enabled
       if (sessionConfig.saveSession) {
         console.error(`Launching ${browserType} with persistent context at ${sessionConfig.userDataDir}...`);
 
-        const context = await browserInstance.launchPersistentContext(sessionConfig.userDataDir, {
-          headless,
-          executablePath: executablePath,
-          ...userAgent && { userAgent },
-          viewport: {
-            width: viewport?.width ?? 1280,
-            height: viewport?.height ?? 720,
-          },
-          deviceScaleFactor: 1,
-        });
+        const context = await browserInstance.launchPersistentContext(sessionConfig.userDataDir, contextOptions);
 
         // Get the browser instance from the context
         browser = context.browser()!;
@@ -357,14 +393,22 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
           page = undefined;
         });
 
-        const context = await browser.newContext({
-          ...userAgent && { userAgent },
-          viewport: {
+        // Prepare new context options (without headless and executablePath which are for launch)
+        const newContextOptions: any = {};
+        if (deviceConfig) {
+          Object.assign(newContextOptions, deviceConfig);
+        } else {
+          if (userAgent) {
+            newContextOptions.userAgent = userAgent;
+          }
+          newContextOptions.viewport = {
             width: viewport?.width ?? 1280,
             height: viewport?.height ?? 720,
-          },
-          deviceScaleFactor: 1,
-        });
+          };
+          newContextOptions.deviceScaleFactor = 1;
+        }
+
+        const context = await browser.newContext(newContextOptions);
 
         page = await context.newPage();
       }
@@ -401,8 +445,15 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
     resetBrowserState();
     
     // Try one more time from scratch
-    const { viewport, userAgent, headless = false, browserType = 'chromium' } = browserSettings ?? {};
-    
+    const { viewport, userAgent, headless = false, browserType = 'chromium', device } = browserSettings ?? {};
+
+    // Get device configuration if device preset is specified
+    let deviceConfig = null;
+    if (device && DEVICE_PRESETS[device]) {
+      const playwrightDeviceName = DEVICE_PRESETS[device];
+      deviceConfig = devices[playwrightDeviceName];
+    }
+
     // Use the appropriate browser engine
     let browserInstance;
     switch (browserType) {
@@ -417,23 +468,34 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
         browserInstance = chromium;
         break;
     }
-    
+
     const executablePath = process.env.CHROME_EXECUTABLE_PATH;
+
+    // Prepare context options
+    const retryContextOptions: any = {
+      headless,
+      executablePath: executablePath,
+    };
+
+    // If device config exists, use it; otherwise use manual viewport/userAgent
+    if (deviceConfig) {
+      Object.assign(retryContextOptions, deviceConfig);
+    } else {
+      if (userAgent) {
+        retryContextOptions.userAgent = userAgent;
+      }
+      retryContextOptions.viewport = {
+        width: viewport?.width ?? 1280,
+        height: viewport?.height ?? 720,
+      };
+      retryContextOptions.deviceScaleFactor = 1;
+    }
 
     // Use persistent context if session saving is enabled
     if (sessionConfig.saveSession) {
       console.error(`Launching ${browserType} with persistent context at ${sessionConfig.userDataDir} (retry)...`);
 
-      const context = await browserInstance.launchPersistentContext(sessionConfig.userDataDir, {
-        headless,
-        executablePath: executablePath,
-        ...userAgent && { userAgent },
-        viewport: {
-          width: viewport?.width ?? 1280,
-          height: viewport?.height ?? 720,
-        },
-        deviceScaleFactor: 1,
-      });
+      const context = await browserInstance.launchPersistentContext(sessionConfig.userDataDir, retryContextOptions);
 
       browser = context.browser()!;
       currentBrowserType = browserType;
@@ -459,14 +521,22 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
         page = undefined;
       });
 
-      const context = await browser.newContext({
-        ...userAgent && { userAgent },
-        viewport: {
+      // Prepare new context options (without headless and executablePath which are for launch)
+      const retryNewContextOptions: any = {};
+      if (deviceConfig) {
+        Object.assign(retryNewContextOptions, deviceConfig);
+      } else {
+        if (userAgent) {
+          retryNewContextOptions.userAgent = userAgent;
+        }
+        retryNewContextOptions.viewport = {
           width: viewport?.width ?? 1280,
           height: viewport?.height ?? 720,
-        },
-        deviceScaleFactor: 1,
-      });
+        };
+        retryNewContextOptions.deviceScaleFactor = 1;
+      }
+
+      const context = await browser.newContext(retryNewContextOptions);
 
       page = await context.newPage();
     }
@@ -582,7 +652,8 @@ export async function handleToolCall(
       },
       userAgent: name === "set_user_agent" ? args.userAgent : undefined,
       headless: args.headless,
-      browserType: args.browserType || 'chromium'
+      browserType: args.browserType || 'chromium',
+      device: args.device
     };
     
     try {

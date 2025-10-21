@@ -25,8 +25,13 @@ export function createToolDefinitions(sessionConfig?: SessionConfig) {
         properties: {
           url: { type: "string", description: "URL to navigate to the website specified" },
           browserType: { type: "string", description: "Browser type to use (chromium, firefox, webkit). Defaults to chromium", enum: ["chromium", "firefox", "webkit"] },
-          width: { type: "number", description: "Viewport width in pixels (default: 1280)" },
-          height: { type: "number", description: "Viewport height in pixels (default: 720)" },
+          device: {
+            type: "string",
+            description: "Mobile device preset to emulate. Uses Playwright's built-in device configurations for viewport, user agent, and device scale factor. When specified, overrides width/height parameters.",
+            enum: ["iphone-se", "iphone-14", "iphone-14-pro", "pixel-5", "ipad", "samsung-s21"]
+          },
+          width: { type: "number", description: "Viewport width in pixels (default: 1280). Ignored if device is specified." },
+          height: { type: "number", description: "Viewport height in pixels (default: 720). Ignored if device is specified." },
           timeout: { type: "number", description: "Navigation timeout in milliseconds" },
           waitUntil: { type: "string", description: "Navigation wait condition" },
           headless: { type: "boolean", description: "Run browser in headless mode (default: false)" }
