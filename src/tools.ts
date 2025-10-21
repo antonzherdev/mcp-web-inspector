@@ -440,6 +440,38 @@ export function createToolDefinitions(sessionConfig?: SessionConfig) {
         required: ["selector"],
       },
     },
+    {
+      name: "list_network_requests",
+      description: "List recent network requests captured by the browser. Returns compact text format with method, URL, status, resource type, timing, and size. Essential for debugging API calls and performance issues. Use get_request_details() to inspect full headers and body for specific requests.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          type: {
+            type: "string",
+            description: "Filter by resource type: 'xhr', 'fetch', 'script', 'stylesheet', 'image', 'font', 'document', etc. Omit to show all types."
+          },
+          limit: {
+            type: "number",
+            description: "Maximum number of requests to return, most recent first (default: 50)"
+          }
+        },
+        required: [],
+      },
+    },
+    {
+      name: "get_request_details",
+      description: "Get detailed information about a specific network request by index (from list_network_requests). Returns request/response headers, body (truncated at 500 chars), timing, and size. Request bodies with passwords are automatically masked. Essential for debugging API responses and investigating failed requests.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          index: {
+            type: "number",
+            description: "Index of the request from list_network_requests output (e.g., [0], [1], etc.)"
+          }
+        },
+        required: ["index"],
+      },
+    },
   ] as const satisfies Tool[];
 }
 
@@ -469,6 +501,10 @@ export const BROWSER_TOOLS = [
   "get_text",
   "get_html",
   "get_console_logs",
+
+  // Network Monitoring
+  "list_network_requests",
+  "get_request_details",
 
   // Interactions (for debugging/testing workflows)
   "click",

@@ -33,11 +33,34 @@ import { ComparePositionsTool } from './tools/browser/comparePositions.js';
 import { GoBackTool, GoForwardTool } from './tools/browser/navigation.js';
 import { DragTool, PressKeyTool } from './tools/browser/interaction.js';
 import { WaitForElementTool } from './tools/browser/waitForElement.js';
+import { ListNetworkRequestsTool } from './tools/browser/listNetworkRequests.js';
+import { GetRequestDetailsTool } from './tools/browser/getRequestDetails.js';
+
+// Network request tracking
+export interface NetworkRequest {
+  index: number;
+  method: string;
+  url: string;
+  resourceType: string;
+  timestamp: number;
+  status?: number;
+  statusText?: string;
+  timing?: number;
+  requestData: {
+    headers: Record<string, string>;
+    postData: string | null;
+  };
+  responseData?: {
+    headers: Record<string, string>;
+    body: string | null;
+  };
+}
 
 // Global state
 let browser: Browser | undefined;
 let page: Page | undefined;
 let currentBrowserType: 'chromium' | 'firefox' | 'webkit' = 'chromium';
+let networkLog: NetworkRequest[] = [];
 
 // Session configuration
 interface SessionConfig {
@@ -74,6 +97,21 @@ export function resetBrowserState() {
   browser = undefined;
   page = undefined;
   currentBrowserType = 'chromium';
+  networkLog = [];
+}
+
+/**
+ * Gets the network log
+ */
+export function getNetworkLog(): NetworkRequest[] {
+  return networkLog;
+}
+
+/**
+ * Clears the network log
+ */
+export function clearNetworkLog() {
+  networkLog = [];
 }
 /**
  * Sets the provided page to the global page variable
@@ -111,6 +149,8 @@ let getComputedStylesTool: GetComputedStylesTool;
 let elementExistsTool: ElementExistsTool;
 let comparePositionsTool: ComparePositionsTool;
 let waitForElementTool: WaitForElementTool;
+let listNetworkRequestsTool: ListNetworkRequestsTool;
+let getRequestDetailsTool: GetRequestDetailsTool;
 
 
 interface BrowserSettings {
@@ -121,6 +161,58 @@ interface BrowserSettings {
   userAgent?: string;
   headless?: boolean;
   browserType?: 'chromium' | 'firefox' | 'webkit';
+}
+
+/**
+ * Register network event listeners
+ */
+async function registerNetworkListeners(page) {
+  page.on('request', (request) => {
+    networkLog.push({
+      index: networkLog.length,
+      method: request.method(),
+      url: request.url(),
+      resourceType: request.resourceType(),
+      timestamp: Date.now(),
+      requestData: {
+        headers: request.headers(),
+        postData: request.postData() || null
+      }
+    });
+  });
+
+  page.on('response', async (response) => {
+    // Find the matching request by URL and method (most recent match)
+    const url = response.url();
+    const method = response.request().method();
+
+    for (let i = networkLog.length - 1; i >= 0; i--) {
+      if (networkLog[i].url === url &&
+          networkLog[i].method === method &&
+          !networkLog[i].status) {
+
+        networkLog[i].status = response.status();
+        networkLog[i].statusText = response.statusText();
+        networkLog[i].timing = Date.now() - networkLog[i].timestamp;
+
+        // Try to capture response body (may fail for some resource types)
+        let responseBody: string | null = null;
+        try {
+          responseBody = await response.text();
+        } catch (e) {
+          // Ignore errors (e.g., image/binary responses)
+          responseBody = null;
+        }
+
+        networkLog[i].responseData = {
+          headers: response.headers(),
+          body: responseBody
+        };
+
+        break;
+      }
+    }
+  });
 }
 
 async function registerConsoleMessage(page) {
@@ -275,8 +367,9 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
         page = await context.newPage();
       }
 
-      // Register console message handler
+      // Register console message handler and network listeners
       await registerConsoleMessage(page);
+      await registerNetworkListeners(page);
     }
     
     // Verify page is still valid
@@ -286,8 +379,9 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
       const context = browser.contexts()[0] || await browser.newContext();
       page = await context.newPage();
       
-      // Re-register console message handler
+      // Re-register console message handler and network listeners
       await registerConsoleMessage(page);
+      await registerNetworkListeners(page);
     }
     
     return page!;
@@ -376,6 +470,7 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
     }
 
     await registerConsoleMessage(page);
+    await registerNetworkListeners(page);
 
     return page!;
   }
@@ -413,6 +508,8 @@ function initializeTools(server: any) {
   if (!elementExistsTool) elementExistsTool = new ElementExistsTool(server);
   if (!comparePositionsTool) comparePositionsTool = new ComparePositionsTool(server);
   if (!waitForElementTool) waitForElementTool = new WaitForElementTool(server);
+  if (!listNetworkRequestsTool) listNetworkRequestsTool = new ListNetworkRequestsTool(server);
+  if (!getRequestDetailsTool) getRequestDetailsTool = new GetRequestDetailsTool(server);
 }
 
 /**
@@ -577,6 +674,12 @@ export async function handleToolCall(
 
       case "wait_for_element":
         return await waitForElementTool.execute(args, context);
+
+      case "list_network_requests":
+        return await listNetworkRequestsTool.execute(args, context);
+
+      case "get_request_details":
+        return await getRequestDetailsTool.execute(args, context);
 
       default:
         return {
