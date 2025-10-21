@@ -86,13 +86,13 @@ describe('Tool Definitions', () => {
     expect(waitForNetworkIdleTool!.inputSchema.required).toEqual([]);
   });
 
-  test('should have 29 tools in BROWSER_TOOLS export', () => {
-    expect(BROWSER_TOOLS.length).toBe(29);
+  test('should have 30 tools in BROWSER_TOOLS export', () => {
+    expect(BROWSER_TOOLS.length).toBe(30);
   });
 
-  test('should have all tool definitions available (29 total - browser tools only)', () => {
+  test('should have all tool definitions available (30 total - browser tools only)', () => {
     // Removed HTTP API, codegen, iframe, and other unused tools
-    expect(toolDefinitions.length).toBe(29);
+    expect(toolDefinitions.length).toBe(30);
   });
 
   test('BROWSER_TOOLS should only contain web inspection tools', () => {
@@ -100,7 +100,7 @@ describe('Tool Definitions', () => {
       'navigate', 'go_back', 'go_forward', 'screenshot', 'close',
       'inspect_dom', 'get_test_ids', 'query_selector', 'find_by_text',
       'check_visibility', 'get_position', 'compare_positions', 'element_exists',
-      'get_styles', 'get_text', 'get_html', 'get_console_logs',
+      'get_computed_styles', 'measure_element', 'get_text', 'get_html', 'get_console_logs',
       'click', 'fill', 'hover', 'select', 'upload_file', 'drag', 'press_key',
       'evaluate', 'wait_for_element', 'wait_for_network_idle', 'list_network_requests', 'get_request_details'
     ];

@@ -469,14 +469,23 @@ Compare positions and alignment of two elements. Validates if elements are align
 
 ### 🎨 Style & Content Inspection
 
-#### `get_styles`
+#### `get_computed_styles`
 Get computed CSS styles for an element, grouped by category (Layout, Visibility, Spacing, Typography). Request specific properties or get common layout properties.
 
 **Use Cases:**
 - Understanding why elements behave unexpectedly
-- Debugging layout issues (flexbox, grid, positioning)
+- Debugging CSS property values (flexbox, grid, positioning)
 - Investigating rendering differences across browsers
 - Finding actual rendered values (not CSS source)
+
+#### `measure_element`
+Get box model measurements (position, size, margin, padding, border) with compact visual representation using directional arrows.
+
+**Use Cases:**
+- Debugging CSS spacing issues
+- Validating design system spacing tokens
+- Understanding box model layout
+- Checking margin/padding/border values
 
 #### `get_text`
 Extract visible text content from the current page or specific element.
@@ -730,7 +739,7 @@ Regular CSS selectors, text selectors (`text=Login`), and Playwright selectors w
 ```
 1. find_by_text({ text: "Add to Cart", exact: false })
    → Found 1 element: button.primary-action
-2. get_styles({
+2. get_computed_styles({
      selector: "button.primary-action",
      properties: "background-color,padding,font-size"
    })
@@ -775,7 +784,7 @@ These step-by-step recipes show how to chain tools together for common testing a
      checkAlignment: "left"
    })
    → ✓ aligned (both at x=20)
-6. get_styles({
+6. get_computed_styles({
      selector: "testid:sidebar",
      properties: "margin,padding,display,flex-direction"
    })
@@ -830,7 +839,7 @@ These step-by-step recipes show how to chain tools together for common testing a
    → ✗ not visible: clipped by parent overflow:hidden
 4. inspect_dom({ selector: "form" })
    → See parent container structure
-5. get_styles({
+5. get_computed_styles({
      selector: "form",
      properties: "overflow,height,max-height"
    })
@@ -919,7 +928,7 @@ These step-by-step recipes show how to chain tools together for common testing a
    → ✓ visible
 5. get_position({ selector: "testid:tooltip" })
    → @ (300,150) 200x50px
-6. get_styles({
+6. get_computed_styles({
      selector: "testid:tooltip",
      properties: "display,opacity,visibility,z-index"
    })

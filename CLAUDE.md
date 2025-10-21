@@ -126,7 +126,8 @@ node run-tests.cjs     # Alternative way to run tests with coverage
 - `element_visibility` - Check if element is visible with detailed diagnostics (viewport, clipping, coverage, scroll needed)
 - `element_position` - Get element position and size (x, y, width, height, viewport status)
 - `find_by_text` - Find elements by text content (partial or exact match, case-sensitive/insensitive). Essential for pages without test IDs. Returns elements with position, visibility, and interaction state.
-- `get_computed_styles` - Get computed CSS styles for an element. Returns styles grouped by category (Layout, Visibility, Spacing, Typography). Useful for debugging layout issues and understanding why elements behave unexpectedly.
+- `get_computed_styles` - Get computed CSS styles for an element. Returns styles grouped by category (Layout, Visibility, Spacing, Typography). Useful for debugging CSS properties and understanding why elements behave unexpectedly.
+- `measure_element` - Get box model measurements (position, size, margin, padding, border). Returns compact visual representation with directional arrows (↑↓←→). Essential for layout debugging, spacing validation, and understanding CSS box model issues.
 - `element_exists` - Ultra-lightweight existence check (< 50 chars response). Returns ✓ exists or ✗ not found. Most common check before interaction.
 - `compare_positions` - Compare positions and alignment of two elements. Validates layout consistency by checking if elements are aligned (top, left, right, bottom) or have the same dimensions (width, height). Returns compact text format with alignment status and difference in pixels. Essential for visual regression testing.
 

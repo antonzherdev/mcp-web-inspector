@@ -12,6 +12,7 @@ module.exports = {
     '!src/tools/browser/findByText.ts', // exclude - uses page.evaluate
     '!src/tools/browser/elementExists.ts', // exclude - uses page.evaluate
     '!src/tools/browser/getTestIds.ts', // exclude - uses page.evaluate
+    '!src/tools/browser/measureElement.ts', // exclude - uses page.evaluate
   ],
   testMatch: [
     '<rootDir>/src/__tests__/**/*.test.ts'

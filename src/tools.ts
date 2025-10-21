@@ -368,7 +368,7 @@ export function createToolDefinitions(sessionConfig?: SessionConfig) {
       },
     },
     {
-      name: "get_styles",
+      name: "get_computed_styles",
       description: "Get computed CSS styles for an element. Essential for understanding why elements behave unexpectedly and debugging layout issues. Returns styles grouped by category (Layout, Visibility, Spacing, Typography). Use properties parameter to request specific CSS properties, or omit for common layout properties.",
       inputSchema: {
         type: "object",
@@ -380,6 +380,20 @@ export function createToolDefinitions(sessionConfig?: SessionConfig) {
           properties: {
             type: "string",
             description: "Comma-separated list of CSS properties to retrieve (e.g., 'display,width,color'). If not specified, returns common layout properties: display, position, width, height, opacity, visibility, z-index, overflow, margin, padding, font-size, font-weight, color, background-color"
+          }
+        },
+        required: ["selector"],
+      },
+    },
+    {
+      name: "measure_element",
+      description: "Get box model measurements (position, size, margin, padding, border) for an element. Use for layout debugging, spacing validation, and understanding CSS box model. Returns compact visual representation of content, padding, border, and margin with directional arrows.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          selector: {
+            type: "string",
+            description: "CSS selector or testid shorthand (e.g., 'testid:submit', '#login-button')"
           }
         },
         required: ["selector"],
@@ -517,7 +531,8 @@ export const BROWSER_TOOLS = [
   "wait_for_network_idle",
 
   // Style & Content
-  "get_styles",
+  "get_computed_styles",
+  "measure_element",
   "get_text",
   "get_html",
   "get_console_logs",
