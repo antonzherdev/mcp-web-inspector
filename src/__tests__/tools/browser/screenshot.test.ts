@@ -170,9 +170,51 @@ describe('ScreenshotTool', () => {
 
     // Execute with browser type
     const result = await screenshotTool.execute(args, mockContext);
-    
+
     expect(mockScreenshot).toHaveBeenCalled();
     expect(result.isError).toBe(false);
     expect(result.content[0].text).toContain('Screenshot saved to');
+  });
+
+  test('should include actionable guidance for full-page screenshots', async () => {
+    const args = {
+      name: 'test-screenshot',
+      fullPage: true
+    };
+
+    const screenshotBuffer = Buffer.from('mock-screenshot');
+    mockScreenshot.mockImplementationOnce(() => Promise.resolve(screenshotBuffer));
+
+    const result = await screenshotTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+    // Concatenate all content items to check the full response
+    const fullResponseText = result.content.map(c => c.text).join('\n');
+
+    // Verify guidance is included
+    expect(fullResponseText).toContain('💡 Next steps to analyze this page:');
+    expect(fullResponseText).toContain('inspect_dom');
+    expect(fullResponseText).toContain('get_test_ids');
+    expect(fullResponseText).toContain('find_by_text');
+  });
+
+  test('should NOT include guidance for element-specific screenshots', async () => {
+    const args = {
+      name: 'test-element-screenshot',
+      selector: '#test-element'
+    };
+
+    const screenshotBuffer = Buffer.from('mock-element-screenshot');
+    mockLocatorScreenshot.mockImplementationOnce(() => Promise.resolve(screenshotBuffer));
+
+    const result = await screenshotTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+    // Concatenate all content items to check the full response
+    const fullResponseText = result.content.map(c => c.text).join('\n');
+
+    // Verify guidance is NOT included for element screenshots
+    expect(fullResponseText).not.toContain('💡 Next steps to analyze this page:');
+    expect(fullResponseText).not.toContain('inspect_dom');
   });
 }); 

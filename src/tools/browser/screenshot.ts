@@ -56,7 +56,7 @@ export class ScreenshotTool extends BrowserToolBase {
       const screenshot = await page.screenshot(screenshotOptions);
       const base64Screenshot = screenshot.toString('base64');
 
-      const messages = [`Screenshot saved to: ${path.relative(process.cwd(), outputPath)}`];
+      const messages = [`✓ Screenshot saved to: ${path.relative(process.cwd(), outputPath)}`];
 
       // Handle base64 storage
       if (args.storeBase64 !== false) {
@@ -66,6 +66,19 @@ export class ScreenshotTool extends BrowserToolBase {
         });
 
         messages.push(`Screenshot also stored in memory with name: '${args.name || 'screenshot'}'`);
+      }
+
+      // Add actionable guidance based on screenshot context
+      // Only suggest next steps for full-page screenshots (not element-specific ones)
+      if (!args.selector) {
+        messages.push('');
+        messages.push('💡 Next steps to analyze this page:');
+        messages.push('   1. Use inspect_dom to see page structure');
+        messages.push('      inspect_dom({})');
+        messages.push('   2. Use get_test_ids to find testable elements');
+        messages.push('      get_test_ids()');
+        messages.push('   3. Use find_by_text to locate elements by visible text');
+        messages.push('      find_by_text({ text: "Search text" })');
       }
 
       return createSuccessResponse(messages);
