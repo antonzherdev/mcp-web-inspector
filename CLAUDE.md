@@ -64,6 +64,25 @@ rm -rf ./.mcp-web-inspector/screenshots
 rm -rf ./my-custom-sessions
 ```
 
+### Security Best Practices
+
+**⚠️ IMPORTANT**: Always add `.mcp-web-inspector/` to `.gitignore` to prevent committing:
+- Browser session data (cookies, localStorage, sessionStorage)
+- Saved screenshots (may contain sensitive information)
+- Authentication tokens and credentials
+
+**Why this matters:**
+- Session data contains cookies and authentication tokens
+- Screenshots may capture sensitive user data
+- Committing this data could leak credentials to the repository
+- Session files can bloat git history
+
+**Recommended `.gitignore` entry:**
+```gitignore
+# MCP Web Inspector data
+.mcp-web-inspector/
+```
+
 ## Development Commands
 
 ### Building

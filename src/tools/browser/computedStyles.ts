@@ -40,20 +40,16 @@ export class GetComputedStylesTool extends BrowserToolBase implements ToolHandle
         };
       }
 
+      // Handle multiple matches by using first() - show warning (consistent with compare_positions)
+      const targetLocator = count > 1 ? locator.first() : locator;
+
+      let warning = '';
       if (count > 1) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `✗ Selector matched ${count} elements. Please use a more specific selector.`
-            }
-          ],
-          isError: true
-        };
+        warning = `⚠ Warning: Selector matched ${count} elements, using first\n\n`;
       }
 
       // Get element tag and selector info
-      const elementInfo = await locator.evaluate((el) => {
+      const elementInfo = await targetLocator.evaluate((el) => {
         const attrs: string[] = [];
         const tag = el.tagName.toLowerCase();
         if (el.id) attrs.push(`#${el.id}`);
@@ -71,7 +67,7 @@ export class GetComputedStylesTool extends BrowserToolBase implements ToolHandle
       });
 
       // Get computed styles
-      const styles = await locator.evaluate((el, props) => {
+      const styles = await targetLocator.evaluate((el, props) => {
         const computed = window.getComputedStyle(el);
         const result: Record<string, string> = {};
         props.forEach((prop: string) => {
@@ -109,7 +105,13 @@ export class GetComputedStylesTool extends BrowserToolBase implements ToolHandle
       });
 
       // Build output
-      const sections: string[] = [`Computed Styles: ${elementInfo.display}\n`];
+      const sections: string[] = [];
+
+      if (warning) {
+        sections.push(warning.trim());
+      }
+
+      sections.push(`Computed Styles: ${elementInfo.display}\n`);
 
       if (layout.length) {
         sections.push('Layout:\n' + layout.join('\n'));

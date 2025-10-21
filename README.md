@@ -363,6 +363,31 @@ rm -rf ./.mcp-web-inspector/user-data      # Clear sessions only
 rm -rf ./.mcp-web-inspector/screenshots    # Clear screenshots only
 ```
 
+### Security Best Practices
+
+**⚠️ IMPORTANT**: Add `.mcp-web-inspector/` to your `.gitignore` file to prevent committing:
+- Browser session data (cookies, localStorage, sessionStorage)
+- Saved screenshots (may contain sensitive information)
+- Authentication tokens and credentials
+
+**Add to your `.gitignore`:**
+```gitignore
+# MCP Web Inspector data
+.mcp-web-inspector/
+```
+
+**Why this matters:**
+- Session data contains cookies and authentication tokens
+- Screenshots may capture sensitive user data
+- Committing this data could leak credentials to your repository
+- Session files can be large and bloat your git history
+
+**Best practices:**
+- Use `headless: true` for automation and CI/CD environments
+- Use `headless: false` only when debugging interactively
+- Clear session data after testing sensitive applications
+- Use `--no-save-session` flag when testing on shared/public sites
+
 ---
 
 ## Core Tools
@@ -624,15 +649,41 @@ evaluate({ script: "return document.title" })
 evaluate({ script: "return Array.from(document.querySelectorAll('a')).length" })
 ```
 
-## Selector Shortcuts
+## Selector Shortcuts ⭐ Time-Saver
 
-All tools support test ID shortcuts for cleaner syntax:
+All browser tools support **convenient test ID shortcuts** that save typing and improve readability:
 
-- `testid:submit-button` → `[data-testid="submit-button"]`
-- `data-test:login-form` → `[data-test="login-form"]`
-- `data-cy:username` → `[data-cy="username"]`
+| Shorthand | Expands to | Saved Characters |
+|-----------|-----------|------------------|
+| `testid:submit-button` | `[data-testid="submit-button"]` | 17 chars |
+| `data-test:login-form` | `[data-test="login-form"]` | 11 chars |
+| `data-cy:username` | `[data-cy="username"]` | 9 chars |
 
-Regular CSS selectors work unchanged.
+**Before (verbose):**
+```javascript
+click({ selector: '[data-testid="submit-button"]' })
+fill({ selector: '[data-testid="email-input"]', value: 'user@example.com' })
+check_visibility({ selector: '[data-testid="loading-spinner"]' })
+```
+
+**After (with shortcuts):**
+```javascript
+click({ selector: 'testid:submit-button' })
+fill({ selector: 'testid:email-input', value: 'user@example.com' })
+check_visibility({ selector: 'testid:loading-spinner' })
+```
+
+**Why this matters:**
+- ✅ **Cleaner, more readable tool calls** - No need to escape quotes or remember bracket syntax
+- ✅ **Works across all browser tools** - Consistent syntax for click, fill, inspect_dom, etc.
+- ✅ **Mix with other selectors** - Regular CSS selectors still work: `#login`, `.button`, `nav > a`
+
+**All supported shortcuts:**
+- `testid:*` → `[data-testid="*"]`
+- `data-test:*` → `[data-test="*"]`
+- `data-cy:*` → `[data-cy="*"]` (Cypress convention)
+
+Regular CSS selectors, text selectors (`text=Login`), and Playwright selectors work unchanged.
 
 ## Example Use Cases
 
@@ -685,6 +736,222 @@ Regular CSS selectors work unchanged.
    })
    → Shows: background-color: rgb(0,123,255), padding: 12px 24px
 ```
+
+## Cookbook: Common Workflows
+
+These step-by-step recipes show how to chain tools together for common testing and debugging scenarios.
+
+### Recipe 1: Testing a Login Flow
+
+```
+1. navigate({ url: "https://app.example.com/login" })
+2. screenshot({ name: "login-page" })
+3. fill({ selector: "testid:email-input", value: "user@example.com" })
+4. fill({ selector: "testid:password-input", value: "password123" })
+5. click({ selector: "testid:login-button" })
+6. wait_for_network_idle()
+7. get_console_logs({ type: "error" })
+   → Verify no JavaScript errors occurred
+8. screenshot({ name: "after-login" })
+9. get_text()
+   → Verify success message or dashboard content
+```
+
+**Why this works**: Session persistence means you stay logged in for subsequent tests.
+
+### Recipe 2: Debugging Layout Issues
+
+```
+1. navigate({ url: "https://dashboard.example.com" })
+2. inspect_dom({ selector: "testid:sidebar" })
+   → Understand the structure of the problematic area
+3. get_position({ selector: "testid:logo" })
+   → @ (20,10) 150x40px
+4. get_position({ selector: "testid:menu" })
+   → @ (20,60) 200x300px
+5. compare_positions({
+     selector1: "testid:logo",
+     selector2: "testid:menu",
+     checkAlignment: "left"
+   })
+   → ✓ aligned (both at x=20)
+6. get_styles({
+     selector: "testid:sidebar",
+     properties: "margin,padding,display,flex-direction"
+   })
+   → Shows: display: flex, flex-direction: column, padding: 20px
+7. screenshot({ name: "layout-debug" })
+```
+
+**Why this works**: Progressive inspection + precise measurements reveal layout problems.
+
+### Recipe 3: API Response Testing
+
+```
+1. navigate({ url: "https://app.example.com/dashboard" })
+2. click({ selector: "testid:refresh-button" })
+3. wait_for_network_idle()
+4. list_network_requests({ type: "fetch", limit: 10 })
+   → [5] GET /api/users 200 OK | 45ms
+5. get_request_details({ index: 5 })
+   → Check headers, status, response body
+6. get_console_logs({ type: "error" })
+   → Verify no network errors
+```
+
+**Why this works**: Network tools capture all requests for inspection after interactions.
+
+### Recipe 4: Finding Elements on Pages Without Test IDs
+
+```
+1. navigate({ url: "https://legacy-app.example.com" })
+2. inspect_dom()
+   → Get overall page structure
+3. get_test_ids()
+   → Check if any test IDs exist (spoiler: none)
+4. find_by_text({ text: "submit", caseSensitive: false })
+   → Found 2 buttons containing "submit"
+5. query_selector({ selector: "button", onlyVisible: true, limit: 10 })
+   → Shows all visible buttons with positions and text
+6. element_exists({ selector: "button:has-text('Submit Form')" })
+   → ✓ exists
+7. click({ selector: "button:has-text('Submit Form')" })
+```
+
+**Why this works**: Multiple discovery tools (text search, query selector) help locate elements.
+
+### Recipe 5: Debugging "Element Not Visible" Errors
+
+```
+1. navigate({ url: "https://app.example.com" })
+2. element_exists({ selector: "testid:submit" })
+   → ✓ exists
+3. check_visibility({ selector: "testid:submit" })
+   → ✗ not visible: clipped by parent overflow:hidden
+4. inspect_dom({ selector: "form" })
+   → See parent container structure
+5. get_styles({
+     selector: "form",
+     properties: "overflow,height,max-height"
+   })
+   → overflow: hidden, height: 300px, max-height: 300px
+6. evaluate({ script: "document.querySelector('[data-testid=submit]').scrollIntoView()" })
+   → Scroll element into view
+7. check_visibility({ selector: "testid:submit" })
+   → ✓ visible
+8. click({ selector: "testid:submit" })
+```
+
+**Why this works**: Visibility diagnostics reveal the exact reason, enabling targeted fixes.
+
+### Recipe 6: Visual Regression Testing
+
+```
+1. navigate({ url: "https://dashboard.example.com" })
+2. screenshot({ name: "baseline", fullPage: true })
+3. compare_positions({
+     selector1: "testid:header",
+     selector2: "testid:footer",
+     checkAlignment: "width"
+   })
+   → ✓ aligned (both 1280px)
+4. compare_positions({
+     selector1: ".card:nth-child(1)",
+     selector2: ".card:nth-child(2)",
+     checkAlignment: "height"
+   })
+   → ✗ not aligned (difference: 20px)
+5. get_position({ selector: ".card:nth-child(1)" })
+   → @ (20,100) 400x300px
+6. get_position({ selector: ".card:nth-child(2)" })
+   → @ (440,100) 400x320px  ← 20px taller!
+```
+
+**Why this works**: Position comparison tools validate consistent spacing across components.
+
+### Recipe 7: Form Validation Testing
+
+```
+1. navigate({ url: "https://app.example.com/signup" })
+2. fill({ selector: "testid:email", value: "invalid-email" })
+3. fill({ selector: "testid:password", value: "short" })
+4. click({ selector: "testid:submit" })
+5. wait_for_element({ selector: ".error-message", state: "visible", timeout: 5000 })
+6. find_by_text({ text: "invalid", caseSensitive: false })
+   → Found 2 elements: .error-message spans
+7. get_text({ selector: ".error-message" })
+   → "Please enter a valid email address"
+8. screenshot({ name: "validation-errors" })
+```
+
+**Why this works**: Wait for element ensures validation messages appear before checking.
+
+### Recipe 8: Mobile Responsive Testing
+
+```
+1. navigate({
+     url: "https://app.example.com",
+     width: 375,
+     height: 667
+   })
+   → iPhone SE viewport
+2. screenshot({ name: "mobile-view", fullPage: true })
+3. inspect_dom({ selector: "nav" })
+   → Check if mobile menu is used
+4. element_exists({ selector: "testid:hamburger-menu" })
+   → ✓ exists (mobile menu visible)
+5. element_exists({ selector: "testid:desktop-menu" })
+   → ✗ not found (desktop menu hidden on mobile)
+6. click({ selector: "testid:hamburger-menu" })
+7. wait_for_element({ selector: "testid:mobile-nav", state: "visible" })
+8. screenshot({ name: "mobile-menu-open" })
+```
+
+**Why this works**: Viewport configuration in navigate enables mobile testing.
+
+### Recipe 9: Debugging Hover States
+
+```
+1. navigate({ url: "https://app.example.com" })
+2. hover({ selector: "testid:tooltip-trigger" })
+3. wait_for_element({ selector: "testid:tooltip", state: "visible", timeout: 2000 })
+4. check_visibility({ selector: "testid:tooltip" })
+   → ✓ visible
+5. get_position({ selector: "testid:tooltip" })
+   → @ (300,150) 200x50px
+6. get_styles({
+     selector: "testid:tooltip",
+     properties: "display,opacity,visibility,z-index"
+   })
+   → display: block, opacity: 1, visibility: visible, z-index: 1000
+7. screenshot({ name: "tooltip-visible" })
+```
+
+**Why this works**: Hover tool + visibility checks validate tooltip behavior.
+
+### Recipe 10: Accessibility Audit
+
+```
+1. navigate({ url: "https://app.example.com" })
+2. inspect_dom()
+   → Check for semantic HTML (header, nav, main, footer)
+3. query_selector({
+     selector: "[role]",
+     showAttributes: "role,aria-label,aria-labelledby"
+   })
+   → Shows all ARIA roles on page
+4. find_by_text({ text: "button", regex: true })
+   → Find buttons by text (should have accessible labels)
+5. query_selector({
+     selector: "button",
+     showAttributes: "aria-label,title"
+   })
+   → Check if buttons have accessible labels
+6. get_test_ids()
+   → Verify no duplicate test IDs (accessibility issue)
+```
+
+**Why this works**: DOM inspection + attribute queries reveal accessibility issues.
 
 ## Development
 

@@ -130,12 +130,12 @@ describe('GetComputedStylesTool', () => {
     expect(result.content[0].text).toContain('not found');
   });
 
-  it('should return error when multiple elements match', async () => {
+  it('should handle multiple elements with warning (use first)', async () => {
     await page.setContent(`
       <html>
         <body>
-          <button class="btn">Button 1</button>
-          <button class="btn">Button 2</button>
+          <button class="btn" style="width: 100px;">Button 1</button>
+          <button class="btn" style="width: 200px;">Button 2</button>
         </body>
       </html>
     `);
@@ -145,9 +145,14 @@ describe('GetComputedStylesTool', () => {
       { page, browser } as any
     );
 
-    expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('matched');
-    expect(result.content[0].text).toContain('2 elements');
+    // Should NOT error, should use first element with warning
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('Warning');
+    expect(result.content[0].text).toContain('matched 2 elements');
+    expect(result.content[0].text).toContain('using first');
+    expect(result.content[0].text).toContain('Computed Styles');
+    // Should show styles from first button (100px width)
+    expect(result.content[0].text).toContain('width:');
   });
 
   it('should display element info with classes', async () => {
