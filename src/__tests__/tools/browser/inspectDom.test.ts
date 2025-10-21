@@ -91,6 +91,63 @@ describe('InspectDomTool', () => {
     expect(result.content[0].text).toContain('Layout: vertical');
   });
 
+  test('should show centering information in offset', async () => {
+    const args = { selector: 'header' };
+
+    mockPageEvaluate.mockResolvedValue({
+      target: {
+        tag: 'header',
+        selector: 'header',
+        position: { x: 0, y: 0, width: 1200, height: 56 },
+        isVisible: true,
+      },
+      children: [
+        {
+          tag: 'div',
+          selector: '[data-testid="title"]',
+          testId: 'title',
+          text: 'My App',
+          position: { x: 16, y: 14, width: 100, height: 28 }, // Centered vertically: (56-28)/2 = 14
+          isVisible: true,
+          isInteractive: false,
+          childCount: 0,
+        },
+        {
+          tag: 'div',
+          selector: '[data-testid="subtitle"]',
+          testId: 'subtitle',
+          text: 'Not Centered',
+          position: { x: 200, y: 2, width: 100, height: 28 }, // NOT centered: should be 14, is 2
+          isVisible: true,
+          isInteractive: false,
+          childCount: 0,
+        },
+      ],
+      stats: {
+        totalChildren: 2,
+        semanticCount: 2,
+        shownCount: 2,
+        omittedCount: 0,
+        skippedWrappers: 0,
+      },
+      layoutPattern: 'horizontal',
+    });
+
+    const result = await inspectDomTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+
+    // First child at (16, 14) in 1200x56 parent
+    // Left: 16, Right: 1200-16-100=1084, Top: 14, Bottom: 56-14-28=14
+    // Top and bottom are equal (14 = 14), so vertically centered (obvious from output)
+    expect(result.content[0].text).toContain('from edges: ←16px →1084px ↑14px ↓14px');
+
+    // Second child at (200, 2) in 1200x56 parent
+    // Left: 200, Right: 1200-200-100=900, Top: 2, Bottom: 56-2-28=26
+    // Top and bottom NOT equal (2 ≠ 26), so NOT vertically centered (obvious from output)
+    expect(result.content[0].text).toContain('from edges: ←200px →900px ↑2px ↓26px');
+  });
+
   test('should handle page with no semantic elements', async () => {
     const args = { selector: '.wrapper' };
 

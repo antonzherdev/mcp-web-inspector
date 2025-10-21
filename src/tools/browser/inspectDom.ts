@@ -470,6 +470,15 @@ export class InspectDomTool extends BrowserToolBase {
               `    @ (${child.position.x},${child.position.y}) ${child.position.width}x${child.position.height}px`
             );
 
+            // Calculate distances from all parent edges
+            const fromLeft = child.position.x - target.position.x;
+            const fromRight = (target.position.x + target.position.width) - (child.position.x + child.position.width);
+            const fromTop = child.position.y - target.position.y;
+            const fromBottom = (target.position.y + target.position.height) - (child.position.y + child.position.height);
+
+            // Format edge distances (centering is obvious: equal left/right = horizontal center, equal top/bottom = vertical center)
+            lines.push(`    from edges: ←${fromLeft}px →${fromRight}px ↑${fromTop}px ↓${fromBottom}px`);
+
             // Calculate offset from previous sibling
             if (index > 0) {
               const prev = children[index - 1];

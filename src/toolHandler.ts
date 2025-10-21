@@ -29,7 +29,7 @@ import { FindByTextTool } from './tools/browser/findByText.js';
 import { GetComputedStylesTool } from './tools/browser/computedStyles.js';
 import { MeasureElementTool } from './tools/browser/measureElement.js';
 import { ElementExistsTool } from './tools/browser/elementExists.js';
-import { ComparePositionsTool } from './tools/browser/comparePositions.js';
+import { CompareElementAlignmentTool } from './tools/browser/compareElementAlignment.js';
 import { GoBackTool, GoForwardTool } from './tools/browser/navigation.js';
 import { DragTool, PressKeyTool } from './tools/browser/interaction.js';
 import { WaitForElementTool } from './tools/browser/waitForElement.js';
@@ -148,7 +148,7 @@ let findByTextTool: FindByTextTool;
 let getComputedStylesTool: GetComputedStylesTool;
 let measureElementTool: MeasureElementTool;
 let elementExistsTool: ElementExistsTool;
-let comparePositionsTool: ComparePositionsTool;
+let compareElementAlignmentTool: CompareElementAlignmentTool;
 let waitForElementTool: WaitForElementTool;
 let waitForNetworkIdleTool: WaitForNetworkIdleTool;
 let listNetworkRequestsTool: ListNetworkRequestsTool;
@@ -595,7 +595,7 @@ function initializeTools(server: any) {
   if (!getComputedStylesTool) getComputedStylesTool = new GetComputedStylesTool(server);
   if (!measureElementTool) measureElementTool = new MeasureElementTool(server);
   if (!elementExistsTool) elementExistsTool = new ElementExistsTool(server);
-  if (!comparePositionsTool) comparePositionsTool = new ComparePositionsTool(server);
+  if (!compareElementAlignmentTool) compareElementAlignmentTool = new CompareElementAlignmentTool(server);
   if (!waitForElementTool) waitForElementTool = new WaitForElementTool(server);
   if (!waitForNetworkIdleTool) waitForNetworkIdleTool = new WaitForNetworkIdleTool(server);
   if (!listNetworkRequestsTool) listNetworkRequestsTool = new ListNetworkRequestsTool(server);
@@ -760,8 +760,8 @@ export async function handleToolCall(
       case "element_exists":
         return await elementExistsTool.execute(args, context);
 
-      case "compare_positions":
-        return await comparePositionsTool.execute(args, context);
+      case "compare_element_alignment":
+        return await compareElementAlignmentTool.execute(args, context);
 
       case "wait_for_element":
         return await waitForElementTool.execute(args, context);

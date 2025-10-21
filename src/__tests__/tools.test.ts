@@ -99,7 +99,7 @@ describe('Tool Definitions', () => {
     const expectedTools = [
       'navigate', 'go_back', 'go_forward', 'screenshot', 'close',
       'inspect_dom', 'get_test_ids', 'query_selector', 'find_by_text',
-      'check_visibility', 'compare_positions', 'element_exists',
+      'check_visibility', 'compare_element_alignment', 'element_exists',
       'get_computed_styles', 'measure_element', 'get_text', 'get_html', 'get_console_logs',
       'click', 'fill', 'hover', 'select', 'upload_file', 'drag', 'press_key',
       'evaluate', 'wait_for_element', 'wait_for_network_idle', 'list_network_requests', 'get_request_details'

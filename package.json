@@ -1,6 +1,6 @@
 {
   "name": "mcp-web-inspector",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Web Inspector MCP: Give LLMs visual superpowers to see, debug, and test any web page.",
   "license": "MIT",
   "author": "Anton",

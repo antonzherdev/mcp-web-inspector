@@ -260,7 +260,32 @@ export function createToolDefinitions(sessionConfig?: SessionConfig) {
     },
     {
       name: "inspect_dom",
-      description: "START HERE FOR LAYOUT DEBUGGING: Get page structure overview and identify elements. Progressive DOM inspection that skips wrapper divs and shows only semantic elements (header, nav, main, form, button, elements with test IDs, ARIA roles, etc.). Use without selector for full page overview, then drill down by calling with a child's selector. Returns compact text format with position, visibility, and layout patterns. More efficient than get_html() or evaluate() for understanding structure. Supports testid shortcuts.",
+      description: `START HERE FOR LAYOUT DEBUGGING: Progressive DOM inspection that shows parent-child relationships, centering issues, and spacing gaps. Skips wrapper divs and shows only semantic elements (header, nav, main, form, button, elements with test IDs, ARIA roles, etc.).
+
+WORKFLOW: Call without selector for page overview, then drill down by calling with child's selector.
+
+DETECTS: Parent-relative positioning, vertical/horizontal centering, sibling spacing gaps, layout patterns.
+
+OUTPUT FORMAT:
+[0] <button data-testid="menu">
+    @ (16,8) 40×40px                         ← Absolute viewport position (x,y) and size
+    from edges: ←16px →1144px ↑8px ↓8px      ← Distance from parent edges (↑8px = ↓8px means vertically centered)
+    "Menu"
+    ✓ visible, ⚡ interactive
+
+[1] <div data-testid="title">
+    @ (260,2) 131×28px
+    from edges: ←244px →244px ↑2px ↓42px     ← Equal left/right (244px) = horizontally centered, unequal top/bottom = NOT vertically centered
+    gap from [0]: →16px                      ← Spacing between siblings
+    "Title"
+    ✓ visible, 2 children
+
+SYMBOLS: ✓=visible, ✗=hidden, ⚡=interactive, ←→=horizontal edges, ↑↓=vertical edges
+CENTERING: Equal left/right distances = horizontally centered, equal top/bottom = vertically centered
+
+RELATED TOOLS: For comparing TWO elements' alignment (not parent-child), use compare_element_alignment(). For box model (padding/margin), use measure_element().
+
+More efficient than get_html() or evaluate(). Supports testid shortcuts.`,
       inputSchema: {
         type: "object",
         properties: {
@@ -378,7 +403,7 @@ export function createToolDefinitions(sessionConfig?: SessionConfig) {
     },
     {
       name: "measure_element",
-      description: "DEBUG SPACING ISSUES: See padding, margin, and border measurements in visual box model format. Use when elements have unexpected spacing or size. Returns compact visual representation showing content → padding → border → margin with directional arrows (↑24px for top margin, etc.). More readable than get_computed_styles() for box model debugging.",
+      description: "DEBUG SPACING ISSUES: See padding, margin, and border measurements in visual box model format. Use when elements have unexpected spacing or size. Returns compact visual representation showing content → padding → border → margin with directional arrows (↑24px for top margin, etc.). For parent-child centering issues, use inspect_dom() first (shows if child is centered in parent). For comparing alignment between two elements, use compare_element_alignment(). More readable than get_computed_styles() for box model debugging.",
       inputSchema: {
         type: "object",
         properties: {
@@ -405,8 +430,8 @@ export function createToolDefinitions(sessionConfig?: SessionConfig) {
       },
     },
     {
-      name: "compare_positions",
-      description: "FIND ALIGNMENT GAPS: Check if two elements are properly aligned or have spacing issues. Perfect for debugging layout problems like 'element not aligned with header' or 'gap between panels'. Checks edge alignment (top, left, right, bottom) or dimension matching (width, height). Returns alignment status and gap size in pixels. More efficient than evaluate() with manual getBoundingClientRect() calculations.",
+      name: "compare_element_alignment",
+      description: "COMPARE TWO ELEMENTS: Get comprehensive alignment and dimension comparison in one call. Shows edge alignment (top, left, right, bottom), center alignment (horizontal, vertical), and dimensions (width, height). Perfect for debugging 'are these headers aligned?' or 'do these panels match?'. Returns all alignment info with ✓/✗ symbols and pixel differences. For parent-child centering, use inspect_dom() instead (automatically shows if children are centered in parent). More efficient than evaluate() with manual getBoundingClientRect() calculations.",
       inputSchema: {
         type: "object",
         properties: {
@@ -417,14 +442,9 @@ export function createToolDefinitions(sessionConfig?: SessionConfig) {
           selector2: {
             type: "string",
             description: "CSS selector, text selector, or testid shorthand for the second element (e.g., 'testid:chat-header', '#secondary-header')"
-          },
-          checkAlignment: {
-            type: "string",
-            description: "What to check: 'top', 'left', 'right', 'bottom' (edge alignment), or 'width', 'height' (dimension matching)",
-            enum: ["top", "left", "right", "bottom", "width", "height"]
           }
         },
-        required: ["selector1", "selector2", "checkAlignment"],
+        required: ["selector1", "selector2"],
       },
     },
     {
@@ -515,7 +535,7 @@ export const BROWSER_TOOLS = [
 
   // Visibility & Position
   "check_visibility",
-  "compare_positions",
+  "compare_element_alignment",
   "element_exists",
   "wait_for_element",
   "wait_for_network_idle",
