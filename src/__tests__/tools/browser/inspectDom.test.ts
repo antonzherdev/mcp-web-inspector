@@ -120,7 +120,7 @@ describe('InspectDomTool', () => {
     expect(result.isError).toBe(false);
     expect(result.content[0].text).toContain('⚠ No semantic');
     expect(result.content[0].text).toContain('Suggestions:');
-    expect(result.content[0].text).toContain('playwright_get_visible_html');
+    expect(result.content[0].text).toContain('get_visible_html');
     expect(result.content[0].text).toContain('Adding semantic HTML');
   });
 
@@ -822,8 +822,8 @@ describe('InspectDomTool', () => {
 
     // Should suggest specific ways to access those 57 buttons
     expect(result.content[0].text).toContain('💡 Try drilling down to find interactive elements:');
-    expect(result.content[0].text).toContain('playwright_inspect_dom({ selector: "testid:main-layout button" })');
-    expect(result.content[0].text).toContain('playwright_inspect_dom({ selector: "testid:main-layout input" })');
+    expect(result.content[0].text).toContain('inspect_dom({ selector: "testid:main-layout button" })');
+    expect(result.content[0].text).toContain('inspect_dom({ selector: "testid:main-layout input" })');
   });
 
   test('should drill through wrapper divs to show nested semantic children', async () => {

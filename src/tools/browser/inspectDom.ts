@@ -423,7 +423,7 @@ export class InspectDomTool extends BrowserToolBase {
           }
           lines.push('');
           lines.push('Suggestions:');
-          lines.push(`1. Use playwright_get_visible_html({ selector: "${args.selector || 'body'}" }) to see raw HTML`);
+          lines.push(`1. Use get_visible_html({ selector: "${args.selector || 'body'}" }) to see raw HTML`);
           lines.push('2. Look for interactive elements by class/id (e.g., .button, #submit-btn)');
           lines.push('3. Recommend adding data-testid attributes for better testability');
           lines.push('');
@@ -440,13 +440,13 @@ export class InspectDomTool extends BrowserToolBase {
             const currentSelector = args.selector || 'body';
             // Suggest specific selectors based on what's in the tree
             if (treeCounts.interactiveCounts.button && treeCounts.interactiveCounts.button > 0) {
-              lines.push(`   playwright_inspect_dom({ selector: "${currentSelector} button" })`);
+              lines.push(`   inspect_dom({ selector: "${currentSelector} button" })`);
             }
             if (treeCounts.interactiveCounts.input && treeCounts.interactiveCounts.input > 0) {
-              lines.push(`   playwright_inspect_dom({ selector: "${currentSelector} input" })`);
+              lines.push(`   inspect_dom({ selector: "${currentSelector} input" })`);
             }
             if (treeCounts.interactiveCounts.a && treeCounts.interactiveCounts.a > 0) {
-              lines.push(`   playwright_inspect_dom({ selector: "${currentSelector} a" })`);
+              lines.push(`   inspect_dom({ selector: "${currentSelector} a" })`);
             }
           }
         } else {

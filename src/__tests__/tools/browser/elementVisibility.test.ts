@@ -128,7 +128,7 @@ describe('ElementVisibilityTool', () => {
     expect(response).toContain('✗ not in viewport');
     expect(response).toContain('Issues:');
     expect(response).toContain('⚠ needs scroll to bring into view');
-    expect(response).toContain('→ Call playwright_scroll_to_element before clicking');
+    expect(response).toContain('→ Call scroll_to_element before clicking');
   });
 
   test('should detect clipped element', async () => {

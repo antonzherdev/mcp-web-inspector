@@ -180,29 +180,29 @@ describe('Tool Handler', () => {
   
   test('handleToolCall should handle browser tools', async () => {
     // Test a few representative browser tools
-    const navigateResult = await handleToolCall('playwright_navigate', { url: 'https://example.com' }, mockServer);
+    const navigateResult = await handleToolCall('navigate', { url: 'https://example.com' }, mockServer);
     expect(navigateResult).toBeDefined();
     expect(navigateResult.content).toBeDefined();
     
-    const screenshotResult = await handleToolCall('playwright_screenshot', { name: 'test-screenshot' }, mockServer);
+    const screenshotResult = await handleToolCall('screenshot', { name: 'test-screenshot' }, mockServer);
     expect(screenshotResult).toBeDefined();
     expect(screenshotResult.content).toBeDefined();
     
-    const clickResult = await handleToolCall('playwright_click', { selector: '#test-button' }, mockServer);
+    const clickResult = await handleToolCall('click', { selector: '#test-button' }, mockServer);
     expect(clickResult).toBeDefined();
     expect(clickResult.content).toBeDefined();
 
     // Test new navigation tools
-    const goBackResult = await handleToolCall('playwright_go_back', {}, mockServer);
+    const goBackResult = await handleToolCall('go_back', {}, mockServer);
     expect(goBackResult).toBeDefined();
     expect(goBackResult.content).toBeDefined();
     
-    const goForwardResult = await handleToolCall('playwright_go_forward', {}, mockServer);
+    const goForwardResult = await handleToolCall('go_forward', {}, mockServer);
     expect(goForwardResult).toBeDefined();
     expect(goForwardResult.content).toBeDefined();
 
     // Test drag tool
-    const dragResult = await handleToolCall('playwright_drag', { 
+    const dragResult = await handleToolCall('drag', { 
       sourceSelector: '#source-element',
       targetSelector: '#target-element'
     }, mockServer);
@@ -210,7 +210,7 @@ describe('Tool Handler', () => {
     expect(dragResult.content).toBeDefined();
     
     // Test press key tool
-    const pressKeyResult = await handleToolCall('playwright_press_key', { 
+    const pressKeyResult = await handleToolCall('press_key', { 
       key: 'Enter',
       selector: '#input-field'
     }, mockServer);
@@ -218,7 +218,7 @@ describe('Tool Handler', () => {
     expect(pressKeyResult.content).toBeDefined();
 
     // Test save as PDF tool
-    const saveAsPdfResult = await handleToolCall('playwright_save_as_pdf', { 
+    const saveAsPdfResult = await handleToolCall('save_as_pdf', { 
       outputPath: '/downloads',
       filename: 'test.pdf'
     }, mockServer);
@@ -227,7 +227,7 @@ describe('Tool Handler', () => {
   });
   
   test('handleToolCall should handle Firefox browser', async () => {
-    const navigateResult = await handleToolCall('playwright_navigate', { 
+    const navigateResult = await handleToolCall('navigate', { 
       url: 'https://example.com',
       browserType: 'firefox'
     }, mockServer);
@@ -235,11 +235,11 @@ describe('Tool Handler', () => {
     expect(navigateResult.content).toBeDefined();
     
     // Verify browser state is reset
-    await handleToolCall('playwright_close', {}, mockServer);
+    await handleToolCall('close', {}, mockServer);
   });
   
   test('handleToolCall should handle WebKit browser', async () => {
-    const navigateResult = await handleToolCall('playwright_navigate', { 
+    const navigateResult = await handleToolCall('navigate', { 
       url: 'https://example.com',
       browserType: 'webkit'
     }, mockServer);
@@ -247,15 +247,15 @@ describe('Tool Handler', () => {
     expect(navigateResult.content).toBeDefined();
     
     // Verify browser state is reset
-    await handleToolCall('playwright_close', {}, mockServer);
+    await handleToolCall('close', {}, mockServer);
   });
   
   test('handleToolCall should handle browser type switching', async () => {
     // Start with default chromium
-    await handleToolCall('playwright_navigate', { url: 'https://example.com' }, mockServer);
+    await handleToolCall('navigate', { url: 'https://example.com' }, mockServer);
     
     // Switch to Firefox
-    const firefoxResult = await handleToolCall('playwright_navigate', { 
+    const firefoxResult = await handleToolCall('navigate', { 
       url: 'https://firefox.com',
       browserType: 'firefox'
     }, mockServer);
@@ -263,7 +263,7 @@ describe('Tool Handler', () => {
     expect(firefoxResult.content).toBeDefined();
     
     // Switch to WebKit
-    const webkitResult = await handleToolCall('playwright_navigate', { 
+    const webkitResult = await handleToolCall('navigate', { 
       url: 'https://webkit.org',
       browserType: 'webkit'
     }, mockServer);
@@ -271,16 +271,16 @@ describe('Tool Handler', () => {
     expect(webkitResult.content).toBeDefined();
     
     // Clean up
-    await handleToolCall('playwright_close', {}, mockServer);
+    await handleToolCall('close', {}, mockServer);
   });
   
   test('handleToolCall should handle API tools', async () => {
     // Test a few representative API tools
-    const getResult = await handleToolCall('playwright_get', { url: 'https://api.example.com' }, mockServer);
+    const getResult = await handleToolCall('get', { url: 'https://api.example.com' }, mockServer);
     expect(getResult).toBeDefined();
     expect(getResult.content).toBeDefined();
     
-    const postResult = await handleToolCall('playwright_post', { 
+    const postResult = await handleToolCall('post', { 
       url: 'https://api.example.com', 
       value: '{"data": "test"}' 
     }, mockServer);
@@ -313,7 +313,7 @@ describe('Tool Handler', () => {
     });
 
     test('should handle console messages of different types', async () => {
-      await handleToolCall('playwright_navigate', { url: 'about:blank' }, mockServer);
+      await handleToolCall('navigate', { url: 'about:blank' }, mockServer);
 
       // Setup mock handlers
       const mockHandlers: Record<string, jest.Mock> = {};
@@ -349,7 +349,7 @@ describe('Tool Handler', () => {
     });
 
     test('should truncate long stack traces to 3 lines', async () => {
-      await handleToolCall('playwright_navigate', { url: 'about:blank' }, mockServer);
+      await handleToolCall('navigate', { url: 'about:blank' }, mockServer);
 
       // Setup mock handlers
       const mockHandlers: Record<string, jest.Mock> = {};
@@ -371,7 +371,7 @@ describe('Tool Handler', () => {
     });
 
     test('should handle unhandled promise rejection with detailed info', async () => {
-      await handleToolCall('playwright_navigate', { url: 'about:blank' }, mockServer);
+      await handleToolCall('navigate', { url: 'about:blank' }, mockServer);
 
       mockPage.on.mockImplementation((event: string, handler: (arg: any) => void) => {
         if (event === 'console') {

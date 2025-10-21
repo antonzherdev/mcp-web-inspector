@@ -220,7 +220,7 @@ describe('QuerySelectorAllTool', () => {
 
     expect(result.isError).toBe(false);
     expect(result.content[0].text).toContain('No elements found matching ".non-existent"');
-    expect(result.content[0].text).toContain('Tip: Try using playwright_inspect_dom to explore the page structure');
+    expect(result.content[0].text).toContain('Tip: Try using inspect_dom to explore the page structure');
   });
 
   test('should limit results to default 10 elements', async () => {

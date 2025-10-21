@@ -6,13 +6,13 @@ import YouTubeVideoEmbed from '@site/src/components/HomepageFeatures/YouTubeVide
 # Release Notes
 
 ## Version 1.0.6
-- **New Tool: `playwright_upload_file`**: Added a new tool to upload files to an `input[type='file']` element.
+- **New Tool: `upload_file`**: Added a new tool to upload files to an `input[type='file']` element.
 - **Enhanced Content Extraction**:
-  - Significantly improved `playwright_get_visible_text` tool for more accurate text extraction.
-  - Added `playwright_get_visible_html` tool to retrieve the full HTML content of the page.
-  - **By default, all `<script>` tags are now removed from the HTML output for `playwright_get_visible_html` (unless `removeScripts: false` is set). Output is also truncated to a safe length (default 20,000 characters) to prevent issues with LLM clients.**
+  - Significantly improved `get_visible_text` tool for more accurate text extraction.
+  - Added `get_visible_html` tool to retrieve the full HTML content of the page.
+  - **By default, all `<script>` tags are now removed from the HTML output for `get_visible_html` (unless `removeScripts: false` is set). Output is also truncated to a safe length (default 20,000 characters) to prevent issues with LLM clients.**
 - **Improved Interactions**:
-  - Updated `playwright_hover` functionality in the interaction tool.
+  - Updated `hover` functionality in the interaction tool.
 - **Browser Support**:
   - Added support for using locally installed browsers by specifying the Chrome executable path.
 - **Documentation Updates**:
@@ -28,10 +28,10 @@ import YouTubeVideoEmbed from '@site/src/components/HomepageFeatures/YouTubeVide
 - **Version bump**: Incremented version to 1.0.5.
 
 ## Version 1.0.4
-- **New Tool: `playwright_iframe_fill`**
+- **New Tool: `iframe_fill`**
   - Fill input fields inside iframes using CSS selectors
 
-- **New Tool: `playwright_click_and_switch_tab`**
+- **New Tool: `click_and_switch_tab`**
   - Click a link and automatically switch to the newly opened browser tab
 
 - **Improved Error Logging**
@@ -52,22 +52,22 @@ import YouTubeVideoEmbed from '@site/src/components/HomepageFeatures/YouTubeVide
   - Ability to record real browser interactions and convert them to reusable Playwright tests
   - Support for customizing test output path, test names, and including descriptive comments
 - **Enhanced Browser Navigation**: Added new navigation control tools 🧭
-  - `playwright_go_back`: Navigate back in browser history
-  - `playwright_go_forward`: Navigate forward in browser history
+  - `go_back`: Navigate back in browser history
+  - `go_forward`: Navigate forward in browser history
 - **Advanced Interaction**: Added new interaction tools for more complex scenarios 🔄
-  - `playwright_drag`: Drag elements from one location to another
-  - `playwright_press_key`: Press keyboard keys with optional element focus
+  - `drag`: Drag elements from one location to another
+  - `press_key`: Press keyboard keys with optional element focus
 - **Output Capabilities**: Added content export functionality 📄
-  - `playwright_save_as_pdf`: Save the current page as a PDF file with customizable options
+  - `save_as_pdf`: Save the current page as a PDF file with customizable options
 - **Content Extraction**: Added tools for retrieving page content 📝
-  - `playwright_get_visible_text`: Extract all visible text content from the current page
-  - `playwright_get_visible_html`: Get the complete HTML content of the current page
+  - `get_visible_text`: Extract all visible text content from the current page
+  - `get_visible_html`: Get the complete HTML content of the current page
 - Comprehensive test coverage for all new tools
 - Updated documentation with examples and usage detail
 
 ## Version 1.0.2
 - **Multi-Browser Support**: Added support for Firefox and WebKit browsers in addition to Chromium 🌐
-  - New `browserType` parameter for `playwright_navigate` tool allows specifying browser engine 
+  - New `browserType` parameter for `navigate` tool allows specifying browser engine
   - Supported browser types: "chromium" (default), "firefox", and "webkit"
   - Seamless browser engine switching during automation sessions
 - Enhanced test coverage for different browser engines
@@ -81,8 +81,8 @@ import YouTubeVideoEmbed from '@site/src/components/HomepageFeatures/YouTubeVide
 - New feature: Optional Bearer Authorization to API POST (Thanks to ***@CopilotMe***)
 - Fixed issue Exit process on host close (Thanks to ***@kiracih***)
 - New Feature: Three new tools (Thanks to ***@VinceOPS***)
-  - `playwright_except_response`
-  - `playwright_assert_response`
+  - `except_response`
+  - `assert_response`
   
   Here is the scenario for the above two tools
   ```BDD
@@ -92,11 +92,11 @@ import YouTubeVideoEmbed from '@site/src/components/HomepageFeatures/YouTubeVide
       Then The browser should have received the HTTP response
       And Its body should contain a property "captchaFamily"
   ```
-  - A new tool `playwright_custom_user_agent` to define a custom user agent.
+  - A new tool `custom_user_agent` to define a custom user agent.
 
 
 ## Version 0.3.1
-- Fixed BROWSER_TOOLS as Playwright_console_logs is not required (Thanks to https://github.com/kfern)
+- Fixed BROWSER_TOOLS as console_logs is not required (Thanks to https://github.com/kfern)
 - Added Tests for all the Playwright MCP Server tools (Thanks to https://github.com/kfern)
 - Updated documentation with AI Courses 
   - Gen AI Course [Details here](/docs/ai-courses/AIAgents)
@@ -104,7 +104,7 @@ import YouTubeVideoEmbed from '@site/src/components/HomepageFeatures/YouTubeVide
   - Machine Learning Course [Details here](/docs/ai-courses/MachineLearning)
 
 ## Version 0.3.0
-- Added support for `Playwright_console_logs` to get the console logs from the browser. Following logs types
+- Added support for `console_logs` to get the console logs from the browser. Following logs types
 are supported.[More Detail available here](/docs/playwright-web/Console-Logging)
   - `log`
   - `info`
@@ -116,15 +116,15 @@ are supported.[More Detail available here](/docs/playwright-web/Console-Logging)
 
 
 :::tip Usage Example
-To invoke `Playwright_console_logs` via MCP Playwright, use the following prompt:
+To invoke `console_logs` via MCP Playwright, use the following prompt:
 
 ```plaintext
 Get the console log from the browser whenever you perform any action.
 :::
-- Added support for `Playwright_close` to close the browser and release all resources.
+- Added support for `close` to close the browser and release all resources.
 
 :::tip Usage Example
-To invoke `Playwright_close` via MCP Playwright, use the following prompt:
+To invoke `close` via MCP Playwright, use the following prompt:
 
 ```plaintext
 Close the browser once the operation is completed.

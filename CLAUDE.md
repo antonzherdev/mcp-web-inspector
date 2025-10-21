@@ -86,55 +86,55 @@ node run-tests.cjs     # Alternative way to run tests with coverage
 ### Browser Tools
 
 #### Navigation & Interaction
-- `playwright_navigate` - Navigate to a URL (supports chromium/firefox/webkit, viewport config, headless mode)
-- `playwright_click` - Click an element
-- `playwright_iframe_click` - Click an element inside an iframe
-- `playwright_fill` - Fill an input field
-- `playwright_iframe_fill` - Fill an input field inside an iframe
-- `playwright_select` - Select from dropdown
-- `playwright_hover` - Hover over an element
-- `playwright_upload_file` - Upload file to input[type='file']
-- `playwright_go_back` - Navigate back in history
-- `playwright_go_forward` - Navigate forward in history
-- `playwright_drag` - Drag element to target location
-- `playwright_press_key` - Press keyboard key
-- `playwright_click_and_switch_tab` - Click link and switch to new tab
+- `navigate` - Navigate to a URL (supports chromium/firefox/webkit, viewport config, headless mode)
+- `click` - Click an element
+- `iframe_click` - Click an element inside an iframe
+- `fill` - Fill an input field
+- `iframe_fill` - Fill an input field inside an iframe
+- `select` - Select from dropdown
+- `hover` - Hover over an element
+- `upload_file` - Upload file to input[type='file']
+- `go_back` - Navigate back in history
+- `go_forward` - Navigate forward in history
+- `drag` - Drag element to target location
+- `press_key` - Press keyboard key
+- `click_and_switch_tab` - Click link and switch to new tab
 
 #### Element Inspection & Debugging
-- `playwright_inspect_dom` - **PRIMARY TOOL** - Progressive DOM inspection with semantic filtering, automatic wrapper drilling (maxDepth: 5 default), and spatial layout detection. Returns only meaningful elements (semantic HTML, test IDs, ARIA roles, interactive elements) while skipping non-semantic wrappers. Supports visual content (svg, canvas, audio, iframe). Use for understanding page structure.
-- `playwright_get_test_ids` - Discover all test identifiers on the page (data-testid, data-test, data-cy, etc.). Returns compact text list grouped by attribute type. Essential for test-driven workflows.
-- `playwright_query_selector_all` - Test a selector and return detailed information about all matched elements. Essential for selector debugging and finding the right element to interact with. Returns compact text format with element tag, position, text content, visibility status, and diagnostic info (display:none, opacity:0, zero size). Supports testid shortcuts and limit parameter (default: 10).
-- `playwright_element_visibility` - Check if element is visible with detailed diagnostics (viewport, clipping, coverage, scroll needed)
-- `playwright_element_position` - Get element position and size (x, y, width, height, viewport status)
-- `playwright_find_by_text` - Find elements by text content (partial or exact match, case-sensitive/insensitive). Essential for pages without test IDs. Returns elements with position, visibility, and interaction state.
-- `playwright_get_computed_styles` - Get computed CSS styles for an element. Returns styles grouped by category (Layout, Visibility, Spacing, Typography). Useful for debugging layout issues and understanding why elements behave unexpectedly.
-- `playwright_element_exists` - Ultra-lightweight existence check (< 50 chars response). Returns ✓ exists or ✗ not found. Most common check before interaction.
-- `playwright_compare_positions` - Compare positions and alignment of two elements. Validates layout consistency by checking if elements are aligned (top, left, right, bottom) or have the same dimensions (width, height). Returns compact text format with alignment status and difference in pixels. Essential for visual regression testing.
+- `inspect_dom` - **PRIMARY TOOL** - Progressive DOM inspection with semantic filtering, automatic wrapper drilling (maxDepth: 5 default), and spatial layout detection. Returns only meaningful elements (semantic HTML, test IDs, ARIA roles, interactive elements) while skipping non-semantic wrappers. Supports visual content (svg, canvas, audio, iframe). Use for understanding page structure.
+- `get_test_ids` - Discover all test identifiers on the page (data-testid, data-test, data-cy, etc.). Returns compact text list grouped by attribute type. Essential for test-driven workflows.
+- `query_selector_all` - Test a selector and return detailed information about all matched elements. Essential for selector debugging and finding the right element to interact with. Returns compact text format with element tag, position, text content, visibility status, and diagnostic info (display:none, opacity:0, zero size). Supports testid shortcuts and limit parameter (default: 10).
+- `element_visibility` - Check if element is visible with detailed diagnostics (viewport, clipping, coverage, scroll needed)
+- `element_position` - Get element position and size (x, y, width, height, viewport status)
+- `find_by_text` - Find elements by text content (partial or exact match, case-sensitive/insensitive). Essential for pages without test IDs. Returns elements with position, visibility, and interaction state.
+- `get_computed_styles` - Get computed CSS styles for an element. Returns styles grouped by category (Layout, Visibility, Spacing, Typography). Useful for debugging layout issues and understanding why elements behave unexpectedly.
+- `element_exists` - Ultra-lightweight existence check (< 50 chars response). Returns ✓ exists or ✗ not found. Most common check before interaction.
+- `compare_positions` - Compare positions and alignment of two elements. Validates layout consistency by checking if elements are aligned (top, left, right, bottom) or have the same dimensions (width, height). Returns compact text format with alignment status and difference in pixels. Essential for visual regression testing.
 
 #### Content Extraction
-- `playwright_screenshot` - Take screenshots (full page or element, base64 or PNG file)
-- `playwright_get_visible_text` - Get visible text content of page
-- `playwright_get_visible_html` - Get HTML content (with script/comment/style removal options)
-- `playwright_save_as_pdf` - Save page as PDF
+- `screenshot` - Take screenshots (full page or element, base64 or PNG file)
+- `get_visible_text` - Get visible text content of page
+- `get_visible_html` - Get HTML content (with script/comment/style removal options)
+- `save_as_pdf` - Save page as PDF
 
 #### JavaScript & Console
-- `playwright_evaluate` - Execute JavaScript in browser console
-- `playwright_console_logs` - Retrieve browser console logs (with filtering by type/search/limit)
+- `evaluate` - Execute JavaScript in browser console
+- `console_logs` - Retrieve browser console logs (with filtering by type/search/limit)
 
 #### Network & Responses
-- `playwright_expect_response` - Start waiting for HTTP response
-- `playwright_assert_response` - Validate previously initiated HTTP response wait
+- `expect_response` - Start waiting for HTTP response
+- `assert_response` - Validate previously initiated HTTP response wait
 
 #### Configuration
-- `playwright_custom_user_agent` - Set custom User Agent
-- `playwright_close` - Close browser and release resources
+- `custom_user_agent` - Set custom User Agent
+- `close` - Close browser and release resources
 
 ### API Tools (HTTP Requests)
-- `playwright_get` - HTTP GET request
-- `playwright_post` - HTTP POST request (with body, token, custom headers)
-- `playwright_put` - HTTP PUT request
-- `playwright_patch` - HTTP PATCH request
-- `playwright_delete` - HTTP DELETE request
+- `get` - HTTP GET request
+- `post` - HTTP POST request (with body, token, custom headers)
+- `put` - HTTP PUT request
+- `patch` - HTTP PATCH request
+- `delete` - HTTP DELETE request
 
 ## Architecture
 
@@ -278,7 +278,7 @@ All browser tools support test ID shortcuts via `normalizeSelector()`:
 
 ### DOM Inspection Tool
 
-The `playwright_inspect_dom` tool is the **primary tool for understanding page structure**. Key features:
+The `inspect_dom` tool is the **primary tool for understanding page structure**. Key features:
 
 **Semantic Filtering** - Automatically shows only meaningful elements:
 - Semantic HTML: `header`, `nav`, `main`, `article`, `section`, `aside`, `footer`, `form`, `button`, `input`, `select`, `textarea`, `a`, `h1-h6`, `p`, `ul`, `ol`, `li`, `table`, `img`, `video`, `audio`, `svg`, `canvas`, `iframe`, `dialog`, `details`, `summary`
@@ -295,7 +295,7 @@ The `playwright_inspect_dom` tool is the **primary tool for understanding page s
 - `maxDepth` (optional, default: 5): Maximum depth to drill through non-semantic wrapper elements. Increase for extremely deeply nested components, decrease to 1 to see only immediate children without drilling.
 
 **Progressive Workflow**:
-1. `playwright_inspect_dom({})` → See page sections (header, main, footer)
-2. `playwright_inspect_dom({ selector: "main" })` → See main content children
-3. `playwright_inspect_dom({ selector: "testid:login-form" })` → See form fields
+1. `inspect_dom({})` → See page sections (header, main, footer)
+2. `inspect_dom({ selector: "main" })` → See main content children
+3. `inspect_dom({ selector: "testid:login-form" })` → See form fields
 4. Use selectors from output with interaction tools (click, fill, etc.)

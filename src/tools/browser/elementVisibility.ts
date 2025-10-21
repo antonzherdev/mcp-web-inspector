@@ -234,7 +234,7 @@ export class ElementVisibilityTool extends BrowserToolBase {
         // Suggestions
         const suggestions: string[] = [];
         if (needsScroll) {
-          suggestions.push('→ Call playwright_scroll_to_element before clicking');
+          suggestions.push('→ Call scroll_to_element before clicking');
         }
         if (visibilityData.isCovered) {
           suggestions.push('→ Element may be behind modal, overlay, or fixed header');

@@ -104,7 +104,7 @@ describe('GetTestIdsTool', () => {
     expect(result.content[0].text).toContain('data-test');
     expect(result.content[0].text).toContain('data-cy');
     expect(result.content[0].text).toContain('Suggestions:');
-    expect(result.content[0].text).toContain('Use playwright_inspect_dom to see page structure');
+    expect(result.content[0].text).toContain('Use inspect_dom to see page structure');
   });
 
   test('should handle many test IDs (more than 10)', async () => {
@@ -292,8 +292,8 @@ describe('GetTestIdsTool', () => {
 
     // Verify fix guidance is provided
     expect(result.content[0].text).toContain('🔧 How to Fix:');
-    expect(result.content[0].text).toContain('Use playwright_query_selector_all to locate all duplicates');
-    expect(result.content[0].text).toContain('playwright_query_selector_all({ selector: "testid:main-header" })');
+    expect(result.content[0].text).toContain('Use query_selector_all to locate all duplicates');
+    expect(result.content[0].text).toContain('query_selector_all({ selector: "testid:main-header" })');
     expect(result.content[0].text).toContain('Identify which elements should keep the test ID');
     expect(result.content[0].text).toContain('Rename duplicates to be unique and descriptive');
     expect(result.content[0].text).toContain('"main-header" → "main-header-primary", "main-header-mobile"');

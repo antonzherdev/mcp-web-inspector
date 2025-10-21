@@ -8,18 +8,18 @@ Based on research of LLM tool calling best practices (2024-2025), MCP specificat
 Each tool does ONE thing and does it well.
 
 **Good Examples (Current):**
-- `playwright_click` - only clicks
-- `playwright_fill` - only fills
-- `playwright_go_back` - only goes back
+- `click` - only clicks
+- `fill` - only fills
+- `go_back` - only goes back
 
 **Anti-Pattern to Avoid:**
 ```typescript
 // BAD - multiple operations in one tool
-playwright_navigate_and_click({ url, selector, waitForLoad })
+navigate_and_click({ url, selector, waitForLoad })
 
 // GOOD - separate concerns
-playwright_navigate({ url })
-playwright_click({ selector })
+navigate({ url })
+click({ selector })
 ```
 
 ### 2. **Minimize Parameters** ✅ CRITICAL
@@ -37,7 +37,7 @@ Use `string`, `number`, `boolean` instead of nested objects where possible.
 
 **Good:**
 ```typescript
-playwright_screenshot({
+screenshot({
   selector: string;
   fullPage: boolean;
   path: string;
@@ -46,7 +46,7 @@ playwright_screenshot({
 
 **Avoid:**
 ```typescript
-playwright_screenshot({
+screenshot({
   target: { selector: string; type: 'element' | 'page' };
   options: { fullPage: boolean; quality: number; };
   output: { path: string; format: 'png' | 'jpeg' };
@@ -130,11 +130,11 @@ When users paste images into Claude Code, the client converts them to efficient 
 **Correct Approach for Screenshots:**
 ```typescript
 // ✅ GOOD - Return file path
-playwright_screenshot({ name: "login" })
+screenshot({ name: "login" })
 → "✓ Screenshot saved: .mcp-web-inspector/screenshots/login-2025-01-20.png"
 
 // ❌ BAD - Don't return base64
-playwright_screenshot({ name: "login", returnBase64: true })
+screenshot({ name: "login", returnBase64: true })
 → { type: "image", data: "iVBORw0KG..." }  // FAILS: exceeds 25k tokens
 ```
 
@@ -214,7 +214,7 @@ Children (0 semantic, skipped 12 wrapper divs):
 ⚠ No semantic elements found at this level.
 
 Suggestions:
-1. Use playwright_get_visible_html to see raw HTML
+1. Use get_visible_html to see raw HTML
 2. Look for elements by class/id if test IDs unavailable
 3. Recommend adding data-testid for better testability
 
@@ -264,19 +264,19 @@ Don't add `testId`, `cssSelector`, `xpath` as separate parameters.
 Tool names should describe exactly what they do.
 
 **Good:**
-- `playwright_click_and_switch_tab` - describes the complete action
-- `playwright_save_as_pdf` - clear output format
+- `click_and_switch_tab` - describes the complete action
+- `save_as_pdf` - clear output format
 
 **Avoid Ambiguity:**
-- `playwright_interact` - too vague
-- `playwright_process` - what does it process?
+- `interact` - too vague
+- `process` - what does it process?
 
 ### 8. **Explicit Over Implicit** ✅ IMPORTANT
 Make behavior explicit through parameters, not implicit through smart defaults.
 
 **Good:**
 ```typescript
-playwright_navigate({
+navigate({
   url: string;
   waitUntil?: 'load' | 'domcontentloaded' | 'networkidle';  // Explicit
 })
@@ -284,7 +284,7 @@ playwright_navigate({
 
 **Problematic:**
 ```typescript
-playwright_navigate({
+navigate({
   url: string;
   // Implicitly waits for "smart" detection - LLM doesn't know what happens
 })
@@ -324,7 +324,7 @@ Required parameters first, optional parameters with defaults last.
 ### 11. **Actionable Error Messages & Guidance** ✅ IMPORTANT
 When tools detect issues, provide **step-by-step guidance** for LLMs to fix them.
 
-**Excellent Example (playwright_get_test_ids):**
+**Excellent Example (get_test_ids):**
 When duplicate test IDs are detected, the tool provides:
 1. Impact explanation (why it's a problem)
 2. Step-by-step fix instructions
@@ -334,8 +334,8 @@ When duplicate test IDs are detected, the tool provides:
 ```typescript
 // When duplicates found, response includes:
 🔧 How to Fix:
-   1. Use playwright_query_selector_all to locate all duplicates
-      playwright_query_selector_all({ selector: "testid:main-header" })
+   1. Use query_selector_all to locate all duplicates
+      query_selector_all({ selector: "testid:main-header" })
    2. Identify which elements should keep the test ID
    3. Rename duplicates to be unique and descriptive
       Example: "main-header" → "main-header-primary", "main-header-mobile"
@@ -358,7 +358,7 @@ When duplicate test IDs are detected, the tool provides:
 Use consistent patterns across tools.
 
 **Current Conventions (Keep):**
-- All tools: `playwright_*`
+- All tools: `*`
 - Boolean parameters: `is*`, `should*`, `include*`
 - Paths: always `*Path` not `*File` or `*Location`
 - Timeouts: always `timeout` (milliseconds)
@@ -385,30 +385,30 @@ Before adding a new tool, verify:
 
 Based on these principles, here's how to improve the proposed tools:
 
-### ❌ SPLIT: `playwright_get_element_state`
+### ❌ SPLIT: `get_element_state`
 **Problem:** Returns complex nested object with 10+ fields
 
 **Better Approach:**
 ```typescript
 // Three focused tools instead of one complex tool
 
-playwright_element_exists({ selector })
+element_exists({ selector })
 → { exists: boolean; tagName: string; }
 
-playwright_element_visibility({ selector })
+element_visibility({ selector })
 → { isVisible: boolean; isInViewport: boolean; opacity: number; }
 
-playwright_element_attributes({ selector })
+element_attributes({ selector })
 → { attributes: Record<string, string>; }  // Flat key-value
 ```
 
-### ❌ SIMPLIFY: `playwright_get_network_activity`
+### ❌ SIMPLIFY: `get_network_activity`
 **Problem:** 6 parameters, complex filtering
 
 **Better Approach:**
 ```typescript
 // Simple list
-playwright_list_network_requests({
+list_network_requests({
   limit?: number;  // Default: 50
 })
 → {
@@ -422,7 +422,7 @@ playwright_list_network_requests({
 }
 
 // Get details for specific request
-playwright_get_request_details({
+get_request_details({
   index: number;     // From list above
 })
 → {
@@ -430,13 +430,13 @@ playwright_get_request_details({
 }
 ```
 
-### ✅ KEEP: `playwright_query_selector_all`
+### ✅ KEEP: `query_selector_all`
 **Why:** Already follows good practices
 - 3 parameters
 - Returns flat array
 - Single purpose (test selectors)
 
-### ✅ KEEP: `playwright_list_iframes`
+### ✅ KEEP: `list_iframes`
 **Why:**
 - 1 optional parameter
 - Returns flat list
@@ -557,7 +557,7 @@ Each tool should document:
 
 ```typescript
 {
-  name: "playwright_tool_name",
+  name: "tool_name",
   description: "One sentence describing what it does. Include key behavior (e.g., 'Waits up to 30s by default'). Example: Click button with selector '#submit'.",
   inputSchema: {
     type: "object",
@@ -578,7 +578,7 @@ Each tool should document:
 
 ❌ **Too Complex**
 ```typescript
-playwright_interact_with_element({
+interact_with_element({
   selector: string;
   action: 'click' | 'fill' | 'select' | 'hover';
   value?: string;
@@ -588,17 +588,17 @@ playwright_interact_with_element({
 
 ✅ **Atomic Tools**
 ```typescript
-playwright_click({ selector, timeout? })
-playwright_fill({ selector, value, timeout? })
-playwright_select({ selector, value, timeout? })
-playwright_hover({ selector, timeout? })
+click({ selector, timeout? })
+fill({ selector, value, timeout? })
+select({ selector, value, timeout? })
+hover({ selector, timeout? })
 ```
 
 ### Example 2: Information Retrieval
 
 ❌ **Nested Returns**
 ```typescript
-playwright_get_page_info() → {
+get_page_info() → {
   navigation: { url, title },
   viewport: { width, height },
   performance: { loadTime, domReady },
@@ -608,25 +608,25 @@ playwright_get_page_info() → {
 
 ✅ **Focused Tools**
 ```typescript
-playwright_get_url() → { url: string }
-playwright_get_title() → { title: string }
-playwright_get_viewport() → { width: number; height: number }
+get_url() → { url: string }
+get_title() → { title: string }
+get_viewport() → { width: number; height: number }
 ```
 
 ### Example 3: Waiting
 
 ❌ **Magic Behavior**
 ```typescript
-playwright_smart_wait({
+smart_wait({
   condition: string;  // LLM must describe what to wait for
 })
 ```
 
 ✅ **Explicit Tools**
 ```typescript
-playwright_wait_for_element({ selector, state: 'visible' | 'hidden' })
-playwright_wait_for_network_idle({ timeout })
-playwright_wait_for_load({ waitUntil: 'load' | 'networkidle' })
+wait_for_element({ selector, state: 'visible' | 'hidden' })
+wait_for_network_idle({ timeout })
+wait_for_load({ waitUntil: 'load' | 'networkidle' })
 ```
 
 ## References

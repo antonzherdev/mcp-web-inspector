@@ -84,7 +84,7 @@ Clear a code generation session without generating a test.
 
 ## Browser Automation Tools
 
-### Playwright_navigate
+### navigate
 
 Navigate to a URL in the browser with configurable viewport and browser settings
 
@@ -111,7 +111,7 @@ Navigate to a URL in the browser with configurable viewport and browser settings
 
 ---
 
-### Playwright_screenshot
+### screenshot
 
 Capture screenshots of the entire page or specific elements
 
@@ -140,7 +140,7 @@ Capture screenshots of the entire page or specific elements
   Directory to save the screenshot.
 ---
 
-### Playwright_click
+### click
 Click elements on the page.
 
 - **`selector`** *(string)*:  
@@ -148,7 +148,7 @@ Click elements on the page.
 
 ---
 
-### playwright_click_and_switch_tab
+### click_and_switch_tab
 Clicks a link on the page and switches to the newly opened tab.
 
 - **Inputs:**
@@ -159,7 +159,7 @@ Clicks a link on the page and switches to the newly opened tab.
 
 ---
 
-### Playwright_iframe_click
+### iframe_click
 Click elements in an iframe on the page.
 
 - **`iframeSelector`** *(string)*:  
@@ -170,7 +170,7 @@ Click elements in an iframe on the page.
 
 ---
 
-### Playwright_iframe_fill
+### iframe_fill
 Fill elements in an iframe on the page.
 
 - **`iframeSelector`** *(string)*:  
@@ -181,7 +181,7 @@ Fill elements in an iframe on the page.
 
 ---
 
-### Playwright_hover
+### hover
 Hover over elements on the page.
 
 - **`selector`** *(string)*:  
@@ -189,7 +189,7 @@ Hover over elements on the page.
 
 ---
 
-### Playwright_fill
+### fill
 Fill out input fields.
 
 - **`selector`** *(string)*:  
@@ -199,7 +199,7 @@ Fill out input fields.
 
 ---
 
-### Playwright_select
+### select
 Select an element with the `SELECT` tag.
 
 - **`selector`** *(string)*:  
@@ -209,7 +209,7 @@ Select an element with the `SELECT` tag.
 
 ---
 
-### playwright_upload_file
+### upload_file
 Upload a file to an input[type='file'] element on the page.
 
 - **Inputs:**
@@ -220,7 +220,7 @@ Upload a file to an input[type='file'] element on the page.
 
 ---
 
-### Playwright_evaluate
+### evaluate
 Execute JavaScript in the browser console.
 
 - **`script`** *(string)*:  
@@ -228,7 +228,7 @@ Execute JavaScript in the browser console.
 
 ---
 
-### Playwright_console_logs
+### console_logs
 Retrieve console logs from the browser with filtering options
 Supports Retrieval of logs like - all, error, warning, log, info, debug, exception
 
@@ -246,29 +246,29 @@ Supports Retrieval of logs like - all, error, warning, log, info, debug, excepti
 
 ---
 
-### Playwright_close
+### close
   Close the browser and release all resources.
   Useful while working with Cline, Cursor to release the resources.
 
 ---
 
-### Playwright_expect_response
+### expect_response
 Ask Playwright to start waiting for a HTTP response. This tool initiates the wait operation but does not wait for its completion.
 
 - **Inputs:**
   - **`id`** *(string)*:  
-    Unique & arbitrary identifier to be used for retrieving this response later with `Playwright_assert_response`.
+    Unique & arbitrary identifier to be used for retrieving this response later with `assert_response`.
   - **`url`** *(string)*:  
     URL pattern to match in the response.
 
 ---
 
-### Playwright_assert_response
+### assert_response
 Wait for and validate a previously initiated HTTP response wait operation.
 
 - **Inputs:**
   - **`id`** *(string)*:  
-    Identifier of the HTTP response initially expected using `Playwright_expect_response`.
+    Identifier of the HTTP response initially expected using `expect_response`.
   - **`value`** *(string, optional)*:  
     Data to expect in the body of the HTTP response. If provided, the assertion will fail if this value is not found in the response body.
 
@@ -282,7 +282,7 @@ Wait for and validate a previously initiated HTTP response wait operation.
 
 ---
 
-### playwright_custom_user_agent
+### custom_user_agent
 Set a custom User Agent for the browser.
 
 - **Inputs:**
@@ -291,7 +291,7 @@ Set a custom User Agent for the browser.
 
 ---
 
-### playwright_get_visible_text
+### get_visible_text
 Get the visible text content of the current page.
 
 - **Response:**
@@ -301,7 +301,7 @@ Get the visible text content of the current page.
 
 ---
 
-### playwright_get_visible_html
+### get_visible_html
 Get the HTML content of the current page.
 
 - **Inputs:**
@@ -326,7 +326,7 @@ Get the HTML content of the current page.
 
 ---
 
-### playwright_go_back
+### go_back
 Navigate back in browser history.
 
 - **Response:**
@@ -334,7 +334,7 @@ Navigate back in browser history.
 
 ---
 
-### playwright_go_forward
+### go_forward
 Navigate forward in browser history.
 
 - **Response:**
@@ -342,7 +342,7 @@ Navigate forward in browser history.
 
 ---
 
-### playwright_drag
+### drag
 Drag an element to a target location.
 
 - **Inputs:**
@@ -356,7 +356,7 @@ Drag an element to a target location.
 
 ---
 
-### playwright_press_key
+### press_key
 Press a keyboard key.
 
 - **Inputs:**
@@ -370,7 +370,7 @@ Press a keyboard key.
 
 ---
 
-### playwright_save_as_pdf
+### save_as_pdf
 Save the current page as a PDF file.
 
 - **Inputs:**

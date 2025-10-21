@@ -92,7 +92,7 @@ export class GetTestIdsTool extends BrowserToolBase {
           });
           lines.push('');
           lines.push('Suggestions:');
-          lines.push('  - Use playwright_inspect_dom to see page structure');
+          lines.push('  - Use inspect_dom to see page structure');
           lines.push('  - Consider adding test IDs to interactive elements');
           lines.push('  - Example: <button data-testid="submit-button">Submit</button>');
         } else {
@@ -138,7 +138,7 @@ export class GetTestIdsTool extends BrowserToolBase {
             lines.push('   - Test automation will fail or behave unpredictably');
             lines.push('');
             lines.push('🔧 How to Fix:');
-            lines.push('   1. Use playwright_query_selector_all to locate all duplicates');
+            lines.push('   1. Use query_selector_all to locate all duplicates');
 
             // Add example for the first duplicate
             const firstDupAttr = Object.keys(discoveryData.duplicates)[0];
@@ -146,9 +146,9 @@ export class GetTestIdsTool extends BrowserToolBase {
             const firstDupCount = discoveryData.duplicates[firstDupAttr][firstDupValue];
 
             if (firstDupAttr === 'data-testid') {
-              lines.push(`      playwright_query_selector_all({ selector: "testid:${firstDupValue}" })`);
+              lines.push(`      query_selector_all({ selector: "testid:${firstDupValue}" })`);
             } else {
-              lines.push(`      playwright_query_selector_all({ selector: "[${firstDupAttr}='${firstDupValue}']" })`);
+              lines.push(`      query_selector_all({ selector: "[${firstDupAttr}='${firstDupValue}']" })`);
             }
 
             lines.push('   2. Identify which elements should keep the test ID');

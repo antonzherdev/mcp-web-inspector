@@ -42,7 +42,7 @@ export class QuerySelectorAllTool extends BrowserToolBase {
 
         if (totalMatches === 0) {
           return createSuccessResponse(
-            `No elements found matching "${args.selector}"\n\nTip: Try using playwright_inspect_dom to explore the page structure.`
+            `No elements found matching "${args.selector}"\n\nTip: Try using inspect_dom to explore the page structure.`
           );
         }
 
