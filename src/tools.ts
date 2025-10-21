@@ -41,7 +41,7 @@ export function createToolDefinitions(sessionConfig?: SessionConfig) {
     },
     {
       name: "screenshot",
-      description: `Take a screenshot of the current page or a specific element. Screenshots are saved to ${screenshotsDir} by default. Example: { name: "login-page", fullPage: true } or { name: "submit-btn", selector: "testid:submit" }`,
+      description: `⚠️ RARELY NEEDED: Screenshots are NOT useful for LLMs to analyze layouts, margins, or alignment issues. Use inspect_dom(), compare_positions(), or measure_element() instead - they provide precise numerical data. Only take screenshots for: (1) sharing with humans for visual confirmation, (2) documenting test results, or (3) verifying colors/images. Screenshots are saved to ${screenshotsDir}. Example: { name: "login-page", fullPage: true } or { name: "submit-btn", selector: "testid:submit" }`,
       inputSchema: {
         type: "object",
         properties: {
@@ -125,7 +125,7 @@ export function createToolDefinitions(sessionConfig?: SessionConfig) {
     },
     {
       name: "evaluate",
-      description: "Execute JavaScript in the browser console",
+      description: "Execute JavaScript in the browser console. ⚠️ AVOID for common tasks - use specialized tools instead: inspect_dom() for page structure, compare_positions() for alignment, measure_element() for spacing, query_selector() for finding elements. Only use evaluate() for custom logic not covered by other tools.",
       inputSchema: {
         type: "object",
         properties: {
@@ -186,7 +186,7 @@ export function createToolDefinitions(sessionConfig?: SessionConfig) {
     },
     {
       name: "get_html",
-      description: "Get the HTML content of the current page. By default, all <script> tags are removed from the output unless removeScripts is explicitly set to false.",
+      description: "Get raw HTML content of the page or specific element. ⚠️ For understanding page structure, use inspect_dom() instead - it's more efficient and filters out noise. Use get_html() only when you need the actual HTML markup (e.g., to check specific attributes or element nesting).",
       inputSchema: {
         type: "object",
         properties: {
@@ -260,7 +260,7 @@ export function createToolDefinitions(sessionConfig?: SessionConfig) {
     },
     {
       name: "inspect_dom",
-      description: "Progressive DOM inspection with semantic filtering and spatial layout info. This is the PRIMARY tool for understanding page structure. Returns immediate semantic children only (header, nav, main, form, button, elements with test IDs, ARIA roles, etc.) while automatically drilling through non-semantic wrapper elements (div, span, etc.) up to maxDepth levels. Use without selector for page overview, then drill down by calling again with a child's selector. Returns compact text format with position, visibility, and layout pattern detection. Supports testid shortcuts.",
+      description: "START HERE FOR LAYOUT DEBUGGING: Get page structure overview and identify elements. Progressive DOM inspection that skips wrapper divs and shows only semantic elements (header, nav, main, form, button, elements with test IDs, ARIA roles, etc.). Use without selector for full page overview, then drill down by calling with a child's selector. Returns compact text format with position, visibility, and layout patterns. More efficient than get_html() or evaluate() for understanding structure. Supports testid shortcuts.",
       inputSchema: {
         type: "object",
         properties: {
@@ -360,7 +360,7 @@ export function createToolDefinitions(sessionConfig?: SessionConfig) {
     },
     {
       name: "get_computed_styles",
-      description: "Get computed CSS styles for an element. Essential for understanding why elements behave unexpectedly and debugging layout issues. Returns styles grouped by category (Layout, Visibility, Spacing, Typography). Use properties parameter to request specific CSS properties, or omit for common layout properties.",
+      description: "INSPECT CSS PROPERTIES: Get computed CSS values for specific properties (display, position, width, etc.). Use when you need raw CSS values or specific properties not shown by measure_element(). Returns styles grouped by category (Layout, Visibility, Spacing, Typography). For box model visualization (padding/margin), use measure_element() instead.",
       inputSchema: {
         type: "object",
         properties: {
@@ -378,7 +378,7 @@ export function createToolDefinitions(sessionConfig?: SessionConfig) {
     },
     {
       name: "measure_element",
-      description: "Get box model measurements (position, size, margin, padding, border) for an element. Use for layout debugging, spacing validation, and understanding CSS box model. Returns compact visual representation of content, padding, border, and margin with directional arrows.",
+      description: "DEBUG SPACING ISSUES: See padding, margin, and border measurements in visual box model format. Use when elements have unexpected spacing or size. Returns compact visual representation showing content → padding → border → margin with directional arrows (↑24px for top margin, etc.). More readable than get_computed_styles() for box model debugging.",
       inputSchema: {
         type: "object",
         properties: {
@@ -406,7 +406,7 @@ export function createToolDefinitions(sessionConfig?: SessionConfig) {
     },
     {
       name: "compare_positions",
-      description: "Compare positions and alignment of two elements. Validates layout consistency by checking if elements are aligned (top, left, right, bottom) or have the same dimensions (width, height). Essential for visual regression testing and ensuring consistent spacing across components. Returns compact text format with alignment status and difference in pixels.",
+      description: "FIND ALIGNMENT GAPS: Check if two elements are properly aligned or have spacing issues. Perfect for debugging layout problems like 'element not aligned with header' or 'gap between panels'. Checks edge alignment (top, left, right, bottom) or dimension matching (width, height). Returns alignment status and gap size in pixels. More efficient than evaluate() with manual getBoundingClientRect() calculations.",
       inputSchema: {
         type: "object",
         properties: {
