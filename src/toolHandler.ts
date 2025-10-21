@@ -22,7 +22,6 @@ import {
   VisibleHtmlTool
 } from './tools/browser/visiblePage.js';
 import { ElementVisibilityTool } from './tools/browser/elementVisibility.js';
-import { ElementPositionTool } from './tools/browser/elementPosition.js';
 import { InspectDomTool } from './tools/browser/inspectDom.js';
 import { GetTestIdsTool } from './tools/browser/getTestIds.js';
 import { QuerySelectorAllTool } from './tools/browser/querySelectorAll.js';
@@ -142,7 +141,6 @@ let goForwardTool: GoForwardTool;
 let dragTool: DragTool;
 let pressKeyTool: PressKeyTool;
 let elementVisibilityTool: ElementVisibilityTool;
-let elementPositionTool: ElementPositionTool;
 let inspectDomTool: InspectDomTool;
 let getTestIdsTool: GetTestIdsTool;
 let querySelectorAllTool: QuerySelectorAllTool;
@@ -590,7 +588,6 @@ function initializeTools(server: any) {
   if (!dragTool) dragTool = new DragTool(server);
   if (!pressKeyTool) pressKeyTool = new PressKeyTool(server);
   if (!elementVisibilityTool) elementVisibilityTool = new ElementVisibilityTool(server);
-  if (!elementPositionTool) elementPositionTool = new ElementPositionTool(server);
   if (!inspectDomTool) inspectDomTool = new InspectDomTool(server);
   if (!getTestIdsTool) getTestIdsTool = new GetTestIdsTool(server);
   if (!querySelectorAllTool) querySelectorAllTool = new QuerySelectorAllTool(server);
@@ -741,9 +738,6 @@ export async function handleToolCall(
 
       case "check_visibility":
         return await elementVisibilityTool.execute(args, context);
-
-      case "get_position":
-        return await elementPositionTool.execute(args, context);
 
       case "inspect_dom":
         return await inspectDomTool.execute(args, context);

@@ -124,7 +124,6 @@ node run-tests.cjs     # Alternative way to run tests with coverage
 - `get_test_ids` - Discover all test identifiers on the page (data-testid, data-test, data-cy, etc.). Returns compact text list grouped by attribute type. Essential for test-driven workflows.
 - `query_selector_all` - Test a selector and return detailed information about all matched elements. Essential for selector debugging and finding the right element to interact with. Returns compact text format with element tag, position, text content, visibility status, and diagnostic info (display:none, opacity:0, zero size). Supports testid shortcuts and limit parameter (default: 10).
 - `element_visibility` - Check if element is visible with detailed diagnostics (viewport, clipping, coverage, scroll needed)
-- `element_position` - Get element position and size (x, y, width, height, viewport status)
 - `find_by_text` - Find elements by text content (partial or exact match, case-sensitive/insensitive). Essential for pages without test IDs. Returns elements with position, visibility, and interaction state.
 - `get_computed_styles` - Get computed CSS styles for an element. Returns styles grouped by category (Layout, Visibility, Spacing, Typography). Useful for debugging CSS properties and understanding why elements behave unexpectedly.
 - `measure_element` - Get box model measurements (position, size, margin, padding, border). Returns compact visual representation with directional arrows (↑↓←→). Essential for layout debugging, spacing validation, and understanding CSS box model issues.

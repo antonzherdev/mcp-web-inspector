@@ -449,15 +449,6 @@ Detailed visibility diagnostics showing exactly why elements are or aren't visib
 - Detecting elements covered by modals or overlays
 - Checking if elements are clipped by parent containers
 
-#### `get_position`
-Get precise element coordinates and dimensions (x, y, width, height). Shows position relative to viewport.
-
-**Use Cases:**
-- Finding exact click coordinates
-- Checking element layout
-- Calculating distances between elements
-- Debugging overlapping elements
-
 #### `compare_positions`
 Compare positions and alignment of two elements. Validates if elements are aligned (top, left, right, bottom) or have matching dimensions (width, height).
 
@@ -703,8 +694,8 @@ Regular CSS selectors, text selectors (`text=Login`), and Playwright selectors w
    → Found 3 matches, 2 are hidden (display:none)
 3. check_visibility({ selector: ".submit-button:nth-child(1)" })
    → Element is clipped by parent overflow:hidden
-4. get_position({ selector: ".submit-button:nth-child(1)" })
-   → Element is at x:1500, y:300 (outside viewport)
+4. measure_element({ selector: ".submit-button:nth-child(1)" })
+   → @ (1500,300) 100x40px (outside viewport)
 ```
 
 ### Understanding Page Structure
@@ -774,9 +765,9 @@ These step-by-step recipes show how to chain tools together for common testing a
 1. navigate({ url: "https://dashboard.example.com" })
 2. inspect_dom({ selector: "testid:sidebar" })
    → Understand the structure of the problematic area
-3. get_position({ selector: "testid:logo" })
+3. measure_element({ selector: "testid:logo" })
    → @ (20,10) 150x40px
-4. get_position({ selector: "testid:menu" })
+4. measure_element({ selector: "testid:menu" })
    → @ (20,60) 200x300px
 5. compare_positions({
      selector1: "testid:logo",
@@ -870,9 +861,9 @@ These step-by-step recipes show how to chain tools together for common testing a
      checkAlignment: "height"
    })
    → ✗ not aligned (difference: 20px)
-5. get_position({ selector: ".card:nth-child(1)" })
+5. measure_element({ selector: ".card:nth-child(1)" })
    → @ (20,100) 400x300px
-6. get_position({ selector: ".card:nth-child(2)" })
+6. measure_element({ selector: ".card:nth-child(2)" })
    → @ (440,100) 400x320px  ← 20px taller!
 ```
 
@@ -926,7 +917,7 @@ These step-by-step recipes show how to chain tools together for common testing a
 3. wait_for_element({ selector: "testid:tooltip", state: "visible", timeout: 2000 })
 4. check_visibility({ selector: "testid:tooltip" })
    → ✓ visible
-5. get_position({ selector: "testid:tooltip" })
+5. measure_element({ selector: "testid:tooltip" })
    → @ (300,150) 200x50px
 6. get_computed_styles({
      selector: "testid:tooltip",
