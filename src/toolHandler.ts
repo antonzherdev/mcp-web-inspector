@@ -837,4 +837,11 @@ export function updateLastNavigationTimestamp(): void {
   consoleLogsTool?.updateLastNavigationTimestamp();
 }
 
+/**
+ * Clear console logs
+ */
+export function clearConsoleLogs(): void {
+  consoleLogsTool?.clearConsoleLogs();
+}
+
 export { registerConsoleMessage };

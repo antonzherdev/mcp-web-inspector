@@ -1,4 +1,4 @@
-import { handleToolCall, getConsoleLogs, getScreenshots, registerConsoleMessage } from '../toolHandler.js';
+import { handleToolCall, getConsoleLogs, getScreenshots, registerConsoleMessage, clearConsoleLogs } from '../toolHandler.js';
 import { Browser, Page, chromium, firefox, webkit } from 'playwright';
 import { jest } from '@jest/globals';
 
@@ -308,8 +308,7 @@ describe('Tool Handler', () => {
       };
 
       // clean console logs
-      const logs = getConsoleLogs();
-      logs.length = 0;
+      clearConsoleLogs();
     });
 
     test('should handle console messages of different types', async () => {
