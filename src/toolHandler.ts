@@ -295,6 +295,23 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
       resetBrowserState();
     }
 
+    // If browser exists and viewport settings changed, resize the viewport
+    if (browser && page && !page.isClosed() && browserSettings?.viewport) {
+      const { width, height } = browserSettings.viewport;
+      // Only resize if width or height are explicitly provided
+      if (width !== undefined || height !== undefined) {
+        const currentViewport = page.viewportSize();
+        const targetWidth = width ?? currentViewport?.width ?? 1280;
+        const targetHeight = height ?? currentViewport?.height ?? 720;
+
+        // Check if viewport size actually changed
+        if (!currentViewport || currentViewport.width !== targetWidth || currentViewport.height !== targetHeight) {
+          console.error(`Resizing viewport to ${targetWidth}x${targetHeight}`);
+          await page.setViewportSize({ width: targetWidth, height: targetHeight });
+        }
+      }
+    }
+
     // Launch new browser if needed
     if (!browser) {
       const { viewport, userAgent, headless = false, browserType = 'chromium', device } = browserSettings ?? {};

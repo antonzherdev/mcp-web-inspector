@@ -4,6 +4,10 @@ import { jest } from '@jest/globals';
 
 // Mock the Playwright browser and page
 jest.mock('playwright', () => {
+  // Create viewport methods
+  const mockSetViewportSize = jest.fn().mockImplementation(() => Promise.resolve());
+  const mockViewportSize = jest.fn().mockReturnValue({ width: 1280, height: 720 });
+
   // Mock page functions
   const mockGoto = jest.fn().mockImplementation(() => Promise.resolve());
   const mockScreenshot = jest.fn().mockImplementation(() => Promise.resolve(Buffer.from('mock-screenshot')));
@@ -15,7 +19,7 @@ jest.mock('playwright', () => {
   const mockEvaluate = jest.fn().mockImplementation(() => Promise.resolve());
   const mockOn = jest.fn();
   const mockIsClosed = jest.fn().mockReturnValue(false);
-  
+
   // Mock iframe click and fill
   const mockIframeClick = jest.fn().mockImplementation(() => Promise.resolve());
   const mockIframeFill = jest.fn().mockImplementation(() => Promise.resolve());
@@ -30,7 +34,7 @@ jest.mock('playwright', () => {
   const mockLocatorSelectOption = jest.fn().mockImplementation(() => Promise.resolve());
   const mockLocatorHover = jest.fn().mockImplementation(() => Promise.resolve());
   const mockLocatorUploadFile = jest.fn().mockImplementation(() => Promise.resolve());
-  
+
   const mockLocator = jest.fn().mockReturnValue({
     click: mockLocatorClick,
     fill: mockLocatorFill,
@@ -38,7 +42,7 @@ jest.mock('playwright', () => {
     hover: mockLocatorHover,
     uploadFile: mockLocatorUploadFile
   });
-  
+
   const mockFrames = jest.fn().mockReturnValue([{
     locator: mockIframeLocator
   }]);
@@ -56,7 +60,9 @@ jest.mock('playwright', () => {
     frames: mockFrames,
     locator: mockLocator,
     isClosed: mockIsClosed,
-    addInitScript: jest.fn()
+    addInitScript: jest.fn(),
+    setViewportSize: mockSetViewportSize,
+    viewportSize: mockViewportSize
   };
 
   const mockNewPage = jest.fn().mockImplementation(() => Promise.resolve(mockPage));
@@ -151,7 +157,12 @@ jest.mock('playwright', () => {
     },
     // Use empty objects for Browser and Page types
     Browser: {},
-    Page: {}
+    Page: {},
+    // Export viewport mocks for testing
+    __mockViewportMethods: {
+      setViewportSize: mockSetViewportSize,
+      viewportSize: mockViewportSize
+    }
   };
 });
 
@@ -418,5 +429,63 @@ describe('Tool Handler', () => {
     await handleToolCall('get', { url: 'https://api.restful-api.dev/objects' }, mockServer);
     expect(ensureBrowser).not.toHaveBeenCalled();
     ensureBrowser.mockRestore();
+  });
+
+  test('should resize viewport when navigate is called with different dimensions', async () => {
+    // Get the mock viewport methods from the playwright mock
+    const playwright = await import('playwright');
+    const mockViewportMethods = (playwright as any).__mockViewportMethods;
+
+    // First navigation with default viewport (1280x720)
+    await handleToolCall('navigate', {
+      url: 'https://example.com',
+      width: 1280,
+      height: 720
+    }, mockServer);
+
+    // Clear the mock to track new calls
+    mockViewportMethods.setViewportSize.mockClear();
+
+    // Second navigation with different viewport dimensions (800x600)
+    await handleToolCall('navigate', {
+      url: 'https://example.com',
+      width: 800,
+      height: 600
+    }, mockServer);
+
+    // The setViewportSize should be called with new dimensions
+    expect(mockViewportMethods.setViewportSize).toHaveBeenCalledWith({ width: 800, height: 600 });
+
+    // Clean up
+    await handleToolCall('close', {}, mockServer);
+  });
+
+  test('should not resize viewport when navigate is called with same dimensions', async () => {
+    // Get the mock viewport methods from the playwright mock
+    const playwright = await import('playwright');
+    const mockViewportMethods = (playwright as any).__mockViewportMethods;
+
+    // First navigation with specific viewport
+    await handleToolCall('navigate', {
+      url: 'https://example.com',
+      width: 1280,
+      height: 720
+    }, mockServer);
+
+    // Clear the mock to track new calls
+    mockViewportMethods.setViewportSize.mockClear();
+
+    // Second navigation with same viewport dimensions
+    await handleToolCall('navigate', {
+      url: 'https://example.com',
+      width: 1280,
+      height: 720
+    }, mockServer);
+
+    // The setViewportSize should NOT be called since dimensions are the same
+    expect(mockViewportMethods.setViewportSize).not.toHaveBeenCalled();
+
+    // Clean up
+    await handleToolCall('close', {}, mockServer);
   });
 });

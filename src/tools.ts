@@ -41,7 +41,7 @@ export function createToolDefinitions(sessionConfig?: SessionConfig) {
     },
     {
       name: "screenshot",
-      description: `Take a screenshot of the current page or a specific element. Screenshots are saved to ${screenshotsDir} by default. Example: { name: "login-page", fullPage: true } or { name: "submit-btn", selector: "testid:submit" }`,
+      description: `Prefer inspect_dom to screenshot. Take a screenshot of the current page or a specific element. Screenshots are saved to ${screenshotsDir} by default. Example: { name: "login-page", fullPage: true } or { name: "submit-btn", selector: "testid:submit" }`,
       inputSchema: {
         type: "object",
         properties: {
@@ -186,7 +186,7 @@ export function createToolDefinitions(sessionConfig?: SessionConfig) {
     },
     {
       name: "get_html",
-      description: "Get the HTML content of the current page. By default, all <script> tags are removed from the output unless removeScripts is explicitly set to false.",
+      description: "Prefer inspect_dom to calling get_html. Get the HTML content of the current page. By default, all <script> tags are removed from the output unless removeScripts is explicitly set to false.",
       inputSchema: {
         type: "object",
         properties: {
