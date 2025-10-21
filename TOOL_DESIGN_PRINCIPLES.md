@@ -321,7 +321,40 @@ Required parameters first, optional parameters with defaults last.
 }
 ```
 
-### 11. **Consistent Naming Conventions** ✅ IMPORTANT
+### 11. **Actionable Error Messages & Guidance** ✅ IMPORTANT
+When tools detect issues, provide **step-by-step guidance** for LLMs to fix them.
+
+**Excellent Example (playwright_get_test_ids):**
+When duplicate test IDs are detected, the tool provides:
+1. Impact explanation (why it's a problem)
+2. Step-by-step fix instructions
+3. Concrete examples with actual duplicate values
+4. Suggestions to use other MCP tools for investigation
+
+```typescript
+// When duplicates found, response includes:
+🔧 How to Fix:
+   1. Use playwright_query_selector_all to locate all duplicates
+      playwright_query_selector_all({ selector: "testid:main-header" })
+   2. Identify which elements should keep the test ID
+   3. Rename duplicates to be unique and descriptive
+      Example: "main-header" → "main-header-primary", "main-header-mobile"
+   4. If one is hidden/unused, consider removing it entirely
+```
+
+**Why this works:**
+- ✅ LLMs can autonomously fix the issue without asking user
+- ✅ Provides concrete tool calls to run next
+- ✅ Gives specific examples using actual detected values
+- ✅ Chains tools together (get_test_ids → query_selector_all → fix code)
+
+**Apply this pattern to:**
+- Validation failures (suggest how to fix)
+- Missing elements (suggest alternative selectors)
+- Timeout errors (suggest increasing timeout or checking visibility)
+- Permission errors (suggest required configuration)
+
+### 12. **Consistent Naming Conventions** ✅ IMPORTANT
 Use consistent patterns across tools.
 
 **Current Conventions (Keep):**
@@ -341,6 +374,7 @@ Before adding a new tool, verify:
 - [ ] Uses symbols and shorthand (✓✗⚡→↓ vs verbose field names)
 - [ ] Filters semantic data (skips wrapper divs, shows only meaningful elements)
 - [ ] **Does NOT return base64 images** (use file paths instead - see 4a)
+- [ ] **Provides actionable guidance** when issues detected (see 11)
 - [ ] Has clear, specific name
 - [ ] Single `selector` parameter (not multiple selector types)
 - [ ] Optional parameters have sensible defaults

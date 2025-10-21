@@ -132,10 +132,31 @@ export class GetTestIdsTool extends BrowserToolBase {
             });
 
             lines.push('');
-            lines.push('💡 Duplicate test IDs can cause:');
+            lines.push('⚠ Impact of Duplicate Test IDs:');
             lines.push('   - Flaky tests (selectors match multiple elements)');
             lines.push('   - Ambiguous interactions (which element to click?)');
-            lines.push('   - Use playwright_query_selector_all to see all matches');
+            lines.push('   - Test automation will fail or behave unpredictably');
+            lines.push('');
+            lines.push('🔧 How to Fix:');
+            lines.push('   1. Use playwright_query_selector_all to locate all duplicates');
+
+            // Add example for the first duplicate
+            const firstDupAttr = Object.keys(discoveryData.duplicates)[0];
+            const firstDupValue = Object.keys(discoveryData.duplicates[firstDupAttr])[0];
+            const firstDupCount = discoveryData.duplicates[firstDupAttr][firstDupValue];
+
+            if (firstDupAttr === 'data-testid') {
+              lines.push(`      playwright_query_selector_all({ selector: "testid:${firstDupValue}" })`);
+            } else {
+              lines.push(`      playwright_query_selector_all({ selector: "[${firstDupAttr}='${firstDupValue}']" })`);
+            }
+
+            lines.push('   2. Identify which elements should keep the test ID');
+            lines.push('   3. Rename duplicates to be unique and descriptive');
+            lines.push(`      Example: "${firstDupValue}" → "${firstDupValue}-primary", "${firstDupValue}-mobile"`);
+            lines.push('   4. If one is hidden/unused, consider removing it entirely');
+            lines.push('');
+            lines.push('💡 Best Practice: Test IDs must be unique across the entire page');
             lines.push('');
           }
 

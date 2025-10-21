@@ -283,8 +283,22 @@ describe('GetTestIdsTool', () => {
     expect(result.content[0].text).toContain('⚠ Warning: Duplicate test IDs found');
     expect(result.content[0].text).toContain('data-testid: "main-header" appears 2 times');
     expect(result.content[0].text).toContain('data-test: "duplicate-id" appears 2 times');
+
+    // Verify impact warnings
+    expect(result.content[0].text).toContain('⚠ Impact of Duplicate Test IDs:');
     expect(result.content[0].text).toContain('Flaky tests');
     expect(result.content[0].text).toContain('Ambiguous interactions');
+    expect(result.content[0].text).toContain('Test automation will fail or behave unpredictably');
+
+    // Verify fix guidance is provided
+    expect(result.content[0].text).toContain('🔧 How to Fix:');
+    expect(result.content[0].text).toContain('Use playwright_query_selector_all to locate all duplicates');
+    expect(result.content[0].text).toContain('playwright_query_selector_all({ selector: "testid:main-header" })');
+    expect(result.content[0].text).toContain('Identify which elements should keep the test ID');
+    expect(result.content[0].text).toContain('Rename duplicates to be unique and descriptive');
+    expect(result.content[0].text).toContain('"main-header" → "main-header-primary", "main-header-mobile"');
+    expect(result.content[0].text).toContain('If one is hidden/unused, consider removing it entirely');
+    expect(result.content[0].text).toContain('💡 Best Practice: Test IDs must be unique across the entire page');
   });
 
   test('should not show duplicate warning when no duplicates exist', async () => {
