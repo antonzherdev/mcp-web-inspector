@@ -441,6 +441,20 @@ export function createToolDefinitions(sessionConfig?: SessionConfig) {
       },
     },
     {
+      name: "wait_for_network_idle",
+      description: "Wait for network activity to settle. Waits until there are no network connections for at least 500ms. Better than fixed delays when waiting for AJAX calls or dynamic content loading. Returns actual wait duration and confirmation of idle state.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          timeout: {
+            type: "number",
+            description: "Maximum time to wait in milliseconds (default: 10000)"
+          }
+        },
+        required: [],
+      },
+    },
+    {
       name: "list_network_requests",
       description: "List recent network requests captured by the browser. Returns compact text format with method, URL, status, resource type, timing, and size. Essential for debugging API calls and performance issues. Use get_request_details() to inspect full headers and body for specific requests.",
       inputSchema: {
@@ -495,6 +509,7 @@ export const BROWSER_TOOLS = [
   "compare_positions",
   "element_exists",
   "wait_for_element",
+  "wait_for_network_idle",
 
   // Style & Content
   "get_styles",

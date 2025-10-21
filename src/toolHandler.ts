@@ -33,6 +33,7 @@ import { ComparePositionsTool } from './tools/browser/comparePositions.js';
 import { GoBackTool, GoForwardTool } from './tools/browser/navigation.js';
 import { DragTool, PressKeyTool } from './tools/browser/interaction.js';
 import { WaitForElementTool } from './tools/browser/waitForElement.js';
+import { WaitForNetworkIdleTool } from './tools/browser/waitForNetworkIdle.js';
 import { ListNetworkRequestsTool } from './tools/browser/listNetworkRequests.js';
 import { GetRequestDetailsTool } from './tools/browser/getRequestDetails.js';
 
@@ -149,6 +150,7 @@ let getComputedStylesTool: GetComputedStylesTool;
 let elementExistsTool: ElementExistsTool;
 let comparePositionsTool: ComparePositionsTool;
 let waitForElementTool: WaitForElementTool;
+let waitForNetworkIdleTool: WaitForNetworkIdleTool;
 let listNetworkRequestsTool: ListNetworkRequestsTool;
 let getRequestDetailsTool: GetRequestDetailsTool;
 
@@ -508,6 +510,7 @@ function initializeTools(server: any) {
   if (!elementExistsTool) elementExistsTool = new ElementExistsTool(server);
   if (!comparePositionsTool) comparePositionsTool = new ComparePositionsTool(server);
   if (!waitForElementTool) waitForElementTool = new WaitForElementTool(server);
+  if (!waitForNetworkIdleTool) waitForNetworkIdleTool = new WaitForNetworkIdleTool(server);
   if (!listNetworkRequestsTool) listNetworkRequestsTool = new ListNetworkRequestsTool(server);
   if (!getRequestDetailsTool) getRequestDetailsTool = new GetRequestDetailsTool(server);
 }
@@ -674,6 +677,9 @@ export async function handleToolCall(
 
       case "wait_for_element":
         return await waitForElementTool.execute(args, context);
+
+      case "wait_for_network_idle":
+        return await waitForNetworkIdleTool.execute(args, context);
 
       case "list_network_requests":
         return await listNetworkRequestsTool.execute(args, context);
