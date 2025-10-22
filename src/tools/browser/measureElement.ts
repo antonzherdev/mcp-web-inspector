@@ -139,6 +139,16 @@ export class MeasureElementTool extends BrowserToolBase implements ToolHandler {
       sections.push('');
       sections.push(`Total Space: ${totalWidth}x${totalHeight}px (with margin)`);
 
+      // Detect unusual spacing and suggest inspect_ancestors
+      const hasUnusualMargins = measurements.marginLeft > 100 || measurements.marginRight > 100;
+      const isWidthConstrained = boxWidth < 800 && (measurements.marginLeft + measurements.marginRight) > 200;
+
+      if (hasUnusualMargins || isWidthConstrained) {
+        sections.push('');
+        sections.push('💡 Unexpected spacing/width detected. Check parent constraints:');
+        sections.push(`   inspect_ancestors({ selector: "${args.selector}" })`);
+      }
+
       return {
         content: [
           {

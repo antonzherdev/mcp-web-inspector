@@ -247,6 +247,12 @@ export class ElementVisibilityTool extends BrowserToolBase {
           output += '\n' + suggestions.join('\n');
         }
 
+        // Suggest inspect_ancestors if element is clipped
+        if (visibilityData.isClipped) {
+          output += '\n\n💡 Element clipped by parent. Find the clipping container:';
+          output += `\n   inspect_ancestors({ selector: "${args.selector}" })`;
+        }
+
         return createSuccessResponse(output.trim());
       } catch (error) {
         return createErrorResponse(`Failed to check visibility: ${(error as Error).message}`);

@@ -10,6 +10,7 @@ Modern web applications are complex. Elements are hidden, layouts break, selecto
 
 - 🔍 **Understand any page structure** - Progressive DOM inspection that drills through wrapper divs to find semantic elements
 - 🎯 **Debug visibility issues** - Detailed diagnostics showing exactly why clicks fail (clipped, covered, scrolled out of view)
+- 🔼 **Trace layout constraints** - Walk up the DOM tree to find where unexpected margins, width limits, and overflow clipping come from
 - 📐 **Validate layouts** - Compare element positions to ensure consistent alignment and spacing
 - 🧪 **Test selector reliability** - See all matching elements with their visibility status before writing tests
 - 🎨 **Inspect styles** - Get computed CSS to understand why elements behave unexpectedly
@@ -458,6 +459,32 @@ Compare positions and alignment of two elements. Validates if elements are align
 - Validating grid layouts
 - Checking responsive design consistency
 
+#### `inspect_ancestors` ⭐ **DEBUG LAYOUT CONSTRAINTS**
+Walk up the DOM tree to find where width constraints, margins, borders, and overflow clipping come from. Shows position, size, and layout-critical CSS for each ancestor up to `<body>`.
+
+**Key Features:**
+- Default depth: 10 levels (reaches `<body>` in most React apps)
+- Only shows non-default values (omits `border:none`, `overflow:visible`)
+- Auto-detects overflow:hidden clipping, width constraints, auto-margin centering
+- Token-efficient compact text format with diagnostic annotations (🎯⚠️)
+
+**Use Cases:**
+- Finding where unexpected margins come from (auto-centering)
+- Discovering parent max-width constraints
+- Locating overflow:hidden containers that clip elements
+- Understanding why elements have constrained widths
+- Debugging deeply nested component library layouts (Material-UI, Chakra, Ant Design)
+
+**Example:**
+```
+inspect_ancestors({ selector: "testid:header" })
+→ Shows: [0] header (896px, margins: 160px)
+         [1] div (1216px, max-w constraint)
+         [2] body (1920px, overflow-x: hidden)
+   🎯 WIDTH CONSTRAINT found at parent
+   ⚠ Auto margins centering (160px each side)
+```
+
 ### 🎨 Style & Content Inspection
 
 #### `get_computed_styles`
@@ -784,6 +811,32 @@ These step-by-step recipes show how to chain tools together for common testing a
 ```
 
 **Why this works**: Progressive inspection + precise measurements reveal layout problems.
+
+### Recipe 2a: Finding Where Unexpected Margins Come From
+
+```
+1. navigate({ url: "https://app.example.com" })
+2. inspect_dom({ selector: "main" })
+   → Shows header element with test ID
+3. measure_element({ selector: "testid:event-mode-header" })
+   → @ (160,0) 896x56px
+   → Margin: ←160px →160px (unexpected!)
+   💡 Unexpected spacing detected. Check parent constraints
+4. inspect_ancestors({ selector: "testid:event-mode-header" })
+   → [0] <header testid:event-mode-header>
+       @ (160,0) 896x56px | w:896px max-w:896px m:0 160px
+       border-bottom: 1px solid #e5e7eb
+       ⚠ Auto margins centering (160px each side)
+   → [1] <div>
+       @ (0,0) 1216x56px | w:1216px
+   → [2] <div> flex max-w-[1600px]
+       @ (352,60) 1216x900px
+       max-width: 1600px
+       🎯 WIDTH CONSTRAINT
+5. Solution: Remove mx-auto from header (centering already handled by parent)
+```
+
+**Why this works**: `inspect_ancestors` traces the layout constraint chain to find the root cause of unexpected spacing in deeply nested React components.
 
 ### Recipe 3: API Response Testing
 

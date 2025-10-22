@@ -30,6 +30,7 @@ import { GetComputedStylesTool } from './tools/browser/computedStyles.js';
 import { MeasureElementTool } from './tools/browser/measureElement.js';
 import { ElementExistsTool } from './tools/browser/elementExists.js';
 import { CompareElementAlignmentTool } from './tools/browser/compareElementAlignment.js';
+import { InspectAncestorsTool } from './tools/browser/ancestorInspection.js';
 import { GoBackTool, GoForwardTool } from './tools/browser/navigation.js';
 import { DragTool, PressKeyTool } from './tools/browser/interaction.js';
 import { WaitForElementTool } from './tools/browser/waitForElement.js';
@@ -149,6 +150,7 @@ let getComputedStylesTool: GetComputedStylesTool;
 let measureElementTool: MeasureElementTool;
 let elementExistsTool: ElementExistsTool;
 let compareElementAlignmentTool: CompareElementAlignmentTool;
+let inspectAncestorsTool: InspectAncestorsTool;
 let waitForElementTool: WaitForElementTool;
 let waitForNetworkIdleTool: WaitForNetworkIdleTool;
 let listNetworkRequestsTool: ListNetworkRequestsTool;
@@ -596,6 +598,7 @@ function initializeTools(server: any) {
   if (!measureElementTool) measureElementTool = new MeasureElementTool(server);
   if (!elementExistsTool) elementExistsTool = new ElementExistsTool(server);
   if (!compareElementAlignmentTool) compareElementAlignmentTool = new CompareElementAlignmentTool(server);
+  if (!inspectAncestorsTool) inspectAncestorsTool = new InspectAncestorsTool(server);
   if (!waitForElementTool) waitForElementTool = new WaitForElementTool(server);
   if (!waitForNetworkIdleTool) waitForNetworkIdleTool = new WaitForNetworkIdleTool(server);
   if (!listNetworkRequestsTool) listNetworkRequestsTool = new ListNetworkRequestsTool(server);
@@ -762,6 +765,9 @@ export async function handleToolCall(
 
       case "compare_element_alignment":
         return await compareElementAlignmentTool.execute(args, context);
+
+      case "inspect_ancestors":
+        return await inspectAncestorsTool.execute(args, context);
 
       case "wait_for_element":
         return await waitForElementTool.execute(args, context);

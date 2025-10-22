@@ -192,6 +192,12 @@ export class EvaluateTool extends BrowserToolBase {
       suggestions.push('📏 Element Measurements - Use measure_element({ selector: "..." })');
     }
 
+    // Pattern: Walking up DOM tree / checking parents
+    if (scriptLower.match(/parentelement|parentnode|offsetparent|closest/) ||
+        (scriptLower.match(/while.*parent/) && scriptLower.match(/getcomputedstyle/))) {
+      suggestions.push('🔼 Parent Chain - Use inspect_ancestors({ selector: "..." }) to see parent constraints');
+    }
+
     // Pattern: Checking visibility
     if (scriptLower.match(/offsetparent|visibility|display.*none|opacity/)) {
       suggestions.push('👁️  Visibility Check - Use element_visibility({ selector: "..." })');

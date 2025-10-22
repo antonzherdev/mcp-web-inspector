@@ -448,6 +448,24 @@ More efficient than get_html() or evaluate(). Supports testid shortcuts.`,
       },
     },
     {
+      name: "inspect_ancestors",
+      description: "DEBUG LAYOUT CONSTRAINTS: Walk up the DOM tree to find where width constraints, margins, borders, and overflow clipping come from. Essential when elements have unexpected centering (large auto margins), constrained width (max-width from parent), or are clipped (overflow:hidden ancestor). Shows position, size, and layout-critical CSS for each ancestor. Default depth: 10 levels (reaches <body> in most React apps). Use after inspect_dom() when you need to understand parent layout flow.",
+      inputSchema: {
+        type: "object",
+        properties: {
+          selector: {
+            type: "string",
+            description: "CSS selector or testid shorthand for the element to start from (e.g., 'testid:header', '#main')"
+          },
+          limit: {
+            type: "number",
+            description: "Maximum number of ancestors to traverse (default: 10, max: 15). Increase for deeply nested component frameworks."
+          }
+        },
+        required: ["selector"],
+      },
+    },
+    {
       name: "wait_for_element",
       description: "Wait for an element to reach a specific state (visible, hidden, attached, detached). Better than sleep() for waiting on dynamic content. Returns duration and current element status. Supports testid shortcuts (e.g., 'testid:submit-button').",
       inputSchema: {
@@ -536,6 +554,7 @@ export const BROWSER_TOOLS = [
   // Visibility & Position
   "check_visibility",
   "compare_element_alignment",
+  "inspect_ancestors",
   "element_exists",
   "wait_for_element",
   "wait_for_network_idle",

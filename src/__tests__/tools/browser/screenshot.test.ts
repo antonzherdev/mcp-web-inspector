@@ -191,11 +191,11 @@ describe('ScreenshotTool', () => {
     // Concatenate all content items to check the full response
     const fullResponseText = result.content.map(c => c.text).join('\n');
 
-    // Verify guidance is included
-    expect(fullResponseText).toContain('💡 Next steps to analyze this page:');
+    // Verify guidance is included (updated to match new cross-tool advertising)
+    expect(fullResponseText).toContain('💡 To debug layout issues');
     expect(fullResponseText).toContain('inspect_dom');
     expect(fullResponseText).toContain('get_test_ids');
-    expect(fullResponseText).toContain('find_by_text');
+    expect(fullResponseText).toContain('inspect_ancestors');
   });
 
   test('should NOT include guidance for element-specific screenshots', async () => {

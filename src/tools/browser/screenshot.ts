@@ -69,16 +69,15 @@ export class ScreenshotTool extends BrowserToolBase {
       }
 
       // Add actionable guidance based on screenshot context
-      // Only suggest next steps for full-page screenshots (not element-specific ones)
-      if (!args.selector) {
-        messages.push('');
-        messages.push('💡 Next steps to analyze this page:');
-        messages.push('   1. Use inspect_dom to see page structure');
-        messages.push('      inspect_dom({})');
-        messages.push('   2. Use get_test_ids to find testable elements');
-        messages.push('      get_test_ids()');
-        messages.push('   3. Use find_by_text to locate elements by visible text');
-        messages.push('      find_by_text({ text: "Search text" })');
+      messages.push('');
+      messages.push('💡 To debug layout issues in this screenshot:');
+      if (args.selector) {
+        messages.push(`   inspect_ancestors({ selector: "${args.selector}" })`);
+        messages.push('   → See parent constraints (width, margins, overflow, borders)');
+      } else {
+        messages.push('   1. Find the element: inspect_dom({}) or get_test_ids()');
+        messages.push('   2. Check parent constraints: inspect_ancestors({ selector: "..." })');
+        messages.push('   3. Compare alignment: compare_element_alignment({ selector1: "...", selector2: "..." })');
       }
 
       return createSuccessResponse(messages);

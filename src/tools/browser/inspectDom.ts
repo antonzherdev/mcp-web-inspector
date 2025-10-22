@@ -529,6 +529,13 @@ export class InspectDomTool extends BrowserToolBase {
             lines.push(`💡 Tip: Some elements found, but ${stats.skippedWrappers} wrapper divs were skipped.`);
             lines.push('   Consider adding test IDs to key elements for easier selection.');
           }
+
+          // Suggest inspect_ancestors when drilling through many wrappers
+          if (stats.skippedWrappers >= 3) {
+            lines.push('');
+            lines.push(`💡 Drilled through ${stats.skippedWrappers} wrapper levels. To see parent constraints:`);
+            lines.push(`   inspect_ancestors({ selector: "${args.selector || 'body'}" })`);
+          }
         }
 
         return createSuccessResponse(lines.join('\n'));

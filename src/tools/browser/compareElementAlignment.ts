@@ -183,6 +183,17 @@ export class CompareElementAlignmentTool extends BrowserToolBase {
           `  Height: ${formatDimension(heightSame, height1, height2, heightDiff)}`
         ];
 
+        // Suggest inspect_ancestors if alignment is off and differences are significant
+        const hasSignificantDifference = Math.abs(topDiff) > 5 || Math.abs(leftDiff) > 5 || Math.abs(rightDiff) > 5;
+        const isNotAligned = !topAligned && !leftAligned && !rightAligned && !bottomAligned;
+
+        if (isNotAligned && hasSignificantDifference) {
+          lines.push('');
+          lines.push('💡 Alignment issue detected. Check if parent layout affects positioning:');
+          lines.push(`   inspect_ancestors({ selector: "${args.selector1}" })`);
+          lines.push(`   inspect_ancestors({ selector: "${args.selector2}" })`);
+        }
+
         return createSuccessResponse(lines.filter(l => l !== undefined).join('\n'));
       } catch (error) {
         return createErrorResponse(`Failed to compare element alignment: ${(error as Error).message}`);
