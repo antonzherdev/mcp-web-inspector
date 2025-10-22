@@ -231,4 +231,34 @@ describe('ConsoleLogsTool', () => {
     expect(logsText).not.toContain('Warning after interaction');
     expect(logsText).not.toContain('Error before interaction');
   });
+
+  test('should store messages with compact format', async () => {
+    // Simple error without stack trace
+    consoleLogsTool.registerConsoleMessage('error', 'Simple error message');
+
+    // Error with short stack trace (4 lines or less should not be truncated)
+    const shortStackError = 'Error: Short stack\nLine 1\nLine 2\nLine 3';
+    consoleLogsTool.registerConsoleMessage('error', shortStackError);
+
+    // Error with long stack trace (should be truncated by registerConsoleMessage in toolHandler.ts)
+    const longStackError = 'Error: Long stack\nLine 1\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6\nLine 7';
+    consoleLogsTool.registerConsoleMessage('error', longStackError);
+
+    const result = await consoleLogsTool.execute({ type: 'error' }, mockContext);
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('Retrieved 3 console log(s)');
+
+    const logsText = result.content.slice(1).map(c => c.text).join('\n');
+
+    // Simple error should be stored as-is
+    expect(logsText).toContain('Simple error message');
+
+    // Short stack trace should be stored as-is (not truncated)
+    expect(logsText).toContain(shortStackError);
+
+    // Long stack trace should be stored as-is if passed directly to registerConsoleMessage
+    // (The truncation happens in toolHandler.ts before calling registerConsoleMessage)
+    expect(logsText).toContain(longStackError);
+  });
 }); 

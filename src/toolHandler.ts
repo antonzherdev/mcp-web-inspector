@@ -237,13 +237,21 @@ async function registerConsoleMessage(page) {
   page.on("console", (msg) => {
     if (consoleLogsTool) {
       const type = msg.type();
-      const text = msg.text();
+      let text = msg.text();
 
       // "Unhandled Rejection In Promise" we injected
       if (text.startsWith("[Playwright]")) {
         const payload = text.replace("[Playwright]", "");
         consoleLogsTool.registerConsoleMessage("exception", payload);
       } else {
+        // Truncate stack traces for error messages to keep output compact
+        if (type === 'error' && text.includes('\n')) {
+          const lines = text.split('\n');
+          // Keep first line (error message) and up to 3 stack trace lines
+          if (lines.length > 4) {
+            text = lines.slice(0, 4).join('\n') + '\n  ...[stack trace truncated]';
+          }
+        }
         consoleLogsTool.registerConsoleMessage(type, text);
       }
     }
