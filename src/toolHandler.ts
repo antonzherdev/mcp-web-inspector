@@ -3,6 +3,7 @@ import { chromium, firefox, webkit, devices } from 'playwright';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { BROWSER_TOOLS } from './tools.js';
 import type { ToolContext } from './tools/common/types.js';
+import { checkBrowsersInstalled, getInstallationInstructions } from './utils/browserCheck.js';
 import {
   ScreenshotTool,
   NavigationTool,
@@ -278,11 +279,39 @@ async function registerConsoleMessage(page) {
   });
 }
 
+// Track if we've checked browser installation
+let browserInstallationChecked = false;
+
 /**
  * Ensures a browser is launched and returns the page
  */
 export async function ensureBrowser(browserSettings?: BrowserSettings) {
   try {
+    // Check if browsers are installed on first launch (only once)
+    if (!browser && !browserInstallationChecked) {
+      browserInstallationChecked = true;
+      const browserCheck = checkBrowsersInstalled();
+      if (!browserCheck.installed) {
+        // Try to install browsers automatically
+        console.error('🎭 Playwright browsers not found. Installing automatically...');
+        console.error('⏳ This will download ~1GB of browser binaries. Please wait...');
+        try {
+          const { execSync } = await import('child_process');
+          execSync('npx playwright install chromium firefox webkit', {
+            stdio: 'inherit',
+            encoding: 'utf8'
+          });
+          console.error('✅ Browsers installed successfully! Starting browser...');
+          // Note: browser variable is still undefined here, which is correct.
+          // The code below (line 342) will launch the browser after installation.
+        } catch (installError) {
+          // If auto-install fails, show instructions
+          const instructions = getInstallationInstructions();
+          throw new Error(`Playwright browsers not installed.\n\n${instructions}`);
+        }
+      }
+    }
+
     // Check if browser exists but is disconnected
     if (browser && !browser.isConnected()) {
       console.error("Browser exists but is disconnected. Cleaning up...");

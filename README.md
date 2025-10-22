@@ -140,6 +140,17 @@ code-insiders --add-mcp '{"name":"web-inspector","command":"npx","args":["mcp-we
 4. MCP only works in **Agent mode** - switch to agent mode in the chat interface
 5. Open the `mcp.json` file and click the **"Start"** button next to the server
 
+### First-Time Browser Setup
+
+When you first use the server with `npx`, Playwright browsers will be **automatically installed** on first tool use if not already present. The installation happens once and browsers are stored in your home directory, shared across all projects.
+
+If automatic installation doesn't work (firewall, permissions, etc.), you'll see clear instructions to run:
+```bash
+npx playwright install chromium firefox webkit
+```
+
+Then restart VS Code to use the server.
+
 ### Note about Embedded Browser
 
 GitHub Copilot and VS Code may have an embedded browser feature. If you experience conflicts or prefer using Web Inspector MCP for all web inspection tasks, you may want to disable the built-in browser:
@@ -1005,6 +1016,71 @@ These step-by-step recipes show how to chain tools together for common testing a
 ```
 
 **Why this works**: DOM inspection + attribute queries reveal accessibility issues.
+
+## Troubleshooting
+
+### Browser Installation Issues
+
+**Symptom**: Error message about Playwright browsers not being installed, or browser fails to launch.
+
+**How it works**: Browsers are **automatically installed on first use** when you run any navigation tool. The installation happens once (~1GB download) and browsers are stored in your home directory, shared across all projects.
+
+**What you'll see on first use**:
+```
+🎭 Playwright browsers not found. Installing automatically...
+⏳ This will download ~1GB of browser binaries. Please wait...
+[Installation progress...]
+✅ Browsers installed successfully! Starting browser...
+```
+
+**If automatic installation fails** (firewall, permissions, etc.):
+
+```bash
+# Manual installation - run this command:
+npx playwright install chromium firefox webkit
+
+# With system dependencies (requires admin/sudo):
+npx playwright install --with-deps chromium firefox webkit
+```
+
+**For GitHub Copilot / VS Code users**:
+- First tool use will auto-install browsers (1-2 minute wait)
+- Subsequent uses are instant
+- Installation happens in the background with progress messages
+- If manual installation is needed, restart your IDE after running the command
+
+### Server Not Loading
+
+**Symptom**: Tools from web-inspector are not available in your AI assistant.
+
+**Solutions**:
+1. Verify the configuration file is correct (see AI Tool Setup section above)
+2. Restart your AI tool completely (not just reload window)
+3. Check server logs (location depends on your AI tool)
+4. Try removing and re-adding the server configuration
+
+### Permission Issues
+
+**Symptom**: Permission denied errors when installing browsers.
+
+**Solutions**:
+```bash
+# If using global installation, you may need sudo (Linux/macOS)
+sudo npm install -g mcp-web-inspector
+
+# Or use npx without global installation (recommended)
+# Just configure with "npx -y mcp-web-inspector" as shown in setup
+```
+
+### Browser Crashes or Disconnects
+
+**Symptom**: Browser becomes unresponsive or disconnects during use.
+
+**The MCP server automatically handles this**:
+- Detects disconnected browsers
+- Resets state and provides clear error messages
+- Instructs you to retry the navigation/action
+- No manual intervention needed - just retry your command
 
 ## Development
 
