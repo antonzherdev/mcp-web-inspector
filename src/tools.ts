@@ -30,8 +30,8 @@ export function createToolDefinitions(sessionConfig?: SessionConfig) {
             description: "Mobile device preset to emulate. Uses Playwright's built-in device configurations for viewport, user agent, and device scale factor. When specified, overrides width/height parameters.",
             enum: ["iphone-se", "iphone-14", "iphone-14-pro", "pixel-5", "ipad", "samsung-s21"]
           },
-          width: { type: "number", description: "Viewport width in pixels (default: 1280). Ignored if device is specified." },
-          height: { type: "number", description: "Viewport height in pixels (default: 720). Ignored if device is specified." },
+          width: { type: "number", description: "Viewport width in pixels. If not specified, automatically matches screen width. Ignored if device is specified." },
+          height: { type: "number", description: "Viewport height in pixels. If not specified, automatically matches screen height. Ignored if device is specified." },
           timeout: { type: "number", description: "Navigation timeout in milliseconds" },
           waitUntil: { type: "string", description: "Navigation wait condition" },
           headless: { type: "boolean", description: "Run browser in headless mode (default: false)" }

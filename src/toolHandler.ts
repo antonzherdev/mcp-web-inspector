@@ -283,6 +283,38 @@ async function registerConsoleMessage(page) {
 let browserInstallationChecked = false;
 
 /**
+ * Gets the screen size using Playwright's API
+ */
+async function getScreenSize(): Promise<{ width: number; height: number }> {
+  try {
+    // Launch a temporary browser to get screen size
+    const tempBrowser = await chromium.launch({ headless: true });
+    const tempContext = await tempBrowser.newContext();
+    const tempPage = await tempContext.newPage();
+
+    const screenSize = await tempPage.evaluate(() => {
+      return {
+        width: window.screen.width,
+        height: window.screen.height
+      };
+    });
+
+    await tempBrowser.close();
+
+    // Validate the screen size values
+    if (!screenSize || typeof screenSize.width !== 'number' || typeof screenSize.height !== 'number') {
+      console.error('Invalid screen size detected, using defaults');
+      return { width: 1280, height: 720 };
+    }
+
+    return screenSize;
+  } catch (error) {
+    console.error('Failed to detect screen size, using defaults:', error);
+    return { width: 1280, height: 720 };
+  }
+}
+
+/**
  * Ensures a browser is launched and returns the page
  */
 export async function ensureBrowser(browserSettings?: BrowserSettings) {
@@ -386,6 +418,24 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
 
       const executablePath = process.env.CHROME_EXECUTABLE_PATH;
 
+      // Determine viewport size
+      let viewportWidth: number;
+      let viewportHeight: number;
+
+      if (viewport?.width !== undefined || viewport?.height !== undefined) {
+        // If any viewport dimension is specified, use specified values or defaults
+        viewportWidth = viewport?.width ?? 1280;
+        viewportHeight = viewport?.height ?? 720;
+      } else {
+        // If no viewport specified, detect screen size
+        const screenSize = await getScreenSize();
+        viewportWidth = screenSize?.width ?? 1280;
+        viewportHeight = screenSize?.height ?? 720;
+        if (screenSize && screenSize.width > 0 && screenSize.height > 0) {
+          console.error(`No viewport specified, using screen size: ${viewportWidth}x${viewportHeight}`);
+        }
+      }
+
       // Prepare context options
       const contextOptions: any = {
         headless,
@@ -400,8 +450,8 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
           contextOptions.userAgent = userAgent;
         }
         contextOptions.viewport = {
-          width: viewport?.width ?? 1280,
-          height: viewport?.height ?? 720,
+          width: viewportWidth,
+          height: viewportHeight,
         };
         contextOptions.deviceScaleFactor = 1;
       }
@@ -450,8 +500,8 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
             newContextOptions.userAgent = userAgent;
           }
           newContextOptions.viewport = {
-            width: viewport?.width ?? 1280,
-            height: viewport?.height ?? 720,
+            width: viewportWidth,
+            height: viewportHeight,
           };
           newContextOptions.deviceScaleFactor = 1;
         }
@@ -491,7 +541,7 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
     }
     
     resetBrowserState();
-    
+
     // Try one more time from scratch
     const { viewport, userAgent, headless = false, browserType = 'chromium', device } = browserSettings ?? {};
 
@@ -519,6 +569,21 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
 
     const executablePath = process.env.CHROME_EXECUTABLE_PATH;
 
+    // Determine viewport size for retry
+    let retryViewportWidth: number;
+    let retryViewportHeight: number;
+
+    if (viewport?.width !== undefined || viewport?.height !== undefined) {
+      // If any viewport dimension is specified, use specified values or defaults
+      retryViewportWidth = viewport?.width ?? 1280;
+      retryViewportHeight = viewport?.height ?? 720;
+    } else {
+      // If no viewport specified, detect screen size
+      const screenSize = await getScreenSize();
+      retryViewportWidth = screenSize?.width ?? 1280;
+      retryViewportHeight = screenSize?.height ?? 720;
+    }
+
     // Prepare context options
     const retryContextOptions: any = {
       headless,
@@ -533,8 +598,8 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
         retryContextOptions.userAgent = userAgent;
       }
       retryContextOptions.viewport = {
-        width: viewport?.width ?? 1280,
-        height: viewport?.height ?? 720,
+        width: retryViewportWidth,
+        height: retryViewportHeight,
       };
       retryContextOptions.deviceScaleFactor = 1;
     }
@@ -578,8 +643,8 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
           retryNewContextOptions.userAgent = userAgent;
         }
         retryNewContextOptions.viewport = {
-          width: viewport?.width ?? 1280,
-          height: viewport?.height ?? 720,
+          width: retryViewportWidth,
+          height: retryViewportHeight,
         };
         retryNewContextOptions.deviceScaleFactor = 1;
       }

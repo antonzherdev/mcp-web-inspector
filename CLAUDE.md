@@ -105,7 +105,7 @@ node run-tests.cjs     # Alternative way to run tests with coverage
 ### Browser Tools
 
 #### Navigation & Interaction
-- `navigate` - Navigate to a URL (supports chromium/firefox/webkit, viewport config, headless mode)
+- `navigate` - Navigate to a URL (supports chromium/firefox/webkit, viewport config, headless mode). When no viewport dimensions are specified, automatically matches the screen size for a full-screen experience.
 - `click` - Click an element
 - `iframe_click` - Click an element inside an iframe
 - `fill` - Fill an input field
