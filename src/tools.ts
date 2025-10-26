@@ -179,27 +179,40 @@ export function createToolDefinitions(sessionConfig?: SessionConfig) {
     },
     {
       name: "get_text",
-      description: "Get the visible text content of the current page",
+      description: "⚠️ RARELY NEEDED: Get ALL visible text content from the entire page (no structure, just raw text). Most tasks need structured inspection instead. ONLY use get_text for: (1) extracting text for content analysis (word count, language detection), (2) searching for text when location is completely unknown, (3) text-only snapshots for comparison. For structured tasks, use: inspect_dom() to understand page structure, find_by_text() to locate specific text with context, query_selector() to find elements. Returns plain text up to 20000 chars (truncated if longer). Supports testid shortcuts.",
       inputSchema: {
         type: "object",
-        properties: {},
+        properties: {
+          selector: {
+            type: "string",
+            description: "CSS selector, text selector, or testid shorthand to limit text extraction to a specific container. Omit to get text from entire page. Example: 'testid:article-body' or '#main-content'"
+          },
+          maxLength: {
+            type: "number",
+            description: "Maximum number of characters to return (default: 20000)"
+          }
+        },
         required: [],
       },
     },
     {
       name: "get_html",
-      description: "Get raw HTML content of the page or specific element. ⚠️ For understanding page structure, use inspect_dom() instead - it's more efficient and filters out noise. Use get_html() only when you need the actual HTML markup (e.g., to check specific attributes or element nesting).",
+      description: "⚠️ RARELY NEEDED: Get raw HTML markup from the page (no rendering, just source code). Most tasks need structured inspection instead. ONLY use get_html for: (1) checking specific HTML attributes or element nesting, (2) analyzing markup structure, (3) debugging SSR/HTML issues. For structured tasks, use: inspect_dom() to understand page structure with positions, query_selector() to find and inspect elements, get_computed_styles() for CSS values. Returns HTML up to 20000 chars (truncated if longer), scripts removed by default for security/size. Supports testid shortcuts.",
       inputSchema: {
         type: "object",
         properties: {
-          selector: { type: "string", description: "CSS selector to limit the HTML to a specific container" },
-          removeScripts: { type: "boolean", description: "Remove all script tags from the HTML (default: true)" },
-          removeComments: { type: "boolean", description: "Remove all HTML comments (default: false)" },
-          removeStyles: { type: "boolean", description: "Remove all style tags from the HTML (default: false)" },
-          removeMeta: { type: "boolean", description: "Remove all meta tags from the HTML (default: false)" },
-          cleanHtml: { type: "boolean", description: "Perform comprehensive HTML cleaning (default: false)" },
-          minify: { type: "boolean", description: "Minify the HTML output (default: false)" },
-          maxLength: { type: "number", description: "Maximum number of characters to return (default: 20000)" }
+          selector: {
+            type: "string",
+            description: "CSS selector, text selector, or testid shorthand to limit HTML extraction to a specific container. Omit to get entire page HTML. Example: 'testid:main-content' or '#app'"
+          },
+          clean: {
+            type: "boolean",
+            description: "Remove noise from HTML: false (default) = remove scripts only, true = remove scripts + styles + comments + meta tags for minimal markup"
+          },
+          maxLength: {
+            type: "number",
+            description: "Maximum number of characters to return (default: 20000)"
+          }
         },
         required: [],
       },

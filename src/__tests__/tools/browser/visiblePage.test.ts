@@ -112,6 +112,123 @@ describe('VisibleTextTool', () => {
     expect(result.content[0].text).toContain('Failed to get visible text content');
     expect(result.content[0].text).toContain('Evaluation failed');
   });
+
+  test('should include guidance tip in response', async () => {
+    const args = {};
+
+    const result = await visibleTextTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('💡 TIP: If you need structured inspection');
+    expect(result.content[0].text).toContain('inspect_dom()');
+    expect(result.content[0].text).toContain('find_by_text');
+    expect(result.content[0].text).toContain('query_selector');
+  });
+
+  test('should retrieve text from specific selector', async () => {
+    const args = { selector: '#main-content' };
+
+    // Mock element selection
+    const mockElement = {
+      outerHTML: '<div id="main-content">Selected text</div>'
+    } as unknown as ElementHandle<Element>;
+    mock$.mockResolvedValueOnce(mockElement);
+
+    // Mock evaluate to return text from selected element
+    mockEvaluate.mockImplementationOnce(() => Promise.resolve('Article text from main content'));
+
+    const result = await visibleTextTool.execute(args, mockContext);
+
+    expect(mock$).toHaveBeenCalledWith('#main-content');
+    expect(mockEvaluate).toHaveBeenCalledWith(expect.any(Function), '#main-content');
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('(from "#main-content")');
+    expect(result.content[0].text).toContain('Article text from main content');
+  });
+
+  test('should support testid shorthand selector', async () => {
+    const args = { selector: 'testid:article-body' };
+
+    // Mock element selection
+    const mockElement = {
+      outerHTML: '<div data-testid="article-body">Article</div>'
+    } as unknown as ElementHandle<Element>;
+    mock$.mockResolvedValueOnce(mockElement);
+
+    // Mock evaluate to return text
+    mockEvaluate.mockImplementationOnce(() => Promise.resolve('Article text'));
+
+    const result = await visibleTextTool.execute(args, mockContext);
+
+    // Should normalize testid: to [data-testid="..."]
+    expect(mock$).toHaveBeenCalledWith('[data-testid="article-body"]');
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('(from "testid:article-body")');
+    expect(result.content[0].text).toContain('Article text');
+  });
+
+  test('should handle non-existent selector', async () => {
+    const args = { selector: '#non-existent' };
+
+    // Mock element selection returning null (element not found)
+    mock$.mockResolvedValueOnce(null);
+
+    const result = await visibleTextTool.execute(args, mockContext);
+
+    expect(mock$).toHaveBeenCalledWith('#non-existent');
+    expect(mockEvaluate).not.toHaveBeenCalled();
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('Element with selector "#non-existent" not found');
+  });
+
+  test('should respect maxLength parameter', async () => {
+    const args = { maxLength: 50 };
+
+    // Mock long text content
+    const longText = 'A'.repeat(100);
+    mockEvaluate.mockImplementationOnce(() => Promise.resolve(longText));
+
+    const result = await visibleTextTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('Output truncated due to size limits');
+    // Content should be truncated (50 chars + newline + truncation message)
+    const contentText = result.content[0].text as string;
+    const contentMatch = contentText.match(/Visible text content[\s\S]*?💡 TIP/);
+    if (contentMatch) {
+      const textPortion = contentMatch[0].replace(/💡 TIP$/, '');
+      // Should contain truncated text plus truncation message
+      expect(textPortion).toContain('A'.repeat(50));
+      expect(textPortion).toContain('[Output truncated due to size limits]');
+    }
+  });
+
+  test('should show "entire page" when no selector provided', async () => {
+    const args = {};
+
+    const result = await visibleTextTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('(entire page)');
+    expect(result.content[0].text).not.toContain('(from');
+  });
+
+  test('should combine selector and maxLength parameters', async () => {
+    const args = { selector: 'testid:article', maxLength: 30 };
+
+    // Mock element selection
+    const mockElement = {} as unknown as ElementHandle<Element>;
+    mock$.mockResolvedValueOnce(mockElement);
+
+    // Mock long text from selected element
+    mockEvaluate.mockImplementationOnce(() => Promise.resolve('B'.repeat(100)));
+
+    const result = await visibleTextTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('(from "testid:article")');
+    expect(result.content[0].text).toContain('[Output truncated due to size limits]');
+  });
 });
 
 describe('VisibleHtmlTool', () => {
@@ -126,39 +243,11 @@ describe('VisibleHtmlTool', () => {
     mockContent.mockImplementation(() => Promise.resolve('<html><body>Sample HTML content</body></html>'));
   });
 
-  test('should retrieve HTML content', async () => {
-    const args = { removeScripts: false };
+  test('should retrieve HTML content with scripts removed by default', async () => {
+    const args = {};
 
-    const result = await visibleHtmlTool.execute(args, mockContext);
-
-    expect(mockContent).toHaveBeenCalled();
-    expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('HTML content');
-    expect(result.content[0].text).toContain('<html><body>Sample HTML content</body></html>');
-  });
-
-  test('should supply the correct filters', async () => {
-    const args = {
-      removeScripts: true,
-      removeComments: true,
-      removeStyles: true,
-      removeMeta: true,
-      minify: true,
-      cleanHtml: true
-    };
-
-    // Mock the page.evaluate to capture the filter arguments
-    mockEvaluate.mockImplementationOnce((callback, params) => {
-      expect(params).toEqual({
-        html: '<html><body>Sample HTML content</body></html>',
-        removeScripts: true,
-        removeComments: true,
-        removeStyles: true,
-        removeMeta: true,
-        minify: true
-      });
-      return Promise.resolve('<html><body>Processed HTML content</body></html>');
-    });
+    // Mock evaluate to process HTML
+    mockEvaluate.mockImplementationOnce(() => Promise.resolve('<html><body>Sample HTML content</body></html>'));
 
     const result = await visibleHtmlTool.execute(args, mockContext);
 
@@ -166,97 +255,168 @@ describe('VisibleHtmlTool', () => {
     expect(mockEvaluate).toHaveBeenCalled();
     expect(result.isError).toBe(false);
     expect(result.content[0].text).toContain('HTML content');
-    expect(result.content[0].text).toContain('Processed HTML content');
+    expect(result.content[0].text).toContain('scripts removed');
+    expect(result.content[0].text).toContain('Sample HTML content');
   });
 
-  test('should handle individual filter combinations', async () => {
-    const args = {
-      removeScripts: true,
-      minify: true
-    };
+  test('should include guidance tip in response', async () => {
+    const args = {};
 
-    // Mock content to return HTML
-    mockContent.mockImplementationOnce(() =>
-      Promise.resolve('<html><body>Sample HTML content</body></html>')
-    );
+    mockEvaluate.mockImplementationOnce(() => Promise.resolve('<html><body>Content</body></html>'));
 
-    mockEvaluate.mockImplementationOnce((callback, params: any) => {
+    const result = await visibleHtmlTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('💡 TIP: If you need structured inspection');
+    expect(result.content[0].text).toContain('inspect_dom()');
+    expect(result.content[0].text).toContain('query_selector');
+    expect(result.content[0].text).toContain('get_computed_styles');
+  });
+
+  test('should apply clean mode when clean=true', async () => {
+    const args = { clean: true };
+
+    // Mock the page.evaluate to capture the clean parameter
+    mockEvaluate.mockImplementationOnce((callback, params) => {
       expect(params).toEqual({
         html: '<html><body>Sample HTML content</body></html>',
-        removeScripts: true,
-        removeComments: undefined,
-        removeStyles: undefined,
-        removeMeta: undefined,
-        minify: true
+        clean: true
       });
-      return Promise.resolve('<html><body>Filtered content</body></html>');
+      return Promise.resolve('<html><body>Clean HTML content</body></html>');
+    });
+
+    const result = await visibleHtmlTool.execute(args, mockContext);
+
+    expect(mockContent).toHaveBeenCalled();
+    expect(mockEvaluate).toHaveBeenCalled();
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('clean mode');
+    expect(result.content[0].text).toContain('Clean HTML content');
+  });
+
+  test('should default to clean=false (scripts only)', async () => {
+    const args = {};
+
+    mockEvaluate.mockImplementationOnce((callback, params: any) => {
+      expect(params.clean).toBe(false);
+      return Promise.resolve('<html><body>HTML with scripts removed</body></html>');
     });
 
     const result = await visibleHtmlTool.execute(args, mockContext);
     expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('Filtered content');
+    expect(result.content[0].text).toContain('scripts removed');
   });
 
   test('should handle selector parameter', async () => {
     const args = {
-      selector: '#main-content',
-      removeScripts: true
+      selector: '#main-content'
     };
 
     // Mock element selection
     const mockElement = {
       outerHTML: '<div id="main-content">Selected content</div>'
     } as unknown as ElementHandle<Element>;
-    mock$.mockResolvedValueOnce(mockElement);
+    mock$.mockResolvedValue(mockElement);
 
-    // Mock evaluate for filtering
-    mockEvaluate.mockImplementation((_: any, params: any) => 
-      Promise.resolve('<div>Processed selected content</div>')
-    );
+    // Mock evaluate - called twice: once for getting outerHTML, once for processing
+    mockEvaluate
+      .mockResolvedValueOnce('<div id="main-content">Selected content</div>') // For outerHTML
+      .mockResolvedValueOnce('<div id="main-content">Processed selected content</div>'); // For filtering
 
     const result = await visibleHtmlTool.execute(args, mockContext);
     expect(mock$).toHaveBeenCalledWith('#main-content');
     expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('(from "#main-content")');
     expect(result.content[0].text).toContain('Processed selected content');
   });
 
+  test('should support testid shorthand selector', async () => {
+    const args = { selector: 'testid:main-app' };
+
+    const mockElement = {} as unknown as ElementHandle<Element>;
+    mock$.mockResolvedValue(mockElement);
+
+    mockEvaluate.mockImplementationOnce(() =>
+      Promise.resolve('<div data-testid="main-app">App content</div>')
+    );
+
+    const result = await visibleHtmlTool.execute(args, mockContext);
+
+    // Should normalize testid: to [data-testid="..."]
+    expect(mock$).toHaveBeenCalledWith('[data-testid="main-app"]');
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('(from "testid:main-app")');
+  });
+
+  test('should handle non-existent selector', async () => {
+    const args = { selector: '#non-existent' };
+
+    // Mock element selection returning null
+    mock$.mockResolvedValue(null);
+
+    const result = await visibleHtmlTool.execute(args, mockContext);
+
+    expect(mock$).toHaveBeenCalledWith('#non-existent');
+    expect(mockEvaluate).not.toHaveBeenCalled();
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('Element with selector "#non-existent" not found');
+  });
+
   test('should handle empty HTML content', async () => {
-    const args = {
-      removeScripts: true
-    };
+    const args = {};
 
     // Mock content to return empty HTML
     mockContent.mockImplementationOnce(() => Promise.resolve(''));
 
-    mockEvaluate.mockImplementationOnce((callback, params: any) => {
-      expect(params.html).toBe('');
-      return Promise.resolve('');
-    });
+    mockEvaluate.mockImplementationOnce(() => Promise.resolve(''));
 
     const result = await visibleHtmlTool.execute(args, mockContext);
     expect(result.isError).toBe(false);
     expect(result.content[0].text).toContain('HTML content');
   });
 
-  test('should handle cleanHtml flag setting all filters', async () => {
-    const args = {
-      cleanHtml: true
-    };
+  test('should respect maxLength parameter', async () => {
+    const args = { maxLength: 50 };
 
-    mockEvaluate.mockImplementationOnce((callback, params) => {
-      expect(params).toEqual({
-        html: '<html><body>Sample HTML content</body></html>',
-        removeScripts: true,
-        removeComments: true,
-        removeStyles: true,
-        removeMeta: true,
-        minify: undefined
-      });
-      return Promise.resolve('<html><body>Processed HTML content</body></html>');
-    });
+    const longHtml = '<div>' + 'A'.repeat(100) + '</div>';
+    mockEvaluate.mockImplementationOnce(() => Promise.resolve(longHtml));
 
     const result = await visibleHtmlTool.execute(args, mockContext);
+
     expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('Output truncated due to size limits');
+  });
+
+  test('should show "entire page" when no selector provided', async () => {
+    const args = {};
+
+    mockEvaluate.mockImplementationOnce(() => Promise.resolve('<html><body>Content</body></html>'));
+
+    const result = await visibleHtmlTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('(entire page)');
+    expect(result.content[0].text).not.toContain('(from');
+  });
+
+  test('should combine selector, clean, and maxLength parameters', async () => {
+    const args = { selector: 'testid:app', clean: true, maxLength: 30 };
+
+    const mockElement = {} as unknown as ElementHandle<Element>;
+    mock$.mockResolvedValue(mockElement);
+
+    const longHtml = '<div>' + 'B'.repeat(100) + '</div>';
+    // Mock evaluate - called twice: once for getting outerHTML, once for processing
+    mockEvaluate
+      .mockResolvedValueOnce(longHtml) // For outerHTML
+      .mockResolvedValueOnce(longHtml); // For filtering
+
+    const result = await visibleHtmlTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('(from "testid:app")');
+    expect(result.content[0].text).toContain('clean mode');
+    expect(result.content[0].text).toContain('<!-- Output truncated due to size limits -->');
   });
 
   test('should handle missing page', async () => {

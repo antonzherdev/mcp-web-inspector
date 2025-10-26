@@ -27,9 +27,28 @@ export class VisibleTextTool extends BrowserToolBase {
     }
     return this.safeExecute(context, async (page) => {
       try {
-        const visibleText = await page!.evaluate(() => {
+        // Normalize selector (support testid: shorthand)
+        const selector = args.selector ? this.normalizeSelector(args.selector) : undefined;
+
+        // If selector provided, validate element exists
+        if (selector) {
+          const element = await page.$(selector);
+          if (!element) {
+            return createErrorResponse(`Element with selector "${args.selector}" not found`);
+          }
+        }
+
+        const visibleText = await page!.evaluate((sel) => {
+          // Find root element - either selected element or body
+          let rootElement = document.body;
+          if (sel) {
+            const element = document.querySelector(sel);
+            if (!element) return ""; // Should not happen due to earlier check, but be safe
+            rootElement = element as HTMLElement;
+          }
+
           const walker = document.createTreeWalker(
-            document.body,
+            rootElement,
             NodeFilter.SHOW_TEXT,
             {
               acceptNode: (node) => {
@@ -49,7 +68,7 @@ export class VisibleTextTool extends BrowserToolBase {
             }
           }
           return text.trim();
-        });
+        }, selector);
         // Truncate logic
         const maxLength = typeof args.maxLength === 'number' ? args.maxLength : 20000;
         let output = visibleText;
@@ -58,7 +77,15 @@ export class VisibleTextTool extends BrowserToolBase {
           output = output.slice(0, maxLength) + '\n[Output truncated due to size limits]';
           truncated = true;
         }
-        return createSuccessResponse(`Visible text content:\n${output}`);
+
+        // Add guidance footer
+        const scopeInfo = selector ? ` (from "${args.selector}")` : " (entire page)";
+        const guidance = `\n\n💡 TIP: If you need structured inspection rather than raw text:
+   • inspect_dom() - See page structure with positions and relationships
+   • find_by_text("text") - Locate specific text with element context
+   • query_selector("selector") - Find and inspect specific elements`;
+
+        return createSuccessResponse(`Visible text content${scopeInfo}:\n${output}${guidance}`);
       } catch (error) {
         return createErrorResponse(`Failed to get visible text content: ${(error as Error).message}`);
       }
@@ -91,12 +118,16 @@ export class VisibleHtmlTool extends BrowserToolBase {
     }
     return this.safeExecute(context, async (page) => {
       try {
-        const { removeComments, removeStyles, removeMeta, minify, cleanHtml } = args;
-        // Default removeScripts to true unless explicitly set to false
-        const removeScripts = args.removeScripts === false ? false : true;
-
         // Normalize selector (support testid: shorthand)
         const selector = args.selector ? this.normalizeSelector(args.selector) : undefined;
+
+        // If selector provided, validate element exists
+        if (selector) {
+          const element = await page.$(selector);
+          if (!element) {
+            return createErrorResponse(`Element with selector "${args.selector}" not found`);
+          }
+        }
 
         // Get the HTML content
         let htmlContent: string;
@@ -104,92 +135,77 @@ export class VisibleHtmlTool extends BrowserToolBase {
         if (selector) {
           // If a selector is provided, get only the HTML for that element
           const element = await page.$(selector);
-          if (!element) {
-            return createErrorResponse(`Element with selector "${selector}" not found`);
-          }
           htmlContent = await page.evaluate((el) => el.outerHTML, element);
         } else {
           // Otherwise get the full page HTML
           htmlContent = await page.content();
         }
 
-        // Determine if we need to apply filters
-        const shouldRemoveScripts = removeScripts || cleanHtml;
-        const shouldRemoveComments = removeComments || cleanHtml;
-        const shouldRemoveStyles = removeStyles || cleanHtml;
-        const shouldRemoveMeta = removeMeta || cleanHtml;
+        // Determine cleanup level
+        // Default: remove scripts only (security/size)
+        // clean=true: remove scripts + styles + comments + meta
+        const clean = args.clean === true;
 
         // Apply filters in the browser context
-        if (shouldRemoveScripts || shouldRemoveComments || shouldRemoveStyles || shouldRemoveMeta || minify) {
-          htmlContent = await page.evaluate(
-            ({ html, removeScripts, removeComments, removeStyles, removeMeta, minify }) => {
-              // Create a DOM parser to work with the HTML
-              const parser = new DOMParser();
-              const doc = parser.parseFromString(html, 'text/html');
+        htmlContent = await page.evaluate(
+          ({ html, clean }) => {
+            // Create a DOM parser to work with the HTML
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
 
-              // Remove script tags if requested
-              if (removeScripts) {
-                const scripts = doc.querySelectorAll('script');
-                scripts.forEach(script => script.remove());
-              }
+            // Always remove scripts (default behavior)
+            const scripts = doc.querySelectorAll('script');
+            scripts.forEach(script => script.remove());
 
-              // Remove style tags if requested
-              if (removeStyles) {
-                const styles = doc.querySelectorAll('style');
-                styles.forEach(style => style.remove());
-              }
+            // If clean=true, remove additional noise
+            if (clean) {
+              // Remove style tags
+              const styles = doc.querySelectorAll('style');
+              styles.forEach(style => style.remove());
 
-              // Remove meta tags if requested
-              if (removeMeta) {
-                const metaTags = doc.querySelectorAll('meta');
-                metaTags.forEach(meta => meta.remove());
-              }
+              // Remove meta tags
+              const metaTags = doc.querySelectorAll('meta');
+              metaTags.forEach(meta => meta.remove());
 
-              // Remove HTML comments if requested
-              if (removeComments) {
-                const removeComments = (node) => {
-                  const childNodes = node.childNodes;
-                  for (let i = childNodes.length - 1; i >= 0; i--) {
-                    const child = childNodes[i];
-                    if (child.nodeType === 8) { // 8 is for comment nodes
-                      node.removeChild(child);
-                    } else if (child.nodeType === 1) { // 1 is for element nodes
-                      removeComments(child);
-                    }
+              // Remove HTML comments
+              const removeCommentsRecursive = (node: Node) => {
+                const childNodes = node.childNodes;
+                for (let i = childNodes.length - 1; i >= 0; i--) {
+                  const child = childNodes[i];
+                  if (child.nodeType === 8) { // 8 is for comment nodes
+                    node.removeChild(child);
+                  } else if (child.nodeType === 1) { // 1 is for element nodes
+                    removeCommentsRecursive(child);
                   }
-                };
-                removeComments(doc.documentElement);
-              }
-
-              // Get the processed HTML
-              let result = doc.documentElement.outerHTML;
-
-              // Minify if requested
-              if (minify) {
-                // Simple minification: remove extra whitespace
-                result = result.replace(/>\s+</g, '><').trim();
-              }
-
-              return result;
-            },
-            {
-              html: htmlContent,
-              removeScripts: shouldRemoveScripts,
-              removeComments: shouldRemoveComments,
-              removeStyles: shouldRemoveStyles,
-              removeMeta: shouldRemoveMeta,
-              minify
+                }
+              };
+              removeCommentsRecursive(doc.documentElement);
             }
-          );
-        }
+
+            // Get the processed HTML
+            return doc.documentElement.outerHTML;
+          },
+          { html: htmlContent, clean }
+        );
 
         // Truncate logic
         const maxLength = typeof args.maxLength === 'number' ? args.maxLength : 20000;
         let output = htmlContent;
+        let truncated = false;
         if (output.length > maxLength) {
           output = output.slice(0, maxLength) + '\n<!-- Output truncated due to size limits -->';
+          truncated = true;
         }
-        return createSuccessResponse(`HTML content:\n${output}`);
+
+        // Add guidance footer
+        const scopeInfo = selector ? ` (from "${args.selector}")` : " (entire page)";
+        const cleanInfo = clean ? ", clean mode" : ", scripts removed";
+        const guidance = `\n\n💡 TIP: If you need structured inspection rather than raw HTML:
+   • inspect_dom() - See page structure with positions and relationships
+   • query_selector("selector") - Find and inspect specific elements
+   • get_computed_styles("selector") - Get CSS values for elements`;
+
+        return createSuccessResponse(`HTML content${scopeInfo}${cleanInfo}:\n${output}${guidance}`);
       } catch (error) {
         return createErrorResponse(`Failed to get visible HTML content: ${(error as Error).message}`);
       }
