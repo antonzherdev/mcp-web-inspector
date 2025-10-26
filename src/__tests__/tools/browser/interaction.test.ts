@@ -6,11 +6,6 @@ import { jest } from '@jest/globals';
 
 // Mock page functions
 const mockPageClick = jest.fn().mockImplementation(() => Promise.resolve());
-const mockPageFill = jest.fn().mockImplementation(() => Promise.resolve());
-const mockPageSelectOption = jest.fn().mockImplementation(() => Promise.resolve());
-const mockPageHover = jest.fn().mockImplementation(() => Promise.resolve());
-const mockPageSetInputFiles = jest.fn().mockImplementation(() => Promise.resolve());
-const mockPageWaitForSelector = jest.fn().mockImplementation(() => Promise.resolve());
 const mockWaitForLoadState = jest.fn().mockImplementation(() => Promise.resolve());
 const mockBringToFront = jest.fn().mockImplementation(() => Promise.resolve());
 const mockUrl = jest.fn().mockReturnValue('https://example.com');
@@ -31,24 +26,12 @@ const mockWaitForEvent = jest.fn().mockImplementation(() => Promise.resolve(mock
 
 
 // Mock locator functions
-const mockLocatorClick = jest.fn().mockImplementation(() => Promise.resolve());
-const mockLocatorFill = jest.fn().mockImplementation(() => Promise.resolve());
-const mockLocatorSelectOption = jest.fn().mockImplementation(() => Promise.resolve());
-const mockLocatorHover = jest.fn().mockImplementation(() => Promise.resolve());
-const mockLocatorUploadFile = jest.fn().mockImplementation(() => Promise.resolve());
-
-// Mock locator
-const mockLocator = jest.fn().mockReturnValue({
-  click: mockLocatorClick,
-  fill: mockLocatorFill,
-  selectOption: mockLocatorSelectOption,
-  hover: mockLocatorHover,
-  uploadFile: mockLocatorUploadFile
-});
+const mockPageLocator = jest.fn().mockReturnValue({});
 
 // Mock iframe locator
+const mockIframeLocatorClick = jest.fn(async () => {});
 const mockIframeLocator = jest.fn().mockReturnValue({
-  click: mockLocatorClick
+  click: mockIframeLocatorClick,
 });
 
 // Mock frame locator
@@ -65,12 +48,7 @@ const mockIsClosed = jest.fn().mockReturnValue(false);
 
 const mockPage = {
   click: mockPageClick,
-  fill: mockPageFill,
-  selectOption: mockPageSelectOption,
-  hover: mockPageHover,
-  setInputFiles: mockPageSetInputFiles,
-  waitForSelector: mockPageWaitForSelector,
-  locator: mockLocator,
+  locator: mockPageLocator,
   frameLocator: mockFrameLocator,
   evaluate: mockEvaluate,
   goto: mockGoto,
@@ -118,6 +96,8 @@ describe('Browser Interaction Tools', () => {
     iframeClickTool = new IframeClickTool(mockServer);
     clickAndSwitchTabTool = new ClickAndSwitchTabTool(mockServer);
     uploadFileTool = new UploadFileTool(mockServer);
+    mockPageLocator.mockReset();
+    mockPageLocator.mockImplementation(() => ({}));
   });
 
   describe('ClickTool', () => {
@@ -126,12 +106,21 @@ describe('Browser Interaction Tools', () => {
         selector: '#test-button'
       };
 
+      const mockElement = {
+        click: jest.fn(async () => {}),
+      };
+      const selectSpy = jest
+        .spyOn(clickTool as any, 'selectPreferredLocator')
+        .mockResolvedValue({ element: mockElement, elementIndex: 0, totalCount: 1 });
+      mockPageLocator.mockImplementation(() => ({}));
+
       const result = await clickTool.execute(args, mockContext);
 
-      // The actual implementation uses page.click directly, not locator
-      expect(mockPageClick).toHaveBeenCalledWith('#test-button');
+      expect(mockPageLocator).toHaveBeenCalledWith('#test-button');
+      expect(mockElement.click).toHaveBeenCalled();
       expect(result.isError).toBe(false);
       expect(result.content[0].text).toContain('Clicked element');
+      selectSpy.mockRestore();
     });
 
     test('should handle click errors', async () => {
@@ -139,14 +128,22 @@ describe('Browser Interaction Tools', () => {
         selector: '#test-button'
       };
 
-      // Mock a click error
-      mockPageClick.mockImplementationOnce(() => Promise.reject(new Error('Click failed')));
+      const mockElement = {
+        click: jest.fn(async () => {}),
+      };
+      mockElement.click.mockRejectedValue(new Error('Click failed'));
+      const selectSpy = jest
+        .spyOn(clickTool as any, 'selectPreferredLocator')
+        .mockResolvedValue({ element: mockElement, elementIndex: 0, totalCount: 1 });
+      mockPageLocator.mockImplementation(() => ({}));
 
       const result = await clickTool.execute(args, mockContext);
 
-      expect(mockPageClick).toHaveBeenCalledWith('#test-button');
+      expect(mockPageLocator).toHaveBeenCalledWith('#test-button');
+      expect(mockElement.click).toHaveBeenCalled();
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain('Operation failed');
+      selectSpy.mockRestore();
     });
 
     test('should handle missing page', async () => {
@@ -156,7 +153,7 @@ describe('Browser Interaction Tools', () => {
 
       const result = await clickTool.execute(args, { server: mockServer } as ToolContext);
 
-      expect(mockPageClick).not.toHaveBeenCalled();
+      expect(mockPageLocator).not.toHaveBeenCalled();
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain('Browser page not initialized');
     });
@@ -234,7 +231,7 @@ describe('Browser Interaction Tools', () => {
 
       expect(mockFrameLocator).toHaveBeenCalledWith('#test-iframe');
       expect(mockIframeLocator).toHaveBeenCalledWith('#test-button');
-      expect(mockLocatorClick).toHaveBeenCalled();
+      expect(mockIframeLocatorClick).toHaveBeenCalled();
       expect(result.isError).toBe(false);
       expect(result.content[0].text).toContain('Clicked element');
     });
@@ -247,12 +244,21 @@ describe('Browser Interaction Tools', () => {
         value: 'test value'
       };
 
+      const mockElement = {
+        fill: jest.fn(async () => {}),
+      };
+      const selectSpy = jest
+        .spyOn(fillTool as any, 'selectPreferredLocator')
+        .mockResolvedValue({ element: mockElement, elementIndex: 0, totalCount: 1 });
+      mockPageLocator.mockImplementation(() => ({}));
+
       const result = await fillTool.execute(args, mockContext);
 
-      expect(mockPageWaitForSelector).toHaveBeenCalledWith('#test-input');
-      expect(mockPageFill).toHaveBeenCalledWith('#test-input', 'test value');
+      expect(mockPageLocator).toHaveBeenCalledWith('#test-input');
+      expect(mockElement.fill).toHaveBeenCalledWith('test value');
       expect(result.isError).toBe(false);
       expect(result.content[0].text).toContain('Filled');
+      selectSpy.mockRestore();
     });
   });
 
@@ -263,12 +269,21 @@ describe('Browser Interaction Tools', () => {
         value: 'option1'
       };
 
+      const mockElement = {
+        selectOption: jest.fn(async () => {}),
+      };
+      const selectSpy = jest
+        .spyOn(selectTool as any, 'selectPreferredLocator')
+        .mockResolvedValue({ element: mockElement, elementIndex: 0, totalCount: 1 });
+      mockPageLocator.mockImplementation(() => ({}));
+
       const result = await selectTool.execute(args, mockContext);
 
-      expect(mockPageWaitForSelector).toHaveBeenCalledWith('#test-select');
-      expect(mockPageSelectOption).toHaveBeenCalledWith('#test-select', 'option1');
+      expect(mockPageLocator).toHaveBeenCalledWith('#test-select');
+      expect(mockElement.selectOption).toHaveBeenCalledWith('option1');
       expect(result.isError).toBe(false);
       expect(result.content[0].text).toContain('Selected');
+      selectSpy.mockRestore();
     });
   });
 
@@ -278,12 +293,21 @@ describe('Browser Interaction Tools', () => {
         selector: '#test-element'
       };
 
+      const mockElement = {
+        hover: jest.fn(async () => {}),
+      };
+      const selectSpy = jest
+        .spyOn(hoverTool as any, 'selectPreferredLocator')
+        .mockResolvedValue({ element: mockElement, elementIndex: 0, totalCount: 1 });
+      mockPageLocator.mockImplementation(() => ({}));
+
       const result = await hoverTool.execute(args, mockContext);
 
-      expect(mockPageWaitForSelector).toHaveBeenCalledWith('#test-element');
-      expect(mockPageHover).toHaveBeenCalledWith('#test-element');
+      expect(mockPageLocator).toHaveBeenCalledWith('#test-element');
+      expect(mockElement.hover).toHaveBeenCalled();
       expect(result.isError).toBe(false);
       expect(result.content[0].text).toContain('Hovered');
+      selectSpy.mockRestore();
     });
   });
 
@@ -294,12 +318,21 @@ describe('Browser Interaction Tools', () => {
         filePath: '/tmp/testfile.txt'
       };
 
+      const mockElement = {
+        setInputFiles: jest.fn(async () => {}),
+      };
+      const selectSpy = jest
+        .spyOn(uploadFileTool as any, 'selectPreferredLocator')
+        .mockResolvedValue({ element: mockElement, elementIndex: 0, totalCount: 1 });
+      mockPageLocator.mockImplementation(() => ({}));
+
       const result = await uploadFileTool.execute(args, mockContext);
 
-      expect(mockPageWaitForSelector).toHaveBeenCalledWith('#file-input');
-      expect(mockPageSetInputFiles).toHaveBeenCalledWith('#file-input', '/tmp/testfile.txt');
+      expect(mockPageLocator).toHaveBeenCalledWith('#file-input');
+      expect(mockElement.setInputFiles).toHaveBeenCalledWith('/tmp/testfile.txt');
       expect(result.isError).toBe(false);
       expect(result.content[0].text).toContain("Uploaded file '/tmp/testfile.txt' to '#file-input'");
+      selectSpy.mockRestore();
     });
   });
 

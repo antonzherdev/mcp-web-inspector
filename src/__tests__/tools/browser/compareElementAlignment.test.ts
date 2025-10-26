@@ -8,30 +8,36 @@ const mockLocator1Count = jest.fn() as jest.MockedFunction<() => Promise<number>
 const mockLocator1BoundingBox = jest.fn() as jest.MockedFunction<() => Promise<{ x: number; y: number; width: number; height: number } | null>>;
 const mockLocator1Evaluate = jest.fn() as jest.MockedFunction<(pageFunction: any) => Promise<any>>;
 const mockLocator1First = jest.fn() as jest.MockedFunction<() => Locator>;
+const mockLocator1Nth = jest.fn() as jest.MockedFunction<(index: number) => Locator>;
 
 const mockLocator1 = {
   count: mockLocator1Count,
   boundingBox: mockLocator1BoundingBox,
   evaluate: mockLocator1Evaluate,
   first: mockLocator1First,
+  nth: mockLocator1Nth,
 } as unknown as Locator;
 
 mockLocator1First.mockReturnValue(mockLocator1);
+mockLocator1Nth.mockReturnValue(mockLocator1);
 
 // Mock Locator for second element
 const mockLocator2Count = jest.fn() as jest.MockedFunction<() => Promise<number>>;
 const mockLocator2BoundingBox = jest.fn() as jest.MockedFunction<() => Promise<{ x: number; y: number; width: number; height: number } | null>>;
 const mockLocator2Evaluate = jest.fn() as jest.MockedFunction<(pageFunction: any) => Promise<any>>;
 const mockLocator2First = jest.fn() as jest.MockedFunction<() => Locator>;
+const mockLocator2Nth = jest.fn() as jest.MockedFunction<(index: number) => Locator>;
 
 const mockLocator2 = {
   count: mockLocator2Count,
   boundingBox: mockLocator2BoundingBox,
   evaluate: mockLocator2Evaluate,
   first: mockLocator2First,
+  nth: mockLocator2Nth,
 } as unknown as Locator;
 
 mockLocator2First.mockReturnValue(mockLocator2);
+mockLocator2Nth.mockReturnValue(mockLocator2);
 
 // Track selector call count to return different locators
 let locatorCallCount = 0;
@@ -201,7 +207,8 @@ describe('CompareElementAlignmentTool', () => {
     const result = await tool.execute(args, mockContext);
 
     expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('⚠ Warning: First selector matched 3 elements, using first');
-    expect(result.content[0].text).toContain('⚠ Warning: Second selector matched 2 elements, using first');
+    const text = result.content[0].text;
+    expect(text).toContain('⚠ Warning: First selector matched 3 elements, using first');
+    expect(text).toContain('⚠ Warning: Second selector matched 2 elements, using first');
   });
 });

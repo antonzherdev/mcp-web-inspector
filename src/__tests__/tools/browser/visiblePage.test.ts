@@ -1,19 +1,19 @@
 import { VisibleTextTool, VisibleHtmlTool } from '../../../tools/browser/visiblePage.js';
 import { ToolContext } from '../../../tools/common/types.js';
-import { Page, Browser, ElementHandle } from 'playwright';
+import { Page, Browser } from 'playwright';
 import { jest } from '@jest/globals';
 
 // Mock the Page object
 const mockEvaluate = jest.fn() as jest.MockedFunction<(pageFunction: Function | string, arg?: any) => Promise<any>>;
 const mockContent = jest.fn();
 const mockIsClosed = jest.fn().mockReturnValue(false);
-const mock$ = jest.fn() as jest.MockedFunction<(selector: string) => Promise<ElementHandle | null>>;
+const mockLocator = jest.fn();
 
 const mockPage = {
   evaluate: mockEvaluate,
   content: mockContent,
   isClosed: mockIsClosed,
-  $: mock$
+  locator: mockLocator,
 } as unknown as Page;
 
 // Mock the browser
@@ -44,6 +44,7 @@ describe('VisibleTextTool', () => {
     mockIsConnected.mockReturnValue(true);
     mockIsClosed.mockReturnValue(false);
     mockEvaluate.mockImplementation(() => Promise.resolve('Sample visible text content'));
+    mockLocator.mockReset();
   });
 
   test('should retrieve visible text content', async () => {
@@ -128,57 +129,58 @@ describe('VisibleTextTool', () => {
   test('should retrieve text from specific selector', async () => {
     const args = { selector: '#main-content' };
 
-    // Mock element selection
+    mockLocator.mockImplementation(() => ({}));
     const mockElement = {
-      outerHTML: '<div id="main-content">Selected text</div>'
-    } as unknown as ElementHandle<Element>;
-    mock$.mockResolvedValueOnce(mockElement);
-
-    // Mock evaluate to return text from selected element
-    mockEvaluate.mockImplementationOnce(() => Promise.resolve('Article text from main content'));
+      evaluate: jest.fn(async () => 'Article text from main content'),
+    };
+    const selectSpy = jest
+      .spyOn(visibleTextTool as any, 'selectPreferredLocator')
+      .mockResolvedValue({ element: mockElement, elementIndex: 0, totalCount: 1 });
 
     const result = await visibleTextTool.execute(args, mockContext);
 
-    expect(mock$).toHaveBeenCalledWith('#main-content');
-    expect(mockEvaluate).toHaveBeenCalledWith(expect.any(Function), '#main-content');
+    expect(mockLocator).toHaveBeenCalledWith('#main-content');
+    expect(mockElement.evaluate).toHaveBeenCalled();
     expect(result.isError).toBe(false);
     expect(result.content[0].text).toContain('(from "#main-content")');
     expect(result.content[0].text).toContain('Article text from main content');
+    selectSpy.mockRestore();
   });
 
   test('should support testid shorthand selector', async () => {
     const args = { selector: 'testid:article-body' };
 
-    // Mock element selection
+    mockLocator.mockImplementation(() => ({}));
     const mockElement = {
-      outerHTML: '<div data-testid="article-body">Article</div>'
-    } as unknown as ElementHandle<Element>;
-    mock$.mockResolvedValueOnce(mockElement);
-
-    // Mock evaluate to return text
-    mockEvaluate.mockImplementationOnce(() => Promise.resolve('Article text'));
+      evaluate: jest.fn(async () => 'Article text'),
+    };
+    const selectSpy = jest
+      .spyOn(visibleTextTool as any, 'selectPreferredLocator')
+      .mockResolvedValue({ element: mockElement, elementIndex: 0, totalCount: 1 });
 
     const result = await visibleTextTool.execute(args, mockContext);
 
-    // Should normalize testid: to [data-testid="..."]
-    expect(mock$).toHaveBeenCalledWith('[data-testid="article-body"]');
+    expect(mockLocator).toHaveBeenCalledWith('[data-testid="article-body"]');
     expect(result.isError).toBe(false);
     expect(result.content[0].text).toContain('(from "testid:article-body")');
     expect(result.content[0].text).toContain('Article text');
+    selectSpy.mockRestore();
   });
 
   test('should handle non-existent selector', async () => {
     const args = { selector: '#non-existent' };
 
-    // Mock element selection returning null (element not found)
-    mock$.mockResolvedValueOnce(null);
+    mockLocator.mockImplementation(() => ({}));
+    const selectSpy = jest
+      .spyOn(visibleTextTool as any, 'selectPreferredLocator')
+      .mockRejectedValue(new Error('No elements found'));
 
     const result = await visibleTextTool.execute(args, mockContext);
 
-    expect(mock$).toHaveBeenCalledWith('#non-existent');
-    expect(mockEvaluate).not.toHaveBeenCalled();
+    expect(mockLocator).toHaveBeenCalledWith('#non-existent');
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('Element with selector "#non-existent" not found');
+    expect(result.content[0].text).toContain('Failed to get visible text content: No elements found');
+    selectSpy.mockRestore();
   });
 
   test('should respect maxLength parameter', async () => {
@@ -216,18 +218,20 @@ describe('VisibleTextTool', () => {
   test('should combine selector and maxLength parameters', async () => {
     const args = { selector: 'testid:article', maxLength: 30 };
 
-    // Mock element selection
-    const mockElement = {} as unknown as ElementHandle<Element>;
-    mock$.mockResolvedValueOnce(mockElement);
-
-    // Mock long text from selected element
-    mockEvaluate.mockImplementationOnce(() => Promise.resolve('B'.repeat(100)));
+    mockLocator.mockImplementation(() => ({}));
+    const mockElement = {
+      evaluate: jest.fn(async () => 'B'.repeat(100)),
+    };
+    const selectSpy = jest
+      .spyOn(visibleTextTool as any, 'selectPreferredLocator')
+      .mockResolvedValue({ element: mockElement, elementIndex: 0, totalCount: 1 });
 
     const result = await visibleTextTool.execute(args, mockContext);
 
     expect(result.isError).toBe(false);
     expect(result.content[0].text).toContain('(from "testid:article")');
     expect(result.content[0].text).toContain('[Output truncated due to size limits]');
+    selectSpy.mockRestore();
   });
 });
 
@@ -241,6 +245,7 @@ describe('VisibleHtmlTool', () => {
     mockIsConnected.mockReturnValue(true);
     mockIsClosed.mockReturnValue(false);
     mockContent.mockImplementation(() => Promise.resolve('<html><body>Sample HTML content</body></html>'));
+    mockLocator.mockReset();
   });
 
   test('should retrieve HTML content with scripts removed by default', async () => {
@@ -312,54 +317,62 @@ describe('VisibleHtmlTool', () => {
       selector: '#main-content'
     };
 
-    // Mock element selection
+    mockLocator.mockImplementation(() => ({}));
     const mockElement = {
-      outerHTML: '<div id="main-content">Selected content</div>'
-    } as unknown as ElementHandle<Element>;
-    mock$.mockResolvedValue(mockElement);
+      evaluate: jest.fn(async () => '<div id="main-content">Selected content</div>'),
+    };
+    const selectSpy = jest
+      .spyOn(visibleHtmlTool as any, 'selectPreferredLocator')
+      .mockResolvedValue({ element: mockElement, elementIndex: 0, totalCount: 1 });
 
-    // Mock evaluate - called twice: once for getting outerHTML, once for processing
-    mockEvaluate
-      .mockResolvedValueOnce('<div id="main-content">Selected content</div>') // For outerHTML
-      .mockResolvedValueOnce('<div id="main-content">Processed selected content</div>'); // For filtering
+    mockEvaluate.mockResolvedValueOnce('<div id="main-content">Processed selected content</div>');
 
     const result = await visibleHtmlTool.execute(args, mockContext);
-    expect(mock$).toHaveBeenCalledWith('#main-content');
+    expect(mockLocator).toHaveBeenCalledWith('#main-content');
+    expect(mockElement.evaluate).toHaveBeenCalled();
+    expect(mockEvaluate).toHaveBeenCalled();
     expect(result.isError).toBe(false);
     expect(result.content[0].text).toContain('(from "#main-content")');
     expect(result.content[0].text).toContain('Processed selected content');
+    selectSpy.mockRestore();
   });
 
   test('should support testid shorthand selector', async () => {
     const args = { selector: 'testid:main-app' };
 
-    const mockElement = {} as unknown as ElementHandle<Element>;
-    mock$.mockResolvedValue(mockElement);
+    mockLocator.mockImplementation(() => ({}));
+    const mockElement = {
+      evaluate: jest.fn(async () => '<div data-testid="main-app">App content</div>'),
+    };
+    const selectSpy = jest
+      .spyOn(visibleHtmlTool as any, 'selectPreferredLocator')
+      .mockResolvedValue({ element: mockElement, elementIndex: 0, totalCount: 1 });
 
-    mockEvaluate.mockImplementationOnce(() =>
-      Promise.resolve('<div data-testid="main-app">App content</div>')
-    );
+    mockEvaluate.mockResolvedValueOnce('<div data-testid="main-app">App content</div>');
 
     const result = await visibleHtmlTool.execute(args, mockContext);
 
     // Should normalize testid: to [data-testid="..."]
-    expect(mock$).toHaveBeenCalledWith('[data-testid="main-app"]');
+    expect(mockLocator).toHaveBeenCalledWith('[data-testid="main-app"]');
     expect(result.isError).toBe(false);
     expect(result.content[0].text).toContain('(from "testid:main-app")');
+    selectSpy.mockRestore();
   });
 
   test('should handle non-existent selector', async () => {
     const args = { selector: '#non-existent' };
 
-    // Mock element selection returning null
-    mock$.mockResolvedValue(null);
+    mockLocator.mockImplementation(() => ({}));
+    const selectSpy = jest
+      .spyOn(visibleHtmlTool as any, 'selectPreferredLocator')
+      .mockRejectedValue(new Error('No elements found'));
 
     const result = await visibleHtmlTool.execute(args, mockContext);
 
-    expect(mock$).toHaveBeenCalledWith('#non-existent');
-    expect(mockEvaluate).not.toHaveBeenCalled();
+    expect(mockLocator).toHaveBeenCalledWith('#non-existent');
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('Element with selector "#non-existent" not found');
+    expect(result.content[0].text).toContain('Failed to get visible HTML content: No elements found');
+    selectSpy.mockRestore();
   });
 
   test('should handle empty HTML content', async () => {
@@ -402,14 +415,20 @@ describe('VisibleHtmlTool', () => {
   test('should combine selector, clean, and maxLength parameters', async () => {
     const args = { selector: 'testid:app', clean: true, maxLength: 30 };
 
-    const mockElement = {} as unknown as ElementHandle<Element>;
-    mock$.mockResolvedValue(mockElement);
-
+    mockLocator.mockImplementation(() => ({}));
     const longHtml = '<div>' + 'B'.repeat(100) + '</div>';
-    // Mock evaluate - called twice: once for getting outerHTML, once for processing
-    mockEvaluate
-      .mockResolvedValueOnce(longHtml) // For outerHTML
-      .mockResolvedValueOnce(longHtml); // For filtering
+    const mockElement = {
+      evaluate: jest.fn(async () => longHtml),
+    };
+    const selectSpy = jest
+      .spyOn(visibleHtmlTool as any, 'selectPreferredLocator')
+      .mockResolvedValue({ element: mockElement, elementIndex: 0, totalCount: 1 });
+
+    mockEvaluate.mockImplementationOnce((callback, params: any) => {
+      expect(params.clean).toBe(true);
+      expect(params.html).toBe(longHtml);
+      return Promise.resolve(longHtml);
+    });
 
     const result = await visibleHtmlTool.execute(args, mockContext);
 
@@ -417,6 +436,7 @@ describe('VisibleHtmlTool', () => {
     expect(result.content[0].text).toContain('(from "testid:app")');
     expect(result.content[0].text).toContain('clean mode');
     expect(result.content[0].text).toContain('<!-- Output truncated due to size limits -->');
+    selectSpy.mockRestore();
   });
 
   test('should handle missing page', async () => {

@@ -127,7 +127,7 @@ describe('GetComputedStylesTool', () => {
     );
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('not found');
+    expect(result.content[0].text).toContain('Operation failed: No elements found');
   });
 
   it('should handle multiple elements with warning (use first)', async () => {
@@ -147,9 +147,9 @@ describe('GetComputedStylesTool', () => {
 
     // Should NOT error, should use first element with warning
     expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('Warning');
-    expect(result.content[0].text).toContain('matched 2 elements');
-    expect(result.content[0].text).toContain('using first');
+    const text = result.content[0].text;
+    expect(text).toContain('⚠ Found 2 elements matching ".btn"');
+    expect(text).toContain('using element 1 (first visible)');
     expect(result.content[0].text).toContain('Computed Styles');
     // Should show styles from first button (100px width)
     expect(result.content[0].text).toContain('width:');

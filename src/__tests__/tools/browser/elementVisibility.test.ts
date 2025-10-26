@@ -8,16 +8,19 @@ const mockLocatorCount = jest.fn() as jest.MockedFunction<() => Promise<number>>
 const mockLocatorIsVisible = jest.fn() as jest.MockedFunction<() => Promise<boolean>>;
 const mockLocatorEvaluate = jest.fn() as jest.MockedFunction<(pageFunction: any) => Promise<any>>;
 const mockLocatorFirst = jest.fn() as jest.MockedFunction<() => Locator>;
+const mockLocatorNth = jest.fn() as jest.MockedFunction<(index: number) => Locator>;
 
 const mockLocator = {
   count: mockLocatorCount,
   isVisible: mockLocatorIsVisible,
   evaluate: mockLocatorEvaluate,
   first: mockLocatorFirst,
+  nth: mockLocatorNth,
 } as unknown as Locator;
 
 // Mock first() to return a locator with the same methods
 mockLocatorFirst.mockReturnValue(mockLocator);
+mockLocatorNth.mockReturnValue(mockLocator);
 
 // Mock Page
 const mockPageLocator = jest.fn().mockReturnValue(mockLocator);
@@ -235,7 +238,7 @@ describe('ElementVisibilityTool', () => {
     const result = await visibilityTool.execute(args, mockContext);
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('Element not found');
+    expect(result.content[0].text).toContain('Failed to check visibility: No elements found');
   });
 
   test('should handle missing page', async () => {
@@ -376,7 +379,8 @@ describe('ElementVisibilityTool', () => {
     const response = result.content[0].text as string;
 
     // Should show warning about multiple matches
-    expect(response).toContain('⚠ Warning: Selector matched 3 elements, showing first:');
+    expect(response).toContain('⚠ Found 3 elements matching "button.submit"');
+    expect(response).toContain('using element 1 (first visible)');
 
     // Should still show visibility info for first element
     expect(response).toContain('Visibility: <button class="submit">');

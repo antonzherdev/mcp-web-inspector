@@ -199,8 +199,7 @@ describe('MeasureElementTool', () => {
     );
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('✗ Element not found');
-    expect(result.content[0].text).toContain('#nonexistent');
+    expect(result.content[0].text).toContain('Operation failed: No elements found');
   });
 
   it('should handle multiple elements with warning (use first)', async () => {
@@ -223,9 +222,8 @@ describe('MeasureElementTool', () => {
     expect(result.isError).toBe(false);
     const text = result.content[0].text;
 
-    expect(text).toContain('⚠ Warning');
-    expect(text).toContain('matched 3 elements');
-    expect(text).toContain('using first');
+    expect(text).toContain('⚠ Found 3 elements matching ".btn"');
+    expect(text).toContain('using element 1 (first visible)');
     expect(text).toContain('Box Model:');
   });
 
