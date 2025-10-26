@@ -11,17 +11,22 @@ const mockPageSelectOption = jest.fn().mockImplementation(() => Promise.resolve(
 const mockPageHover = jest.fn().mockImplementation(() => Promise.resolve());
 const mockPageSetInputFiles = jest.fn().mockImplementation(() => Promise.resolve());
 const mockPageWaitForSelector = jest.fn().mockImplementation(() => Promise.resolve());
-const mockWaitForEvent = jest.fn().mockImplementation(() => Promise.resolve(mockNewPage));
 const mockWaitForLoadState = jest.fn().mockImplementation(() => Promise.resolve());
 const mockBringToFront = jest.fn().mockImplementation(() => Promise.resolve());
 const mockUrl = jest.fn().mockReturnValue('https://example.com');
+const mockOn = jest.fn().mockImplementation(() => {});
+const mockAddInitScript = jest.fn().mockImplementation(() => Promise.resolve());
 
-// Mock new page
+// Mock new page with methods required by registerConsoleMessage
 const mockNewPage = {
   waitForLoadState: mockWaitForLoadState,
   bringToFront: mockBringToFront,
   url: mockUrl,
+  on: mockOn,
+  addInitScript: mockAddInitScript,
 } as unknown as Page;
+
+const mockWaitForEvent = jest.fn().mockImplementation(() => Promise.resolve(mockNewPage));
 
 
 

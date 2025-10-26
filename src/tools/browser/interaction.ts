@@ -38,11 +38,9 @@ export class ClickAndSwitchTabTool extends BrowserToolBase {
       // Wait for the new page to load
       await newPage.waitForLoadState('domcontentloaded');
 
-      // Switch control to the new tab
-      setGlobalPage(newPage);
-      //page= newPage; // Update the current page to the new tab
-      //context.page = newPage;
-      //context.page.bringToFront(); // Bring the new tab to the front
+      // Switch control to the new tab and register listeners
+      await setGlobalPage(newPage);
+
       return createSuccessResponse(`Clicked link and switched to new tab: ${newPage.url()}`);
       //return createSuccessResponse(`Clicked link and switched to new tab: ${context.page.url()}`);
     });

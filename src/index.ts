@@ -18,6 +18,10 @@ const { values } = parseArgs({
       type: 'string',
       default: './.mcp-web-inspector',
     },
+    'headless': {
+      type: 'boolean',
+      default: false,
+    },
   },
   strict: false,
 });
@@ -28,6 +32,7 @@ const sessionConfig = {
   saveSession: !Boolean(values['no-save-session']),
   userDataDir: `${baseDir}/user-data`,
   screenshotsDir: `${baseDir}/screenshots`,
+  headlessDefault: Boolean(values['headless']),
 };
 setSessionConfig(sessionConfig);
 

@@ -70,12 +70,14 @@ interface SessionConfig {
   saveSession: boolean;
   userDataDir: string;
   screenshotsDir: string;
+  headlessDefault: boolean;
 }
 
 let sessionConfig: SessionConfig = {
   saveSession: false,
   userDataDir: './.mcp-web-inspector/user-data',
   screenshotsDir: './.mcp-web-inspector/screenshots',
+  headlessDefault: false,
 };
 
 /**
@@ -90,6 +92,13 @@ export function setSessionConfig(config: Partial<SessionConfig>) {
  */
 export function getScreenshotsDir(): string {
   return sessionConfig.screenshotsDir;
+}
+
+/**
+ * Gets the default headless setting
+ */
+export function getHeadlessDefault(): boolean {
+  return sessionConfig.headlessDefault;
 }
 
 /**
@@ -120,10 +129,15 @@ export function clearNetworkLog() {
  * Sets the provided page to the global page variable
  * @param newPage The Page object to set as the global page
  */
-export function setGlobalPage(newPage: Page): void {
+export async function setGlobalPage(newPage: Page): Promise<void> {
   page = newPage;
+
+  // Register console message handlers and network listeners for the new page
+  await registerConsoleMessage(page);
+  await registerNetworkListeners(page);
+
   page.bringToFront();// Bring the new tab to the front
-  console.log("Global page has been updated.");
+  console.log("Global page has been updated with listeners registered.");
 }
 // Tool instances
 let screenshotTool: ScreenshotTool;
@@ -383,7 +397,7 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
 
     // Launch new browser if needed
     if (!browser) {
-      const { viewport, userAgent, headless = false, browserType = 'chromium', device } = browserSettings ?? {};
+      const { viewport, userAgent, headless = sessionConfig.headlessDefault, browserType = 'chromium', device } = browserSettings ?? {};
 
       // If browser type is changing, force a new browser instance
       if (browser && currentBrowserType !== browserType) {
@@ -551,7 +565,7 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
     resetBrowserState();
 
     // Try one more time from scratch
-    const { viewport, userAgent, headless = false, browserType = 'chromium', device } = browserSettings ?? {};
+    const { viewport, userAgent, headless = sessionConfig.headlessDefault, browserType = 'chromium', device } = browserSettings ?? {};
 
     // Get device configuration if device preset is specified
     let deviceConfig = null;

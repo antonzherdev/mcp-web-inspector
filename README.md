@@ -289,6 +289,7 @@ Customize server behavior with command line flags:
 
 - **`--no-save-session`** - Disable automatic session persistence (start with fresh browser state each time)
 - **`--user-data-dir <path>`** - Custom directory for session data (default: `./.mcp-web-inspector`)
+- **`--headless`** - Run browser in headless mode by default (no visible window)
 
 **Example usage:**
 ```json
@@ -297,6 +298,30 @@ Customize server behavior with command line flags:
     "web-inspector": {
       "command": "npx",
       "args": ["-y", "mcp-web-inspector", "--user-data-dir", "./my-sessions"]
+    }
+  }
+}
+```
+
+**Run in headless mode for automation/CI:**
+```json
+{
+  "mcpServers": {
+    "web-inspector": {
+      "command": "npx",
+      "args": ["-y", "mcp-web-inspector", "--headless"]
+    }
+  }
+}
+```
+
+**Combine multiple flags:**
+```json
+{
+  "mcpServers": {
+    "web-inspector": {
+      "command": "npx",
+      "args": ["-y", "mcp-web-inspector", "--headless", "--no-save-session"]
     }
   }
 }
@@ -395,8 +420,8 @@ rm -rf ./.mcp-web-inspector/screenshots    # Clear screenshots only
 - Session files can be large and bloat your git history
 
 **Best practices:**
-- Use `headless: true` for automation and CI/CD environments
-- Use `headless: false` only when debugging interactively
+- **Default is visible browser** (`headless: false`) for interactive debugging
+- Use `headless: true` explicitly for automation and CI/CD environments
 - Clear session data after testing sensitive applications
 - Use `--no-save-session` flag when testing on shared/public sites
 
@@ -570,11 +595,16 @@ Ultra-lightweight existence check. Returns simple ✓ exists or ✗ not found st
 Navigate to a URL with full browser configuration options.
 
 **Parameters:**
-- `browserType` - chromium, firefox, or webkit
-- `width`, `height` - Viewport dimensions
-- `headless` - Run in headless mode
-- `timeout` - Navigation timeout
-- `waitUntil` - Navigation wait condition
+- `browserType` - chromium, firefox, or webkit (default: chromium)
+- `width`, `height` - Viewport dimensions (default: auto-detected screen size)
+- `headless` - Run in headless mode (default: **false** - browser window visible)
+- `timeout` - Navigation timeout in ms (default: 30000)
+- `waitUntil` - Navigation wait condition (default: "load")
+
+**Default Behavior:**
+- Browser window is **visible by default** for interactive debugging
+- Use `headless: true` for automation, CI/CD, or when you don't need visual feedback
+- Use `headless: false` (or omit) when debugging interactively
 
 #### `go_back`
 Navigate back in browser history. Essential for testing navigation flows and multi-step forms.
