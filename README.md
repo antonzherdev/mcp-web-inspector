@@ -40,6 +40,33 @@ npm install -g mcp-web-inspector
 All configurations below use `npx` which automatically downloads and runs the latest version. Click to expand installation instructions for your AI tool:
 
 <details>
+<summary><b>🚀 Codex CLI</b></summary>
+
+### Installation via CLI
+
+```bash
+# Add the server globally
+codex mcp add web-inspector -- npx -y mcp-web-inspector
+
+# Verify it was registered
+codex mcp list
+```
+
+### Manual Configuration
+
+Codex stores MCP server definitions in `~/.codex/config.toml`. Add (or create) an entry under the `[mcp.servers]` table:
+
+```toml
+[mcp.servers.web-inspector]
+command = "npx"
+args = ["-y", "mcp-web-inspector"]
+```
+
+Restart Codex CLI to make sure the new server is available in future sessions.
+
+</details>
+
+<details>
 <summary><b>🤖 Claude Code (CLI)</b></summary>
 
 ### Installation via CLI
@@ -109,10 +136,10 @@ Restart Claude Desktop after saving the configuration.
 
 ```bash
 # VS Code Stable
-code --add-mcp '{"name":"web-inspector","command":"npx","args":["mcp-web-inspector"]}'
+code --add-mcp '{"name":"web-inspector","command":"npx","args":["-y","mcp-web-inspector"]}'
 
 # VS Code Insiders
-code-insiders --add-mcp '{"name":"web-inspector","command":"npx","args":["mcp-web-inspector"]}'
+code-insiders --add-mcp '{"name":"web-inspector","command":"npx","args":["-y","mcp-web-inspector"]}'
 ```
 
 ### Manual Configuration
@@ -276,6 +303,8 @@ Most MCP-compatible tools use a similar configuration format. Look for:
   }
 }
 ```
+
+CLI-first assistants such as GitHub Copilot CLI, Copylot CLI, Continue CLI, and other emerging AI coders follow the same pattern—either run their `mcp add` command with `npx -y mcp-web-inspector` or drop the snippet above into their MCP config file.
 
 If your tool supports MCP but isn't listed here, consult its documentation for the exact configuration file location.
 
