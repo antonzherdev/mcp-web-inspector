@@ -375,6 +375,9 @@ Before adding a new tool, verify:
 - [ ] Filters semantic data (skips wrapper divs, shows only meaningful elements)
 - [ ] **Does NOT return base64 images** (use file paths instead - see 4a)
 - [ ] **Provides actionable guidance** when issues detected (see 11)
+- [ ] **Description explicitly lists ALL possible outputs** including conditional ones (see 13)
+- [ ] **Description uses same symbols/format as actual output** (e.g., "arrows ↑↓←→")
+- [ ] **Description indicates conditionals** (e.g., "z-index when set", "if parent is flex")
 - [ ] Has clear, specific name
 - [ ] Single `selector` parameter (not multiple selector types)
 - [ ] Optional parameters have sensible defaults
@@ -553,12 +556,65 @@ Layout: vertical`
 
 ## Documentation Pattern
 
+### 13. **Explicit Output Documentation** ✅ CRITICAL
+
+**Problem Identified (2025-01):** Tools that conditionally show properties can confuse LLMs if the description is vague.
+
+❌ **Vague (Bad):**
+```typescript
+{
+  name: "inspect_ancestors",
+  description: "Shows position, size, and layout-critical CSS for each ancestor."
+  // ❌ What is "layout-critical CSS"? LLMs don't know what to expect!
+}
+```
+
+✅ **Explicit (Good):**
+```typescript
+{
+  name: "inspect_ancestors",
+  description: "Shows for each ancestor: position/size, width constraints (w, max-w, min-w), margins with arrows (↑↓←→), padding, display type, borders, overflow (🔒=hidden, ↕️=scroll), flexbox context (flex direction justify items gap), grid context (cols rows gap), position/z-index/transform when set. Detects centering via auto margins and flags clipping (🎯)."
+  // ✅ LLMs know EXACTLY what information they'll receive!
+}
+```
+
+**Guidelines for Tool Descriptions:**
+
+1. **List all possible outputs explicitly**, even if conditional
+   - ✅ "Shows: width (w), max-width (max-w), margin (m), padding (p)"
+   - ❌ "Shows layout properties"
+
+2. **Indicate when outputs are conditional**
+   - ✅ "position/z-index/transform when set"
+   - ✅ "flexbox context (if parent is flex)"
+   - ❌ "Shows various CSS properties"
+
+3. **Use symbols/shorthand in descriptions to match output format**
+   - ✅ "overflow (🔒=hidden, ↕️=scroll)"
+   - ✅ "margins with arrows (↑↓←→)"
+   - This helps LLMs understand the compact output format
+
+4. **Include diagnostic messages the tool produces**
+   - ✅ "Detects centering via auto margins"
+   - ✅ "Flags clipping points (🎯)"
+   - LLMs learn what insights the tool provides
+
+5. **Keep descriptions under 500 chars if possible**
+   - Balance between completeness and brevity
+   - Use parentheses for examples/details
+   - Use commas/slashes for lists
+
+**Real-World Impact:**
+The `inspect_ancestors` tool already captured flexbox/grid/z-index conditionally, but users thought these features were missing because the description said "layout-critical CSS" instead of explicitly listing "flexbox context, grid context, z-index when set". After updating the description, the tool immediately became more useful without ANY code changes.
+
+### Template for Tool Documentation
+
 Each tool should document:
 
 ```typescript
 {
   name: "tool_name",
-  description: "One sentence describing what it does. Include key behavior (e.g., 'Waits up to 30s by default'). Example: Click button with selector '#submit'.",
+  description: "PRIMARY PURPOSE: Action verb describing what it does. Shows: explicit list of all outputs (output1, output2 when condition, output3 format). Detects/flags: diagnostics it provides. Essential for: use cases. Default: default values, max: limits. Example: concrete usage.",
   inputSchema: {
     type: "object",
     properties: {
@@ -571,6 +627,14 @@ Each tool should document:
   }
 }
 ```
+
+**Template Breakdown:**
+- **PRIMARY PURPOSE**: Start with action verb (Shows, Checks, Validates, etc.)
+- **Shows**: List ALL outputs explicitly, indicate conditionals with "when X"
+- **Detects/flags**: Any diagnostic messages or insights
+- **Essential for**: Key use cases (helps LLMs know when to use it)
+- **Default/max**: Important parameter values
+- **Example**: Concrete usage pattern
 
 ## Examples of Good vs Bad Design
 

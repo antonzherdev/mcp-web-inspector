@@ -121,7 +121,7 @@ node run-tests.cjs     # Alternative way to run tests with coverage
 
 #### Element Inspection & Debugging
 - `inspect_dom` - **PRIMARY TOOL** - Progressive DOM inspection with semantic filtering, automatic wrapper drilling (maxDepth: 5 default), and spatial layout detection. Returns only meaningful elements (semantic HTML, test IDs, ARIA roles, interactive elements) while skipping non-semantic wrappers. Supports visual content (svg, canvas, audio, iframe). Use for understanding page structure.
-- `inspect_ancestors` - **DEBUG LAYOUT CONSTRAINTS** - Walk up the DOM tree to find where width constraints, margins, borders, and overflow clipping come from. Essential when elements have unexpected centering (large auto margins), constrained width (max-width from parent), or are clipped (overflow:hidden ancestor). Shows position, size, and layout-critical CSS for each ancestor. Default depth: 10 levels (reaches `<body>` in most React apps), max: 15. Use after `inspect_dom` when you need to understand parent layout flow.
+- `inspect_ancestors` - **DEBUG LAYOUT CONSTRAINTS** - Walk up the DOM tree to find where width constraints, margins, borders, and overflow clipping come from. Shows for each ancestor: position/size, width constraints (w, max-w, min-w), margins with directional arrows (↑↓←→), padding, display type, borders, overflow (🔒=hidden, ↕️=scroll), flexbox context (flex direction justify items gap), grid context (cols rows gap), position/z-index/transform when set. Automatically detects horizontal centering via auto margins and flags clipping points (🎯). Essential for debugging unexpected centering, constrained width, or clipped content. Default depth: 10 levels (reaches `<body>` in most React apps), max: 15. Use after `inspect_dom` when you need to understand parent layout flow.
 - `get_test_ids` - Discover all test identifiers on the page (data-testid, data-test, data-cy, etc.). Returns compact text list grouped by attribute type. Essential for test-driven workflows.
 - `query_selector_all` - Test a selector and return detailed information about all matched elements. Essential for selector debugging and finding the right element to interact with. Returns compact text format with element tag, position, text content, visibility status, and diagnostic info (display:none, opacity:0, zero size). Supports testid shortcuts and limit parameter (default: 10).
 - `element_visibility` - Check if element is visible with detailed diagnostics (viewport, clipping, coverage, scroll needed)
@@ -281,12 +281,44 @@ When adding new tools:
 ### Tool Design Best Practices
 
 When designing new tools, follow these principles (see `TOOL_DESIGN_PRINCIPLES.md` for details):
+
+#### Core Design
 - **Atomic operations**: Each tool does ONE thing
 - **Minimal parameters**: Aim for 1-3 parameters, max 5
 - **Primitive types**: Use strings, numbers, booleans over nested objects
 - **Flat returns**: Minimize nesting in response structures
 - **Single selector parameter**: Use `normalizeSelector()` to support shortcuts like `testid:foo`
 - **Clear naming**: Tool name should describe what it returns
+
+#### Documentation (CRITICAL)
+**Principle #13: Explicit Output Documentation** - The tool description MUST explicitly list ALL possible outputs, even conditional ones.
+
+❌ **Bad (Vague):**
+```typescript
+description: "Shows layout properties for ancestors"
+// LLMs don't know what "layout properties" means!
+```
+
+✅ **Good (Explicit):**
+```typescript
+description: "Shows for each ancestor: position/size, width constraints (w, max-w, min-w), margins with arrows (↑↓←→), padding, display type, borders, overflow (🔒=hidden, ↕️=scroll), flexbox context (flex direction justify items gap), grid context (cols rows gap), position/z-index/transform when set. Detects centering and flags clipping (🎯)."
+// LLMs know EXACTLY what information they'll receive!
+```
+
+**Guidelines:**
+1. **List all outputs explicitly** - Don't use vague terms like "layout properties" or "relevant CSS"
+2. **Indicate conditionals** - Use "when set", "if parent is flex", etc.
+3. **Use same symbols as output** - If output uses ↑↓←→, mention it in description
+4. **Include diagnostics** - Mention what insights/warnings the tool provides
+5. **Keep under 500 chars** - Balance completeness with brevity
+
+**Real-World Example:**
+The `inspect_ancestors` tool captured flexbox/grid/z-index conditionally, but the description said "layout-critical CSS" (vague). Users thought features were missing. After updating to explicitly list "flexbox context, grid context, z-index when set", the tool became immediately more useful WITHOUT any code changes.
+
+**Template:**
+```
+PRIMARY PURPOSE: Action verb. Shows: explicit list (output1, output2 when condition, output3 format). Detects/flags: diagnostics. Essential for: use cases. Default: N, max: M.
+```
 
 ### Selector Shortcuts
 

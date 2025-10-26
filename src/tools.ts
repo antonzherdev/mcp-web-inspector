@@ -449,7 +449,7 @@ More efficient than get_html() or evaluate(). Supports testid shortcuts.`,
     },
     {
       name: "inspect_ancestors",
-      description: "DEBUG LAYOUT CONSTRAINTS: Walk up the DOM tree to find where width constraints, margins, borders, and overflow clipping come from. Essential when elements have unexpected centering (large auto margins), constrained width (max-width from parent), or are clipped (overflow:hidden ancestor). Shows position, size, and layout-critical CSS for each ancestor. Default depth: 10 levels (reaches <body> in most React apps). Use after inspect_dom() when you need to understand parent layout flow.",
+      description: "DEBUG LAYOUT CONSTRAINTS: Walk up the DOM tree to find where width constraints, margins, borders, and overflow clipping come from. Shows for each ancestor: position/size, width constraints (w, max-w, min-w), margins with directional arrows (↑↓←→ format), padding, display type, borders (directional if non-uniform), overflow (🔒=hidden, ↕️=scroll), flexbox context (flex direction justify items gap), grid context (cols rows gap), position/z-index/transform when set. Automatically detects horizontal centering via auto margins and flags clipping points (🎯). Essential for debugging unexpected centering, constrained width, or clipped content. Default: 10 ancestors (reaches <body> in most React apps), max: 15. Use after inspect_dom() to understand parent layout constraints.",
       inputSchema: {
         type: "object",
         properties: {

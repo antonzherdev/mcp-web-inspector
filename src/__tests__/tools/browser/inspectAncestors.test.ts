@@ -291,4 +291,80 @@ describe('InspectAncestorsTool', () => {
     // Should show both overflow-x and overflow-y when different
     expect(text).toMatch(/overflow-x.*overflow-y|overflow.*hidden.*auto/);
   });
+
+  it('should show flexbox layout context', async () => {
+    await page.setContent(`
+      <html>
+        <body style="margin: 0; padding: 0;">
+          <div style="display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 16px;">
+            <button data-testid="flex-child">Button</button>
+          </div>
+        </body>
+      </html>
+    `);
+
+    const result = await tool.execute(
+      { selector: 'testid:flex-child' },
+      { page, browser } as any
+    );
+
+    expect(result.isError).toBeFalsy();
+    const text = result.content[0].text;
+
+    // Should show flex context
+    expect(text).toContain('flex');
+    expect(text).toContain('column');
+    expect(text).toContain('justify:center');
+    expect(text).toContain('gap:16px');
+  });
+
+  it('should show grid layout context', async () => {
+    await page.setContent(`
+      <html>
+        <body style="margin: 0; padding: 0;">
+          <div style="display: grid; grid-template-columns: 1fr 2fr; grid-template-rows: auto auto; gap: 8px;">
+            <div data-testid="grid-child">Cell</div>
+          </div>
+        </body>
+      </html>
+    `);
+
+    const result = await tool.execute(
+      { selector: 'testid:grid-child' },
+      { page, browser } as any
+    );
+
+    expect(result.isError).toBeFalsy();
+    const text = result.content[0].text;
+
+    // Should show grid context (note: computed values, not CSS values)
+    expect(text).toContain('grid');
+    expect(text).toMatch(/cols:\d+px \d+px/); // Computed pixel values
+    expect(text).toMatch(/rows:\d+px \d+px/); // Computed pixel values
+    expect(text).toContain('gap:8px');
+  });
+
+  it('should show margin details with arrows for non-uniform margins', async () => {
+    await page.setContent(`
+      <html>
+        <body style="margin: 0; padding: 0;">
+          <div style="margin: 10px 20px 30px 40px;">
+            <span data-testid="margin-element">Content</span>
+          </div>
+        </body>
+      </html>
+    `);
+
+    const result = await tool.execute(
+      { selector: 'testid:margin-element' },
+      { page, browser } as any
+    );
+
+    expect(result.isError).toBeFalsy();
+    const text = result.content[0].text;
+
+    // Should show margin with directional arrows
+    expect(text).toContain('margin:');
+    expect(text).toMatch(/↑10px.*→20px.*↓30px.*←40px/);
+  });
 });

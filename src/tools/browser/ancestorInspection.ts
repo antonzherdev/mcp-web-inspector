@@ -10,6 +10,10 @@ interface AncestorData {
   maxWidth: string;
   minWidth: string;
   margin: string;
+  marginTop: string;
+  marginRight: string;
+  marginBottom: string;
+  marginLeft: string;
   padding: string;
   display: string;
   overflow: string;
@@ -23,6 +27,9 @@ interface AncestorData {
   flexDirection: string;
   justifyContent: string;
   alignItems: string;
+  gap: string;
+  gridTemplateColumns: string;
+  gridTemplateRows: string;
   position: string | undefined;
   zIndex: string | undefined;
   transform: string | undefined;
@@ -71,6 +78,10 @@ export class InspectAncestorsTool extends BrowserToolBase {
               maxWidth: computed.maxWidth,
               minWidth: computed.minWidth,
               margin: computed.margin,
+              marginTop: computed.marginTop,
+              marginRight: computed.marginRight,
+              marginBottom: computed.marginBottom,
+              marginLeft: computed.marginLeft,
               padding: computed.padding,
               display: computed.display,
               overflow: computed.overflow,
@@ -86,6 +97,11 @@ export class InspectAncestorsTool extends BrowserToolBase {
               flexDirection: computed.flexDirection,
               justifyContent: computed.justifyContent,
               alignItems: computed.alignItems,
+              gap: computed.gap,
+
+              // Grid
+              gridTemplateColumns: computed.gridTemplateColumns,
+              gridTemplateRows: computed.gridTemplateRows,
 
               // Conditional
               position:
@@ -161,9 +177,6 @@ export class InspectAncestorsTool extends BrowserToolBase {
       // Display (only if not block)
       if (ancestor.display !== "block") {
         layoutInfo.push(`display:${ancestor.display}`);
-        if (ancestor.flexDirection && ancestor.flexDirection !== "row") {
-          layoutInfo.push(ancestor.flexDirection);
-        }
       }
 
       // Only show non-default values
@@ -182,6 +195,18 @@ export class InspectAncestorsTool extends BrowserToolBase {
 
       if (layoutInfo.length > 0) {
         parts.push(` | ${layoutInfo.join(" ")}`);
+      }
+
+      // Flexbox/Grid context (on separate line for clarity)
+      const layoutContext = this.formatLayoutContext(ancestor);
+      if (layoutContext) {
+        parts.push(`\n    ${layoutContext}`);
+      }
+
+      // Margin details (only if non-zero or has auto)
+      const marginDetails = this.formatMarginDetails(ancestor);
+      if (marginDetails) {
+        parts.push(`\n    ${marginDetails}`);
       }
 
       // Border - only if set
@@ -317,6 +342,146 @@ export class InspectAncestorsTool extends BrowserToolBase {
     return null;
   }
 
+  private formatLayoutContext(ancestor: AncestorData): string | null {
+    const parts: string[] = [];
+
+    // Flexbox
+    if (ancestor.display === "flex" || ancestor.display === "inline-flex") {
+      const flexParts = ["flex"];
+
+      if (ancestor.flexDirection && ancestor.flexDirection !== "row") {
+        flexParts.push(ancestor.flexDirection);
+      }
+
+      if (ancestor.justifyContent && ancestor.justifyContent !== "normal" && ancestor.justifyContent !== "flex-start") {
+        flexParts.push(`justify:${ancestor.justifyContent}`);
+      }
+
+      if (ancestor.alignItems && ancestor.alignItems !== "normal" && ancestor.alignItems !== "stretch") {
+        flexParts.push(`items:${ancestor.alignItems}`);
+      }
+
+      if (ancestor.gap && ancestor.gap !== "0px" && ancestor.gap !== "normal") {
+        flexParts.push(`gap:${ancestor.gap}`);
+      }
+
+      parts.push(flexParts.join(" "));
+    }
+
+    // Grid
+    if (ancestor.display === "grid" || ancestor.display === "inline-grid") {
+      const gridParts = ["grid"];
+
+      if (ancestor.gridTemplateColumns && ancestor.gridTemplateColumns !== "none") {
+        gridParts.push(`cols:${ancestor.gridTemplateColumns}`);
+      }
+
+      if (ancestor.gridTemplateRows && ancestor.gridTemplateRows !== "none") {
+        gridParts.push(`rows:${ancestor.gridTemplateRows}`);
+      }
+
+      if (ancestor.gap && ancestor.gap !== "0px" && ancestor.gap !== "normal") {
+        gridParts.push(`gap:${ancestor.gap}`);
+      }
+
+      parts.push(gridParts.join(" "));
+    }
+
+    return parts.length > 0 ? parts.join(" | ") : null;
+  }
+
+  private formatMarginDetails(ancestor: AncestorData): string | null {
+    // Check if any margin is "auto" (CSS value)
+    // Note: computed styles show actual values, not "auto"
+    const hasAuto = ancestor.margin.includes("auto") ||
+                     ancestor.marginTop === "auto" ||
+                     ancestor.marginRight === "auto" ||
+                     ancestor.marginBottom === "auto" ||
+                     ancestor.marginLeft === "auto";
+
+    // Check if margins are non-uniform (can't be represented by shorthand)
+    const isNonUniform = ancestor.marginTop !== ancestor.marginBottom ||
+                         ancestor.marginLeft !== ancestor.marginRight ||
+                         ancestor.marginTop !== ancestor.marginLeft;
+
+    // Parse margin values to detect large symmetric margins (likely auto-centered)
+    const parseMarginValue = (val: string): number => {
+      const match = val.match(/^([\d.]+)px$/);
+      return match ? parseFloat(match[1]) : 0;
+    };
+
+    const marginLeftPx = parseMarginValue(ancestor.marginLeft);
+    const marginRightPx = parseMarginValue(ancestor.marginRight);
+    const marginTopPx = parseMarginValue(ancestor.marginTop);
+    const marginBottomPx = parseMarginValue(ancestor.marginBottom);
+
+    // Detect horizontal centering: large equal left/right margins, small top/bottom
+    const isHorizontallyCentered =
+      marginLeftPx > 100 &&
+      marginRightPx > 100 &&
+      Math.abs(marginLeftPx - marginRightPx) < 2 && // Allow 1px rounding
+      marginTopPx === 0 &&
+      marginBottomPx === 0;
+
+    if (!hasAuto && !isHorizontallyCentered && ancestor.margin === "0px") {
+      return null; // All zeros, skip
+    }
+
+    // If has auto, always show detailed breakdown with arrows
+    if (hasAuto) {
+      const parts: string[] = [];
+
+      if (ancestor.marginTop !== "0px") {
+        parts.push(`↑${ancestor.marginTop}`);
+      }
+      if (ancestor.marginRight === "auto" || ancestor.marginRight !== "0px") {
+        parts.push(`→${ancestor.marginRight}`);
+      }
+      if (ancestor.marginBottom !== "0px") {
+        parts.push(`↓${ancestor.marginBottom}`);
+      }
+      if (ancestor.marginLeft === "auto" || ancestor.marginLeft !== "0px") {
+        parts.push(`←${ancestor.marginLeft}`);
+      }
+
+      const marginStr = `margin: ${parts.join(" ")}`;
+
+      // Add diagnostic if horizontally centered
+      if (ancestor.marginLeft === "auto" && ancestor.marginRight === "auto") {
+        return `${marginStr} ← Horizontally centered by auto margins`;
+      }
+
+      return marginStr;
+    }
+
+    // Show horizontal centering diagnostic
+    if (isHorizontallyCentered) {
+      return `margin: →${ancestor.marginRight} ←${ancestor.marginLeft} ← Horizontally centered (likely margin:0 auto)`;
+    }
+
+    // If non-uniform and non-zero, show with arrows
+    if (isNonUniform && ancestor.margin !== "0px") {
+      const parts: string[] = [];
+
+      if (ancestor.marginTop !== "0px") {
+        parts.push(`↑${ancestor.marginTop}`);
+      }
+      if (ancestor.marginRight !== "0px") {
+        parts.push(`→${ancestor.marginRight}`);
+      }
+      if (ancestor.marginBottom !== "0px") {
+        parts.push(`↓${ancestor.marginBottom}`);
+      }
+      if (ancestor.marginLeft !== "0px") {
+        parts.push(`←${ancestor.marginLeft}`);
+      }
+
+      return `margin: ${parts.join(" ")}`;
+    }
+
+    return null;
+  }
+
   private generateDiagnostics(
     ancestor: AncestorData,
     index: number
@@ -331,14 +496,6 @@ export class InspectAncestorsTool extends BrowserToolBase {
     // Width constraint detection
     if (ancestor.maxWidth !== "none" && index > 0) {
       diagnostics.push("🎯 WIDTH CONSTRAINT");
-    }
-
-    // Large margins (potential centering)
-    const marginMatch = ancestor.margin.match(/0px (\d+)px/);
-    if (marginMatch && parseInt(marginMatch[1]) > 100) {
-      diagnostics.push(
-        `⚠ Auto margins centering (${marginMatch[1]}px each side)`
-      );
     }
 
     return diagnostics.length > 0 ? diagnostics.join("\n    ") : null;
