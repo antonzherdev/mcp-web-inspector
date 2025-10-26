@@ -102,59 +102,40 @@ node run-tests.cjs     # Alternative way to run tests with coverage
 
 ## Available Tools
 
-### Browser Tools
+**See `src/tools.ts` for complete tool definitions and up-to-date descriptions.**
 
-#### Navigation & Interaction
-- `navigate` - Navigate to a URL (supports chromium/firefox/webkit, viewport config, headless mode). When no viewport dimensions are specified, automatically matches the screen size for a full-screen experience.
-- `click` - Click an element
-- `iframe_click` - Click an element inside an iframe
-- `fill` - Fill an input field
-- `iframe_fill` - Fill an input field inside an iframe
-- `select` - Select from dropdown
-- `hover` - Hover over an element
-- `upload_file` - Upload file to input[type='file']
-- `go_back` - Navigate back in history
-- `go_forward` - Navigate forward in history
-- `drag` - Drag element to target location
-- `press_key` - Press keyboard key
-- `click_and_switch_tab` - Click link and switch to new tab
+### Tool Categories
 
-#### Element Inspection & Debugging
-- `inspect_dom` - **PRIMARY TOOL** - Progressive DOM inspection with semantic filtering, automatic wrapper drilling (maxDepth: 5 default), and spatial layout detection. Returns only meaningful elements (semantic HTML, test IDs, ARIA roles, interactive elements) while skipping non-semantic wrappers. Supports visual content (svg, canvas, audio, iframe). Use for understanding page structure.
-- `inspect_ancestors` - **DEBUG LAYOUT CONSTRAINTS** - Walk up the DOM tree to find where width constraints, margins, borders, and overflow clipping come from. Shows for each ancestor: position/size, width constraints (w, max-w, min-w), margins with directional arrows (↑↓←→), padding, display type, borders, overflow (🔒=hidden, ↕️=scroll), flexbox context (flex direction justify items gap), grid context (cols rows gap), position/z-index/transform when set. Automatically detects horizontal centering via auto margins and flags clipping points (🎯). Essential for debugging unexpected centering, constrained width, or clipped content. Default depth: 10 levels (reaches `<body>` in most React apps), max: 15. Use after `inspect_dom` when you need to understand parent layout flow.
-- `get_test_ids` - Discover all test identifiers on the page (data-testid, data-test, data-cy, etc.). Returns compact text list grouped by attribute type. Essential for test-driven workflows.
-- `query_selector_all` - Test a selector and return detailed information about all matched elements. Essential for selector debugging and finding the right element to interact with. Returns compact text format with element tag, position, text content, visibility status, and diagnostic info (display:none, opacity:0, zero size). Supports testid shortcuts and limit parameter (default: 10).
-- `element_visibility` - Check if element is visible with detailed diagnostics (viewport, clipping, coverage, scroll needed)
-- `find_by_text` - Find elements by text content (partial or exact match, case-sensitive/insensitive). Essential for pages without test IDs. Returns elements with position, visibility, and interaction state.
-- `get_computed_styles` - Get computed CSS styles for an element. Returns styles grouped by category (Layout, Visibility, Spacing, Typography). Useful for debugging CSS properties and understanding why elements behave unexpectedly.
-- `measure_element` - Get box model measurements (position, size, margin, padding, border). Returns compact visual representation with directional arrows (↑↓←→). Essential for layout debugging, spacing validation, and understanding CSS box model issues.
-- `element_exists` - Ultra-lightweight existence check (< 50 chars response). Returns ✓ exists or ✗ not found. Most common check before interaction.
-- `compare_positions` - Compare positions and alignment of two elements. Validates layout consistency by checking if elements are aligned (top, left, right, bottom) or have the same dimensions (width, height). Returns compact text format with alignment status and difference in pixels. Essential for visual regression testing.
+**Navigation & Interaction** (13 tools):
+- `navigate`, `click`, `iframe_click`, `fill`, `iframe_fill`, `select`, `hover`, `upload_file`, `go_back`, `go_forward`, `drag`, `press_key`, `click_and_switch_tab`
 
-#### Content Extraction
-- `screenshot` - Take screenshots (full page or element, base64 or PNG file)
-- `get_visible_text` - Get visible text content of page
-- `get_visible_html` - Get HTML content (with script/comment/style removal options)
-- `save_as_pdf` - Save page as PDF
+**Element Inspection & Debugging** (10 tools):
+- `inspect_dom` - **PRIMARY** - Progressive DOM inspection with semantic filtering
+- `inspect_ancestors` - **DEBUG** - Find layout constraints (margins, width, overflow, flexbox/grid)
+- `get_test_ids`, `query_selector_all`, `element_visibility`, `find_by_text`, `get_computed_styles`, `measure_element`, `element_exists`, `compare_positions`
 
-#### JavaScript & Console
-- `evaluate` - Execute JavaScript in browser console
-- `console_logs` - Retrieve browser console logs (with filtering by type/search/limit)
+**Content Extraction** (4 tools):
+- `screenshot`, `get_visible_text`, `get_visible_html`, `save_as_pdf`
 
-#### Network & Responses
-- `expect_response` - Start waiting for HTTP response
-- `assert_response` - Validate previously initiated HTTP response wait
+**JavaScript & Console** (2 tools):
+- `evaluate`, `console_logs`
 
-#### Configuration
-- `custom_user_agent` - Set custom User Agent
-- `close` - Close browser and release resources
+**Network & Responses** (2 tools):
+- `expect_response`, `assert_response`
 
-### API Tools (HTTP Requests)
-- `get` - HTTP GET request
-- `post` - HTTP POST request (with body, token, custom headers)
-- `put` - HTTP PUT request
-- `patch` - HTTP PATCH request
-- `delete` - HTTP DELETE request
+**Configuration** (2 tools):
+- `custom_user_agent`, `close`
+
+**HTTP Requests** (5 tools):
+- `get`, `post`, `put`, `patch`, `delete`
+
+### Selector Shortcuts
+
+All browser tools support test ID shortcuts via `normalizeSelector()`:
+- `testid:submit-button` → `[data-testid="submit-button"]`
+- `data-test:login-form` → `[data-test="login-form"]`
+- `data-cy:username` → `[data-cy="username"]`
+- Regular CSS selectors pass through unchanged
 
 ## Architecture
 
@@ -271,83 +252,22 @@ src/
 ## Contributing Notes
 
 When adding new tools:
-1. All tools are browser automation tools (BROWSER_TOOLS)
-2. Extend `BrowserToolBase` for browser tools
-3. Add tool definition to `createToolDefinitions()` in `src/tools.ts`
-4. Add case to switch statement in `handleToolCall()` in `src/toolHandler.ts`
-5. Initialize tool instance in `initializeTools()` function
-6. Add tests in `src/__tests__/tools/browser/`
+1. Create tool class in `src/tools/browser/` extending `BrowserToolBase`
+2. Add definition to `createToolDefinitions()` in `src/tools.ts`
+3. Add handler in `handleToolCall()` in `src/toolHandler.ts`
+4. Initialize in `initializeTools()` function
+5. Add tests in `src/__tests__/tools/browser/`
+6. **Follow principles in `TOOL_DESIGN_PRINCIPLES.md`**
 
-### Tool Design Best Practices
+### Tool Design Principles (Summary)
 
-When designing new tools, follow these principles (see `TOOL_DESIGN_PRINCIPLES.md` for details):
+**See `TOOL_DESIGN_PRINCIPLES.md` for comprehensive guidelines.**
 
-#### Core Design
-- **Atomic operations**: Each tool does ONE thing
-- **Minimal parameters**: Aim for 1-3 parameters, max 5
-- **Primitive types**: Use strings, numbers, booleans over nested objects
-- **Flat returns**: Minimize nesting in response structures
-- **Single selector parameter**: Use `normalizeSelector()` to support shortcuts like `testid:foo`
-- **Clear naming**: Tool name should describe what it returns
+Key principles:
+- **Atomic operations** - One tool does ONE thing
+- **Minimal parameters** - Aim for 1-3, max 5
+- **Primitive types** - Use string/number/boolean over nested objects
+- **Token-efficient output** - Use compact text format, not verbose JSON
+- **Explicit documentation** - List ALL outputs in description, even conditional ones
 
-#### Documentation (CRITICAL)
-**Principle #13: Explicit Output Documentation** - The tool description MUST explicitly list ALL possible outputs, even conditional ones.
-
-❌ **Bad (Vague):**
-```typescript
-description: "Shows layout properties for ancestors"
-// LLMs don't know what "layout properties" means!
-```
-
-✅ **Good (Explicit):**
-```typescript
-description: "Shows for each ancestor: position/size, width constraints (w, max-w, min-w), margins with arrows (↑↓←→), padding, display type, borders, overflow (🔒=hidden, ↕️=scroll), flexbox context (flex direction justify items gap), grid context (cols rows gap), position/z-index/transform when set. Detects centering and flags clipping (🎯)."
-// LLMs know EXACTLY what information they'll receive!
-```
-
-**Guidelines:**
-1. **List all outputs explicitly** - Don't use vague terms like "layout properties" or "relevant CSS"
-2. **Indicate conditionals** - Use "when set", "if parent is flex", etc.
-3. **Use same symbols as output** - If output uses ↑↓←→, mention it in description
-4. **Include diagnostics** - Mention what insights/warnings the tool provides
-5. **Keep under 500 chars** - Balance completeness with brevity
-
-**Real-World Example:**
-The `inspect_ancestors` tool captured flexbox/grid/z-index conditionally, but the description said "layout-critical CSS" (vague). Users thought features were missing. After updating to explicitly list "flexbox context, grid context, z-index when set", the tool became immediately more useful WITHOUT any code changes.
-
-**Template:**
-```
-PRIMARY PURPOSE: Action verb. Shows: explicit list (output1, output2 when condition, output3 format). Detects/flags: diagnostics. Essential for: use cases. Default: N, max: M.
-```
-
-### Selector Shortcuts
-
-All browser tools support test ID shortcuts via `normalizeSelector()`:
-- `testid:submit-button` → `[data-testid="submit-button"]`
-- `data-test:login-form` → `[data-test="login-form"]`
-- `data-cy:username` → `[data-cy="username"]`
-- Regular CSS selectors pass through unchanged
-
-### DOM Inspection Tool
-
-The `inspect_dom` tool is the **primary tool for understanding page structure**. Key features:
-
-**Semantic Filtering** - Automatically shows only meaningful elements:
-- Semantic HTML: `header`, `nav`, `main`, `article`, `section`, `aside`, `footer`, `form`, `button`, `input`, `select`, `textarea`, `a`, `h1-h6`, `p`, `ul`, `ol`, `li`, `table`, `img`, `video`, `audio`, `svg`, `canvas`, `iframe`, `dialog`, `details`, `summary`
-- Elements with test IDs: `data-testid`, `data-test`, `data-cy`
-- Elements with ARIA roles
-- Interactive elements: `onclick`, `contenteditable`
-
-**Automatic Wrapper Drilling** - Recursively drills through non-semantic wrappers (div, span, fieldset, etc.) up to `maxDepth` levels (default: 5) to find semantic children. This handles deeply nested UI framework components (Material-UI, Ant Design, Chakra UI).
-
-**Parameters**:
-- `selector` (optional): CSS selector or testid shorthand. Omit for page overview (defaults to body).
-- `includeHidden` (optional, default: false): Include hidden elements in results
-- `maxChildren` (optional, default: 20): Maximum number of children to show
-- `maxDepth` (optional, default: 5): Maximum depth to drill through non-semantic wrapper elements. Increase for extremely deeply nested components, decrease to 1 to see only immediate children without drilling.
-
-**Progressive Workflow**:
-1. `inspect_dom({})` → See page sections (header, main, footer)
-2. `inspect_dom({ selector: "main" })` → See main content children
-3. `inspect_dom({ selector: "testid:login-form" })` → See form fields
-4. Use selectors from output with interaction tools (click, fill, etc.)
+**Critical Rule:** Tool descriptions MUST explicitly list all possible outputs. Don't use vague terms like "layout properties" - instead specify exactly what fields are returned (e.g., "width constraints (w, max-w, min-w), margins (↑↓←→), flexbox context when set"). See TOOL_DESIGN_PRINCIPLES.md §13 for examples.
