@@ -187,6 +187,10 @@ export function createToolDefinitions(sessionConfig?: SessionConfig) {
             type: "string",
             description: "CSS selector, text selector, or testid shorthand to limit text extraction to a specific container. Omit to get text from entire page. Example: 'testid:article-body' or '#main-content'"
           },
+          elementIndex: {
+            type: "number",
+            description: "When selector matches multiple elements, use this 1-based index to select a specific one (e.g., 2 = second element). Default: first visible element."
+          },
           maxLength: {
             type: "number",
             description: "Maximum number of characters to return (default: 20000)"
@@ -204,6 +208,10 @@ export function createToolDefinitions(sessionConfig?: SessionConfig) {
           selector: {
             type: "string",
             description: "CSS selector, text selector, or testid shorthand to limit HTML extraction to a specific container. Omit to get entire page HTML. Example: 'testid:main-content' or '#app'"
+          },
+          elementIndex: {
+            type: "number",
+            description: "When selector matches multiple elements, use this 1-based index to select a specific one (e.g., 2 = second element). Default: first visible element."
           },
           clean: {
             type: "boolean",
@@ -269,6 +277,10 @@ export function createToolDefinitions(sessionConfig?: SessionConfig) {
             type: "string",
             description: "CSS selector, text selector, or testid shorthand (e.g., 'testid:login-button', '#submit', 'text=Click here')"
           },
+          elementIndex: {
+            type: "number",
+            description: "When selector matches multiple elements, use this 1-based index to select a specific one (e.g., 2 = second element). Default: first visible element."
+          }
         },
         required: ["selector"],
       },
@@ -319,6 +331,10 @@ More efficient than get_html() or evaluate(). Supports testid shortcuts.`,
           maxDepth: {
             type: "number",
             description: "Maximum depth to drill through non-semantic wrapper elements when looking for semantic children (default: 5). Increase for extremely deeply nested components, decrease to 1 to see only immediate children without drilling."
+          },
+          elementIndex: {
+            type: "number",
+            description: "When selector matches multiple elements, use this 1-based index to select a specific one (e.g., 2 = second element). Default: first visible element."
           }
         },
         required: [],
@@ -411,6 +427,10 @@ More efficient than get_html() or evaluate(). Supports testid shortcuts.`,
           properties: {
             type: "string",
             description: "Comma-separated list of CSS properties to retrieve (e.g., 'display,width,color'). If not specified, returns common layout properties: display, position, width, height, opacity, visibility, z-index, overflow, margin, padding, font-size, font-weight, color, background-color"
+          },
+          elementIndex: {
+            type: "number",
+            description: "When selector matches multiple elements, use this 1-based index to select a specific one (e.g., 2 = second element). Default: first visible element."
           }
         },
         required: ["selector"],
@@ -425,6 +445,10 @@ More efficient than get_html() or evaluate(). Supports testid shortcuts.`,
           selector: {
             type: "string",
             description: "CSS selector or testid shorthand (e.g., 'testid:submit', '#login-button')"
+          },
+          elementIndex: {
+            type: "number",
+            description: "When selector matches multiple elements, use this 1-based index to select a specific one (e.g., 2 = second element). Default: first visible element."
           }
         },
         required: ["selector"],
@@ -475,6 +499,10 @@ More efficient than get_html() or evaluate(). Supports testid shortcuts.`,
           limit: {
             type: "number",
             description: "Maximum number of ancestors to traverse (default: 10, max: 15). Increase for deeply nested component frameworks."
+          },
+          elementIndex: {
+            type: "number",
+            description: "When selector matches multiple elements, use this 1-based index to select a specific one (e.g., 2 = second element). Default: first visible element."
           }
         },
         required: ["selector"],

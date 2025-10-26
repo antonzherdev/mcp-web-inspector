@@ -15,23 +15,23 @@ export class ElementVisibilityTool extends BrowserToolBase {
       const locator = page.locator(selector);
 
       try {
-        // Check if element exists
-        const count = await locator.count();
-        if (count === 0) {
-          return createErrorResponse(`Element not found: ${args.selector}`);
-        }
+        // Use standard element selection with visibility preference
+        const { element, elementIndex, totalCount } = await this.selectPreferredLocator(locator, {
+          elementIndex: args.elementIndex,
+        });
 
-        // Handle multiple matches by using first() - show warning
-        const targetLocator = count > 1 ? locator.first() : locator;
-        const multipleMatchWarning = count > 1
-          ? `⚠ Warning: Selector matched ${count} elements, showing first:\n\n`
-          : '';
+        // Format selection warning if multiple elements matched
+        const multipleMatchWarning = this.formatElementSelectionInfo(
+          args.selector,
+          elementIndex,
+          totalCount
+        );
 
         // Get basic visibility (Playwright's isVisible)
-        const isVisible = await targetLocator.isVisible();
+        const isVisible = await element.isVisible();
 
         // Evaluate detailed visibility information in browser context
-        const visibilityData = await targetLocator.evaluate((element) => {
+        const visibilityData = await element.evaluate((element) => {
           const rect = element.getBoundingClientRect();
           const viewportHeight = window.innerHeight;
           const viewportWidth = window.innerWidth;
@@ -159,7 +159,7 @@ export class ElementVisibilityTool extends BrowserToolBase {
         const needsScroll = isVisible && !visibilityData.isInViewport;
 
         // Get element tag name for output
-        const tagInfo = await targetLocator.evaluate((el) => {
+        const tagInfo = await element.evaluate((el) => {
           const tagName = el.tagName.toLowerCase();
           const testId = el.getAttribute('data-testid') || el.getAttribute('data-test') || el.getAttribute('data-cy');
           const id = el.id ? `#${el.id}` : '';

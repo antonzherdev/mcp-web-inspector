@@ -11,8 +11,16 @@ export class ClickTool extends BrowserToolBase {
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
     this.recordInteraction();
     return this.safeExecute(context, async (page) => {
-      const selector = this.normalizeSelector(args.selector);
-      await page.click(selector);
+      const normalizedSelector = this.normalizeSelector(args.selector);
+
+      // Use standard element selection with error on multiple matches
+      const locator = page.locator(normalizedSelector);
+      const { element } = await this.selectPreferredLocator(locator, {
+        errorOnMultiple: true,
+        originalSelector: args.selector,
+      });
+
+      await element.click();
       return createSuccessResponse(`Clicked element: ${args.selector}`);
     });
   }
@@ -102,9 +110,16 @@ export class FillTool extends BrowserToolBase {
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
     this.recordInteraction();
     return this.safeExecute(context, async (page) => {
-      const selector = this.normalizeSelector(args.selector);
-      await page.waitForSelector(selector);
-      await page.fill(selector, args.value);
+      const normalizedSelector = this.normalizeSelector(args.selector);
+
+      // Use standard element selection with error on multiple matches
+      const locator = page.locator(normalizedSelector);
+      const { element } = await this.selectPreferredLocator(locator, {
+        errorOnMultiple: true,
+        originalSelector: args.selector,
+      });
+
+      await element.fill(args.value);
       return createSuccessResponse(`Filled ${args.selector} with: ${args.value}`);
     });
   }
@@ -120,9 +135,16 @@ export class SelectTool extends BrowserToolBase {
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
     this.recordInteraction();
     return this.safeExecute(context, async (page) => {
-      const selector = this.normalizeSelector(args.selector);
-      await page.waitForSelector(selector);
-      await page.selectOption(selector, args.value);
+      const normalizedSelector = this.normalizeSelector(args.selector);
+
+      // Use standard element selection with error on multiple matches
+      const locator = page.locator(normalizedSelector);
+      const { element } = await this.selectPreferredLocator(locator, {
+        errorOnMultiple: true,
+        originalSelector: args.selector,
+      });
+
+      await element.selectOption(args.value);
       return createSuccessResponse(`Selected ${args.selector} with: ${args.value}`);
     });
   }
@@ -138,9 +160,16 @@ export class HoverTool extends BrowserToolBase {
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
     this.recordInteraction();
     return this.safeExecute(context, async (page) => {
-      const selector = this.normalizeSelector(args.selector);
-      await page.waitForSelector(selector);
-      await page.hover(selector);
+      const normalizedSelector = this.normalizeSelector(args.selector);
+
+      // Use standard element selection with error on multiple matches
+      const locator = page.locator(normalizedSelector);
+      const { element } = await this.selectPreferredLocator(locator, {
+        errorOnMultiple: true,
+        originalSelector: args.selector,
+      });
+
+      await element.hover();
       return createSuccessResponse(`Hovered ${args.selector}`);
     });
   }
@@ -156,10 +185,17 @@ export class UploadFileTool extends BrowserToolBase {
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
     this.recordInteraction();
     return this.safeExecute(context, async (page) => {
-        const selector = this.normalizeSelector(args.selector);
-        await page.waitForSelector(selector);
-        await page.setInputFiles(selector, args.filePath);
-        return createSuccessResponse(`Uploaded file '${args.filePath}' to '${args.selector}'`);
+      const normalizedSelector = this.normalizeSelector(args.selector);
+
+      // Use standard element selection with error on multiple matches
+      const locator = page.locator(normalizedSelector);
+      const { element } = await this.selectPreferredLocator(locator, {
+        errorOnMultiple: true,
+        originalSelector: args.selector,
+      });
+
+      await element.setInputFiles(args.filePath);
+      return createSuccessResponse(`Uploaded file '${args.filePath}' to '${args.selector}'`);
     });
   }
 }
@@ -274,10 +310,21 @@ export class DragTool extends BrowserToolBase {
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
     this.recordInteraction();
     return this.safeExecute(context, async (page) => {
-      const sourceSelector = this.normalizeSelector(args.sourceSelector);
-      const targetSelector = this.normalizeSelector(args.targetSelector);
-      const sourceElement = await page.waitForSelector(sourceSelector);
-      const targetElement = await page.waitForSelector(targetSelector);
+      const normalizedSource = this.normalizeSelector(args.sourceSelector);
+      const normalizedTarget = this.normalizeSelector(args.targetSelector);
+
+      // Use standard element selection with error on multiple matches
+      const sourceLocator = page.locator(normalizedSource);
+      const { element: sourceElement } = await this.selectPreferredLocator(sourceLocator, {
+        errorOnMultiple: true,
+        originalSelector: args.sourceSelector,
+      });
+
+      const targetLocator = page.locator(normalizedTarget);
+      const { element: targetElement } = await this.selectPreferredLocator(targetLocator, {
+        errorOnMultiple: true,
+        originalSelector: args.targetSelector,
+      });
 
       const sourceBound = await sourceElement.boundingBox();
       const targetBound = await targetElement.boundingBox();
@@ -313,9 +360,16 @@ export class PressKeyTool extends BrowserToolBase {
     this.recordInteraction();
     return this.safeExecute(context, async (page) => {
       if (args.selector) {
-        const selector = this.normalizeSelector(args.selector);
-        await page.waitForSelector(selector);
-        await page.focus(selector);
+        const normalizedSelector = this.normalizeSelector(args.selector);
+
+        // Use standard element selection with error on multiple matches
+        const locator = page.locator(normalizedSelector);
+        const { element } = await this.selectPreferredLocator(locator, {
+          errorOnMultiple: true,
+          originalSelector: args.selector,
+        });
+
+        await element.focus();
       }
 
       await page.keyboard.press(args.key);

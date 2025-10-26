@@ -5,6 +5,7 @@ import type { ToolContext, ToolResponse } from '../common/types.js';
 export interface GetComputedStylesArgs {
   selector: string;
   properties?: string;
+  elementIndex?: number;  // Optional 1-based index to select specific element when multiple match
 }
 
 export class GetComputedStylesTool extends BrowserToolBase implements ToolHandler {
@@ -24,32 +25,21 @@ export class GetComputedStylesTool extends BrowserToolBase implements ToolHandle
         ? args.properties.split(',').map(p => p.trim())
         : this.DEFAULT_PROPERTIES;
 
-      // Find the element
+      // Use standard element selection with visibility preference
       const locator = page.locator(normalizedSelector);
-      const count = await locator.count();
+      const { element, elementIndex, totalCount } = await this.selectPreferredLocator(locator, {
+        elementIndex: args.elementIndex,
+      });
 
-      if (count === 0) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `✗ Element not found: ${args.selector}`
-            }
-          ],
-          isError: true
-        };
-      }
-
-      // Handle multiple matches by using first() - show warning (consistent with compare_positions)
-      const targetLocator = count > 1 ? locator.first() : locator;
-
-      let warning = '';
-      if (count > 1) {
-        warning = `⚠ Warning: Selector matched ${count} elements, using first\n\n`;
-      }
+      // Format selection warning if multiple elements matched
+      const warning = this.formatElementSelectionInfo(
+        args.selector,
+        elementIndex,
+        totalCount
+      );
 
       // Get element tag and selector info
-      const elementInfo = await targetLocator.evaluate((el) => {
+      const elementInfo = await element.evaluate((el) => {
         const attrs: string[] = [];
         const tag = el.tagName.toLowerCase();
         if (el.id) attrs.push(`#${el.id}`);
@@ -67,7 +57,7 @@ export class GetComputedStylesTool extends BrowserToolBase implements ToolHandle
       });
 
       // Get computed styles
-      const styles = await targetLocator.evaluate((el, props) => {
+      const styles = await element.evaluate((el, props) => {
         const computed = window.getComputedStyle(el);
         const result: Record<string, string> = {};
         props.forEach((prop: string) => {

@@ -48,15 +48,29 @@ export class InspectAncestorsTool extends BrowserToolBase {
       const limit = Math.min(args.limit ?? 10, 15); // Default 10, max 15
       const normalizedSelector = this.normalizeSelector(args.selector);
 
-      const ancestors = await page.evaluate(
-        ({ sel, lim }) => {
-          const element = document.querySelector(sel);
-          if (!element) {
-            return null;
-          }
+      // Use consistent element selection (Playwright's visibility detection)
+      const locator = page.locator(normalizedSelector);
+      const count = await locator.count();
 
+      if (count === 0) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Error: Element not found with selector "${args.selector}"`,
+            },
+          ],
+          isError: true,
+        };
+      }
+
+      const { element, elementIndex, totalCount } = await this.selectPreferredLocator(locator);
+
+      // Use the selected element for ancestor traversal
+      const ancestors = await element.evaluate(
+        (el: Element, lim: number) => {
           const chain: any[] = [];
-          let current: Element | null = element;
+          let current: Element | null = el;
 
           for (let i = 0; i < lim && current; i++) {
             const rect = current.getBoundingClientRect();
@@ -116,26 +130,19 @@ export class InspectAncestorsTool extends BrowserToolBase {
 
           return chain;
         },
-        { sel: normalizedSelector, lim: limit }
+        limit
       );
-
-      if (!ancestors) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Error: Element not found with selector "${args.selector}"`,
-            },
-          ],
-          isError: true,
-        };
-      }
 
       return {
         content: [
           {
             type: "text",
-            text: this.formatAncestorChain(ancestors, args.selector),
+            text: this.formatAncestorChain(
+              ancestors,
+              args.selector,
+              elementIndex,
+              totalCount
+            ),
           },
         ],
         isError: false,
@@ -145,9 +152,26 @@ export class InspectAncestorsTool extends BrowserToolBase {
 
   private formatAncestorChain(
     ancestors: AncestorData[],
-    originalSelector: string
+    originalSelector: string,
+    elementIndex: number = 0,
+    totalCount: number = 1
   ): string {
-    const lines: string[] = [`Ancestor Chain: ${originalSelector}\n`];
+    const lines: string[] = [];
+
+    // Header with selector info
+    const selectionInfo = this.formatElementSelectionInfo(
+      originalSelector,
+      elementIndex,
+      totalCount,
+      true
+    );
+
+    if (selectionInfo) {
+      lines.push(selectionInfo.replace(/\n\n$/, '')); // Remove trailing newlines for header
+      lines.push(`Ancestor Chain:\n`);
+    } else {
+      lines.push(`Ancestor Chain: ${originalSelector}\n`);
+    }
 
     ancestors.forEach((ancestor, index) => {
       const parts: string[] = [];

@@ -4,6 +4,7 @@ import type { ToolContext, ToolResponse } from '../common/types.js';
 
 export interface MeasureElementArgs {
   selector: string;
+  elementIndex?: number;  // Optional 1-based index to select specific element when multiple match
 }
 
 export class MeasureElementTool extends BrowserToolBase implements ToolHandler {
@@ -11,32 +12,21 @@ export class MeasureElementTool extends BrowserToolBase implements ToolHandler {
     return this.safeExecute(context, async (page) => {
       const normalizedSelector = this.normalizeSelector(args.selector);
 
-      // Find the element
+      // Use standard element selection with visibility preference
       const locator = page.locator(normalizedSelector);
-      const count = await locator.count();
+      const { element, elementIndex, totalCount } = await this.selectPreferredLocator(locator, {
+        elementIndex: args.elementIndex,
+      });
 
-      if (count === 0) {
-        return {
-          content: [
-            {
-              type: 'text',
-              text: `✗ Element not found: ${args.selector}`
-            }
-          ],
-          isError: true
-        };
-      }
-
-      // Handle multiple matches by using first() - show warning (consistent with other tools)
-      const targetLocator = count > 1 ? locator.first() : locator;
-
-      let warning = '';
-      if (count > 1) {
-        warning = `⚠ Warning: Selector matched ${count} elements, using first\n\n`;
-      }
+      // Format selection warning if multiple elements matched
+      const warning = this.formatElementSelectionInfo(
+        args.selector,
+        elementIndex,
+        totalCount
+      );
 
       // Get element descriptor
-      const elementInfo = await targetLocator.evaluate((el) => {
+      const elementInfo = await element.evaluate((el) => {
         const tag = el.tagName.toLowerCase();
         const testId = el.getAttribute('data-testid') || el.getAttribute('data-test') || el.getAttribute('data-cy');
         const id = el.id ? `#${el.id}` : '';
@@ -54,7 +44,7 @@ export class MeasureElementTool extends BrowserToolBase implements ToolHandler {
       });
 
       // Get box model measurements
-      const measurements = await targetLocator.evaluate((el) => {
+      const measurements = await element.evaluate((el) => {
         const computed = window.getComputedStyle(el);
         const rect = el.getBoundingClientRect();
         const parseValue = (val: string): number => parseFloat(val) || 0;

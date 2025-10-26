@@ -30,45 +30,72 @@ export class VisibleTextTool extends BrowserToolBase {
         // Normalize selector (support testid: shorthand)
         const selector = args.selector ? this.normalizeSelector(args.selector) : undefined;
 
-        // If selector provided, validate element exists
+        let rootElement;
+        let selectionWarning = '';
+
+        // If selector provided, use standard element selection
         if (selector) {
-          const element = await page.$(selector);
-          if (!element) {
-            return createErrorResponse(`Element with selector "${args.selector}" not found`);
-          }
+          const locator = page.locator(selector);
+          const { element, elementIndex, totalCount } = await this.selectPreferredLocator(locator, {
+            elementIndex: args.elementIndex,
+          });
+
+          selectionWarning = this.formatElementSelectionInfo(
+            args.selector,
+            elementIndex,
+            totalCount
+          );
+
+          rootElement = element;
         }
 
-        const visibleText = await page!.evaluate((sel) => {
-          // Find root element - either selected element or body
-          let rootElement = document.body;
-          if (sel) {
-            const element = document.querySelector(sel);
-            if (!element) return ""; // Should not happen due to earlier check, but be safe
-            rootElement = element as HTMLElement;
-          }
+        const visibleText = rootElement
+          ? await rootElement.evaluate((el) => {
+              const walker = document.createTreeWalker(
+                el,
+                NodeFilter.SHOW_TEXT,
+                {
+                  acceptNode: (node) => {
+                    const style = window.getComputedStyle(node.parentElement!);
+                    return (style.display !== "none" && style.visibility !== "hidden")
+                      ? NodeFilter.FILTER_ACCEPT
+                      : NodeFilter.FILTER_REJECT;
+                  },
+                }
+              );
 
-          const walker = document.createTreeWalker(
-            rootElement,
-            NodeFilter.SHOW_TEXT,
-            {
-              acceptNode: (node) => {
-                const style = window.getComputedStyle(node.parentElement!);
-                return (style.display !== "none" && style.visibility !== "hidden")
-                  ? NodeFilter.FILTER_ACCEPT
-                  : NodeFilter.FILTER_REJECT;
-              },
-            }
-          );
-          let text = "";
-          let node;
-          while ((node = walker.nextNode())) {
-            const trimmedText = node.textContent?.trim();
-            if (trimmedText) {
-              text += trimmedText + "\n";
-            }
-          }
-          return text.trim();
-        }, selector);
+              const texts: string[] = [];
+              let node;
+              while ((node = walker.nextNode())) {
+                const text = node.textContent?.trim();
+                if (text) texts.push(text);
+              }
+
+              return texts.join("\n");
+            })
+          : await page.evaluate(() => {
+              const walker = document.createTreeWalker(
+                document.body,
+                NodeFilter.SHOW_TEXT,
+                {
+                  acceptNode: (node) => {
+                    const style = window.getComputedStyle(node.parentElement!);
+                    return (style.display !== "none" && style.visibility !== "hidden")
+                      ? NodeFilter.FILTER_ACCEPT
+                      : NodeFilter.FILTER_REJECT;
+                  },
+                }
+              );
+
+              const texts: string[] = [];
+              let node;
+              while ((node = walker.nextNode())) {
+                const text = node.textContent?.trim();
+                if (text) texts.push(text);
+              }
+
+              return texts.join("\n");
+            });
         // Truncate logic
         const maxLength = typeof args.maxLength === 'number' ? args.maxLength : 20000;
         let output = visibleText;
@@ -85,7 +112,11 @@ export class VisibleTextTool extends BrowserToolBase {
    • find_by_text("text") - Locate specific text with element context
    • query_selector("selector") - Find and inspect specific elements`;
 
-        return createSuccessResponse(`Visible text content${scopeInfo}:\n${output}${guidance}`);
+        const finalOutput = selectionWarning
+          ? `${selectionWarning.trimEnd()}\n\nVisible text content${scopeInfo}:\n${output}${guidance}`
+          : `Visible text content${scopeInfo}:\n${output}${guidance}`;
+
+        return createSuccessResponse(finalOutput);
       } catch (error) {
         return createErrorResponse(`Failed to get visible text content: ${(error as Error).message}`);
       }
@@ -121,21 +152,31 @@ export class VisibleHtmlTool extends BrowserToolBase {
         // Normalize selector (support testid: shorthand)
         const selector = args.selector ? this.normalizeSelector(args.selector) : undefined;
 
-        // If selector provided, validate element exists
+        let rootElement;
+        let selectionWarning = '';
+
+        // If selector provided, use standard element selection
         if (selector) {
-          const element = await page.$(selector);
-          if (!element) {
-            return createErrorResponse(`Element with selector "${args.selector}" not found`);
-          }
+          const locator = page.locator(selector);
+          const { element, elementIndex, totalCount } = await this.selectPreferredLocator(locator, {
+            elementIndex: args.elementIndex,
+          });
+
+          selectionWarning = this.formatElementSelectionInfo(
+            args.selector,
+            elementIndex,
+            totalCount
+          );
+
+          rootElement = element;
         }
 
         // Get the HTML content
         let htmlContent: string;
 
-        if (selector) {
+        if (rootElement) {
           // If a selector is provided, get only the HTML for that element
-          const element = await page.$(selector);
-          htmlContent = await page.evaluate((el) => el.outerHTML, element);
+          htmlContent = await rootElement.evaluate((el) => el.outerHTML);
         } else {
           // Otherwise get the full page HTML
           htmlContent = await page.content();
@@ -205,7 +246,11 @@ export class VisibleHtmlTool extends BrowserToolBase {
    • query_selector("selector") - Find and inspect specific elements
    • get_computed_styles("selector") - Get CSS values for elements`;
 
-        return createSuccessResponse(`HTML content${scopeInfo}${cleanInfo}:\n${output}${guidance}`);
+        const finalOutput = selectionWarning
+          ? `${selectionWarning.trimEnd()}\n\nHTML content${scopeInfo}${cleanInfo}:\n${output}${guidance}`
+          : `HTML content${scopeInfo}${cleanInfo}:\n${output}${guidance}`;
+
+        return createSuccessResponse(finalOutput);
       } catch (error) {
         return createErrorResponse(`Failed to get visible HTML content: ${(error as Error).message}`);
       }

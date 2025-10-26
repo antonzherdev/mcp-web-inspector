@@ -32,24 +32,37 @@ export class InspectDomTool extends BrowserToolBase {
       const maxDepth = args.maxDepth ?? 5;
 
       try {
+        // Use consistent element selection (Playwright's visibility detection)
+        const locator = page.locator(selector);
+        const count = await locator.count();
+
+        if (count === 0) {
+          return createErrorResponse(`Element not found: ${args.selector || 'body'}`);
+        }
+
+        const { element, elementIndex, totalCount } = await this.selectPreferredLocator(locator);
+
         // Get the target element and its semantic children
-        const inspectionData = await page.evaluate(
-          ({ sel, hidden, max, maxDepth }) => {
-            const target = document.querySelector(sel);
-            if (!target) {
-              return { error: `Element not found: ${sel}` };
-            }
+        const inspectionData = await element.evaluate(
+          (target: Element, { hidden, max, maxDepth }) => {
+            // Helper to check if element is visible
+            const isElementVisible = (el: Element): boolean => {
+              const rect = el.getBoundingClientRect();
+              const styles = window.getComputedStyle(el);
+              return (
+                styles.display !== 'none' &&
+                styles.visibility !== 'hidden' &&
+                parseFloat(styles.opacity) > 0 &&
+                rect.width > 0 &&
+                rect.height > 0
+              );
+            };
 
             // Get element info
             const getElementInfo = (el: Element) => {
               const rect = el.getBoundingClientRect();
               const styles = window.getComputedStyle(el);
-              const isVisible =
-                styles.display !== 'none' &&
-                styles.visibility !== 'hidden' &&
-                parseFloat(styles.opacity) > 0 &&
-                rect.width > 0 &&
-                rect.height > 0;
+              const isVisible = isElementVisible(el);
 
               return {
                 rect: {
@@ -277,7 +290,7 @@ export class InspectDomTool extends BrowserToolBase {
 
             // For body/main containers, also count elements in entire tree
             const targetTag = target.tagName.toLowerCase();
-            const isTopLevelContainer = targetTag === 'body' || sel.includes('main-layout') || sel.includes('main');
+            const isTopLevelContainer = targetTag === 'body' || targetTag === 'main';
             let treeCounts = null;
             if (isTopLevelContainer) {
               const treeData = countElementsInTree(target);
@@ -332,17 +345,35 @@ export class InspectDomTool extends BrowserToolBase {
               layoutPattern,
             };
           },
-          { sel: selector, hidden: includeHidden, max: maxChildren, maxDepth }
+          { hidden: includeHidden, max: maxChildren, maxDepth }
         );
 
+        // Add element selection info from Playwright
+        const result = {
+          ...inspectionData,
+          elementIndex,
+          totalCount,
+        };
+
         // Check for errors from evaluate
-        if ('error' in inspectionData) {
-          return createErrorResponse(inspectionData.error);
+        if ('error' in result) {
+          return createErrorResponse(result.error);
         }
 
         // Format compact text output
         const lines: string[] = [];
-        const { target, children, stats, layoutPattern, elementCounts, interactiveCounts, treeCounts } = inspectionData;
+        const { target, children, stats, layoutPattern, elementCounts, interactiveCounts, treeCounts } = result;
+
+        // Add selection warning if multiple elements matched
+        const selectionWarning = this.formatElementSelectionInfo(
+          args.selector || 'body',
+          elementIndex,
+          totalCount,
+          true
+        );
+        if (selectionWarning) {
+          lines.push(selectionWarning.trimEnd());
+        }
 
         // Header
         lines.push(`DOM Inspection: <${target.tag}${target.selector ? ' ' + target.selector : ''}>`);

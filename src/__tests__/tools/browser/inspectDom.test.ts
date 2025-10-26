@@ -3,13 +3,30 @@ import { ToolContext } from '../../../tools/common/types.js';
 import { Page, Browser } from 'playwright';
 import { jest } from '@jest/globals';
 
+// Mock Locator
+const mockLocatorIsVisible = jest.fn<() => Promise<boolean>>();
+const mockLocatorEvaluate = jest.fn<(pageFunction: any, arg?: any) => Promise<any>>();
+const mockLocatorFirst = jest.fn();
+const mockLocatorNth = jest.fn();
+const mockLocatorCount = jest.fn<() => Promise<number>>();
+
+const createMockLocator = () => ({
+  isVisible: mockLocatorIsVisible,
+  evaluate: mockLocatorEvaluate,
+  first: mockLocatorFirst,
+  nth: mockLocatorNth,
+  count: mockLocatorCount,
+});
+
 // Mock Page
 const mockPageEvaluate = jest.fn() as jest.MockedFunction<(pageFunction: any, arg?: any) => Promise<any>>;
 const mockIsClosed = jest.fn().mockReturnValue(false);
+const mockPageLocator = jest.fn();
 
 const mockPage = {
   evaluate: mockPageEvaluate,
   isClosed: mockIsClosed,
+  locator: mockPageLocator,
 } as unknown as Page;
 
 // Mock Browser
@@ -38,6 +55,15 @@ describe('InspectDomTool', () => {
     inspectDomTool = new InspectDomTool(mockServer);
     mockIsConnected.mockReturnValue(true);
     mockIsClosed.mockReturnValue(false);
+
+    // Setup default locator behavior - single visible element
+    const mockLoc = createMockLocator();
+    mockPageLocator.mockReturnValue(mockLoc);
+    mockLocatorCount.mockResolvedValue(1);
+    mockLocatorFirst.mockReturnValue(mockLoc);
+    mockLocatorNth.mockReturnValue(mockLoc);
+    mockLocatorIsVisible.mockResolvedValue(true);
+    mockLocatorEvaluate.mockImplementation(mockPageEvaluate);
   });
 
   test('should inspect page with semantic elements', async () => {
@@ -224,9 +250,11 @@ describe('InspectDomTool', () => {
 
     const result = await inspectDomTool.execute(args, mockContext);
 
-    expect(mockPageEvaluate).toHaveBeenCalledWith(
+    // Verify locator was used to find the element
+    expect(mockPageLocator).toHaveBeenCalledWith('[data-testid="login-form"]');
+    expect(mockLocatorEvaluate).toHaveBeenCalledWith(
       expect.any(Function),
-      expect.objectContaining({ sel: '[data-testid="login-form"]' })
+      expect.objectContaining({ hidden: false })
     );
     expect(result.isError).toBe(false);
     expect(result.content[0].text).toContain('<input data-testid="username">');
@@ -314,7 +342,7 @@ describe('InspectDomTool', () => {
 
     const result = await inspectDomTool.execute(args, mockContext);
 
-    expect(mockPageEvaluate).toHaveBeenCalledWith(
+    expect(mockLocatorEvaluate).toHaveBeenCalledWith(
       expect.any(Function),
       expect.objectContaining({ hidden: true })
     );
@@ -681,9 +709,11 @@ describe('InspectDomTool', () => {
 
     const result = await inspectDomTool.execute(args, mockContext);
 
-    expect(mockPageEvaluate).toHaveBeenCalledWith(
+    // Verify locator was used to find the element
+    expect(mockPageLocator).toHaveBeenCalledWith('[data-testid="login-button"]');
+    expect(mockLocatorEvaluate).toHaveBeenCalledWith(
       expect.any(Function),
-      expect.objectContaining({ sel: '[data-testid="login-button"]' })
+      expect.objectContaining({ hidden: false })
     );
     expect(result.isError).toBe(false);
   });

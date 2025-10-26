@@ -167,7 +167,11 @@ All browser tools extend `BrowserToolBase` (`src/tools/browser/base.ts`) which p
 - `safeExecute()`: Wrapper with browser connection validation and error handling
 - `ensurePage()` and `validatePageAvailable()`: Page availability checks
 - `normalizeSelector()`: Converts test ID shortcuts to full selectors (e.g., `testid:foo` → `[data-testid="foo"]`)
+- `selectPreferredLocator()`: **STANDARD** - Selects elements with visibility preference (see Element Selection below)
+- `formatElementSelectionInfo()`: Formats warnings for duplicate selectors with testid tip
 - Automatic browser state reset on disconnection errors
+
+**Tool parameters documented in `src/tools.ts`**
 
 ### Tool Implementation Pattern
 

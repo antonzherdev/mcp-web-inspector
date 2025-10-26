@@ -367,4 +367,121 @@ describe('InspectAncestorsTool', () => {
     expect(text).toContain('margin:');
     expect(text).toMatch(/↑10px.*→20px.*↓30px.*←40px/);
   });
+
+  it('should prefer first visible element when multiple elements match', async () => {
+    await page.setContent(`
+      <html>
+        <body style="margin: 0; padding: 0;">
+          <!-- Hidden element (first in DOM) -->
+          <div style="display: none;">
+            <button data-testid="duplicate-button">Hidden Button</button>
+          </div>
+
+          <!-- Visible element (second in DOM) -->
+          <div style="max-width: 800px; margin: 0 auto;">
+            <button data-testid="duplicate-button">Visible Button</button>
+          </div>
+        </body>
+      </html>
+    `);
+
+    const result = await tool.execute(
+      { selector: 'testid:duplicate-button' },
+      { page, browser } as any
+    );
+
+    expect(result.isError).toBeFalsy();
+    const text = result.content[0].text;
+
+    // Should indicate multiple elements were found
+    expect(text).toContain('Found 2 elements');
+    expect(text).toContain('using element 2 (first visible)');
+
+    // Should show the visible element (second one with "Visible Button" text)
+    expect(text).toContain('[0] <button>');
+    expect(text).toContain('testid:duplicate-button');
+
+    // Should show the parent div with max-width (only present in visible element's ancestor)
+    expect(text).toContain('max-w:800px');
+  });
+
+  it('should fall back to first element if all elements are hidden', async () => {
+    await page.setContent(`
+      <html>
+        <body style="margin: 0; padding: 0;">
+          <!-- First hidden element -->
+          <div style="display: none;">
+            <button data-testid="all-hidden">First Hidden</button>
+          </div>
+
+          <!-- Second hidden element -->
+          <div style="visibility: hidden;">
+            <button data-testid="all-hidden">Second Hidden</button>
+          </div>
+        </body>
+      </html>
+    `);
+
+    const result = await tool.execute(
+      { selector: 'testid:all-hidden' },
+      { page, browser } as any
+    );
+
+    expect(result.isError).toBeFalsy();
+    const text = result.content[0].text;
+
+    // Should indicate multiple elements found (falls back to first)
+    expect(text).toContain('Found 2 elements');
+    expect(text).toContain('using element 1 (first visible)');
+
+    // Should still show ancestors of the first element
+    expect(text).toContain('[0] <button>');
+    expect(text).toContain('testid:all-hidden');
+  });
+
+  it('should show duplicate testid warning when multiple elements have same testid', async () => {
+    await page.setContent(`
+      <html>
+        <body style="margin: 0; padding: 0;">
+          <button data-testid="submit-btn">First Button</button>
+          <button data-testid="submit-btn">Second Button</button>
+        </body>
+      </html>
+    `);
+
+    const result = await tool.execute(
+      { selector: 'testid:submit-btn' },
+      { page, browser } as any
+    );
+
+    expect(result.isError).toBeFalsy();
+    const text = result.content[0].text;
+
+    // Should show duplicate testid warning
+    expect(text).toContain('Tip: Test IDs should be unique');
+    expect(text).toContain('Found 2 elements');
+  });
+
+  it('should not show duplicate warning for non-testid selectors', async () => {
+    await page.setContent(`
+      <html>
+        <body style="margin: 0; padding: 0;">
+          <button class="btn">First Button</button>
+          <button class="btn">Second Button</button>
+        </body>
+      </html>
+    `);
+
+    const result = await tool.execute(
+      { selector: '.btn' },
+      { page, browser } as any
+    );
+
+    expect(result.isError).toBeFalsy();
+    const text = result.content[0].text;
+
+    // Should NOT show testid warning for CSS selectors
+    expect(text).not.toContain('Test IDs should be unique');
+    expect(text).toContain('Found 2 elements');
+  });
 });
