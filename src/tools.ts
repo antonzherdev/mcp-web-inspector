@@ -29,8 +29,8 @@ export function createToolDefinitions(sessionConfig?: SessionConfig) {
           browserType: { type: "string", description: "Browser type to use (chromium, firefox, webkit). Defaults to chromium", enum: ["chromium", "firefox", "webkit"] },
           device: {
             type: "string",
-            description: "Mobile device preset to emulate. Uses Playwright's built-in device configurations for viewport, user agent, and device scale factor. When specified, overrides width/height parameters.",
-            enum: ["iphone-se", "iphone-14", "iphone-14-pro", "pixel-5", "ipad", "samsung-s21"]
+            description: "Device preset to emulate. Uses device configurations for viewport, user agent, and device scale factor. When specified, overrides width/height parameters. Mobile: iphone-se, iphone-14, iphone-14-pro, pixel-5, ipad, samsung-s21. Desktop: desktop-1080p (1920x1080), desktop-2k (2560x1440), laptop-hd (1366x768).",
+            enum: ["iphone-se", "iphone-14", "iphone-14-pro", "pixel-5", "ipad", "samsung-s21", "desktop-1080p", "desktop-2k", "laptop-hd"]
           },
           width: { type: "number", description: "Viewport width in pixels. If not specified, automatically matches screen width. Ignored if device is specified." },
           height: { type: "number", description: "Viewport height in pixels. If not specified, automatically matches screen height. Ignored if device is specified." },

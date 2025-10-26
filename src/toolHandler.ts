@@ -187,12 +187,51 @@ interface BrowserSettings {
  * Device preset mapping to Playwright device descriptors
  */
 const DEVICE_PRESETS: Record<string, string> = {
+  // Mobile devices
   'iphone-se': 'iPhone SE',
   'iphone-14': 'iPhone 14',
   'iphone-14-pro': 'iPhone 14 Pro',
   'pixel-5': 'Pixel 5',
   'ipad': 'iPad (gen 7)',
-  'samsung-s21': 'Galaxy S21'
+  'samsung-s21': 'Galaxy S21',
+
+  // Desktop devices (custom configs)
+  'desktop-1080p': 'Desktop 1080p',
+  'desktop-2k': 'Desktop 2K',
+  'laptop-hd': 'Laptop HD'
+};
+
+/**
+ * Custom device configurations for presets not in Playwright's built-in devices
+ */
+const CUSTOM_DEVICE_CONFIGS: Record<string, any> = {
+  'Desktop 1080p': {
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.7204.23 Safari/537.36',
+    viewport: { width: 1920, height: 1080 },
+    screen: { width: 1920, height: 1080 },
+    deviceScaleFactor: 1,
+    isMobile: false,
+    hasTouch: false,
+    defaultBrowserType: 'chromium'
+  },
+  'Desktop 2K': {
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.7204.23 Safari/537.36',
+    viewport: { width: 2560, height: 1440 },
+    screen: { width: 2560, height: 1440 },
+    deviceScaleFactor: 1,
+    isMobile: false,
+    hasTouch: false,
+    defaultBrowserType: 'chromium'
+  },
+  'Laptop HD': {
+    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.7204.23 Safari/537.36',
+    viewport: { width: 1366, height: 768 },
+    screen: { width: 1366, height: 768 },
+    deviceScaleFactor: 1,
+    isMobile: false,
+    hasTouch: false,
+    defaultBrowserType: 'chromium'
+  }
 };
 
 /**
@@ -413,11 +452,12 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
       let deviceConfig = null;
       if (device && DEVICE_PRESETS[device]) {
         const playwrightDeviceName = DEVICE_PRESETS[device];
-        deviceConfig = devices[playwrightDeviceName];
+        // Check custom configs first, then Playwright's built-in devices
+        deviceConfig = CUSTOM_DEVICE_CONFIGS[playwrightDeviceName] || devices[playwrightDeviceName];
         if (deviceConfig) {
           console.error(`Using device preset: ${device} (${playwrightDeviceName})`);
         } else {
-          console.error(`Warning: Device preset ${playwrightDeviceName} not found in Playwright devices`);
+          console.error(`Warning: Device preset ${playwrightDeviceName} not found`);
         }
       }
 
@@ -571,7 +611,8 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
     let deviceConfig = null;
     if (device && DEVICE_PRESETS[device]) {
       const playwrightDeviceName = DEVICE_PRESETS[device];
-      deviceConfig = devices[playwrightDeviceName];
+      // Check custom configs first, then Playwright's built-in devices
+      deviceConfig = CUSTOM_DEVICE_CONFIGS[playwrightDeviceName] || devices[playwrightDeviceName];
     }
 
     // Use the appropriate browser engine
