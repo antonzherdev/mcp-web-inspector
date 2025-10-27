@@ -6,6 +6,16 @@ import { createToolDefinitions } from "./tools/common/registry.js";
 import { setupRequestHandlers } from "./requestHandler.js";
 import { parseArgs } from "node:util";
 import { setSessionConfig } from "./toolHandler.js";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+// Get package.json version
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const packageJson = JSON.parse(
+  readFileSync(join(__dirname, "../package.json"), "utf-8")
+);
+const VERSION = packageJson.version;
 
 // Parse command line arguments
 const { values } = parseArgs({
@@ -37,10 +47,12 @@ const sessionConfig = {
 setSessionConfig(sessionConfig);
 
 async function runServer() {
+  console.error(`Starting mcp-web-inspector v${VERSION}`);
+
   const server = new Server(
     {
       name: "mcp-web-inspector",
-      version: "0.1.0",
+      version: VERSION,
     },
     {
       capabilities: {
