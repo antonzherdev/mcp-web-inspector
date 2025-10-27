@@ -269,7 +269,7 @@ describe('Browser Interaction Tools', () => {
 
       expect(mockEvaluate).toHaveBeenCalledWith('return document.title');
       expect(result.isError).toBe(false);
-      expect(result.content[0].text).toContain('Executed JavaScript');
+      expect(result.content[0].text).toContain('JavaScript execution result');
     });
 
     test('should suggest inspect_dom for querySelector usage', async () => {

@@ -8,7 +8,7 @@ export class EvaluateTool extends BrowserToolBase {
   static getMetadata(sessionConfig?: SessionConfig): ToolMetadata {
     return {
       name: "evaluate",
-      description: "Execute JavaScript in the browser console. ⚠️ AVOID for common tasks - use specialized tools instead: inspect_dom() for page structure, compare_positions() for alignment, measure_element() for spacing, query_selector() for finding elements. Only use evaluate() for custom logic not covered by other tools.",
+      description: "Execute JavaScript in the browser console and return the result (JSON-stringified). Automatically detects common patterns and suggests specialized tools when applicable. ⚠️ AVOID for common tasks - use specialized tools instead: inspect_dom() for page structure, compare_positions() for alignment, measure_element() for spacing/dimensions, query_selector() for finding elements. Only use evaluate() for custom logic not covered by other tools.",
       inputSchema: {
         type: "object",
         properties: {
@@ -28,49 +28,85 @@ export class EvaluateTool extends BrowserToolBase {
 
     // Pattern: DOM inspection/querying
     if (scriptLower.match(/queryselector|getelementby|getelement|innerhtml|outerhtml|children|childnodes/)) {
-      suggestions.push('📍 DOM Inspection - Use inspect_dom({ selector: "..." }) for page structure');
+      suggestions.push(
+        '📍 DOM Inspection - Use inspect_dom({ selector: "..." })\n' +
+        '   Why: Returns semantic structure with test IDs, ARIA roles, interactive elements\n' +
+        '   Token savings: ~60% fewer tokens than parsing raw HTML'
+      );
     }
 
     // Pattern: Getting text content
     if (scriptLower.match(/textcontent|innertext/)) {
-      suggestions.push('📝 Text Content - Use get_visible_text() or find_by_text({ text: "..." })');
+      suggestions.push(
+        '📝 Text Content\n' +
+        '   • get_visible_text() - Extract all visible text\n' +
+        '   • find_by_text({ text: "..." }) - Locate elements by content'
+      );
     }
 
     // Pattern: Getting element position/size/layout
     if (scriptLower.match(/getboundingclientrect|offsetwidth|offsetheight|offsetleft|offsettop|clientwidth|clientheight/)) {
-      suggestions.push('📏 Element Measurements - Use measure_element({ selector: "..." })');
+      suggestions.push(
+        '📏 Element Measurements - Use measure_element({ selector: "..." })\n' +
+        '   Why: Returns position, size, gaps to siblings, and visibility state\n' +
+        '   Better than: Manual getBoundingClientRect() + visibility checks'
+      );
     }
 
     // Pattern: Walking up DOM tree / checking parents
     if (scriptLower.match(/parentelement|parentnode|offsetparent|closest/) ||
         (scriptLower.match(/while.*parent/) && scriptLower.match(/getcomputedstyle/))) {
-      suggestions.push('🔼 Parent Chain - Use inspect_ancestors({ selector: "..." }) to see parent constraints');
+      suggestions.push(
+        '🔼 Parent Chain - Use inspect_ancestors({ selector: "..." })\n' +
+        '   Why: Shows width constraints, margins, overflow, flexbox/grid context\n' +
+        '   Detects: Clipping points (🎯), centering via auto margins, layout issues'
+      );
     }
 
     // Pattern: Checking visibility
     if (scriptLower.match(/offsetparent|visibility|display.*none|opacity/)) {
-      suggestions.push('👁️  Visibility Check - Use element_visibility({ selector: "..." })');
+      suggestions.push(
+        '👁️  Visibility Check - Use element_visibility({ selector: "..." })\n' +
+        '   Returns: isVisible, inViewport, opacity, display, visibility properties\n' +
+        '   More reliable: Handles edge cases (opacity:0, visibility:hidden, etc.)'
+      );
     }
 
     // Pattern: Getting computed styles
     if (scriptLower.match(/getcomputedstyle|style\.|currentstyle/)) {
-      suggestions.push('🎨 CSS Styles - Use get_computed_styles({ selector: "..." })');
+      suggestions.push(
+        '🎨 CSS Styles - Use get_computed_styles({ selector: "..." })\n' +
+        '   Why: Returns filtered, relevant styles in compact format\n' +
+        '   Token savings: ~70% fewer tokens than full getComputedStyle() dump'
+      );
     }
 
     // Pattern: Checking element existence
     if (scriptLower.match(/\!=\s*null|\!==\s*null/) && scriptLower.match(/queryselector/)) {
-      suggestions.push('✓ Element Existence - Use element_exists({ selector: "..." })');
+      suggestions.push(
+        '✓ Element Existence - Use element_exists({ selector: "..." })\n' +
+        '   Returns: Boolean + element summary if found\n' +
+        '   Simpler: No need for null checks'
+      );
     }
 
     // Pattern: Finding test IDs
     if (scriptLower.match(/data-testid|data-test|data-cy/)) {
-      suggestions.push('🔍 Test IDs - Use get_test_ids() to discover all test identifiers');
+      suggestions.push(
+        '🔍 Test IDs - Use get_test_ids()\n' +
+        '   Returns: All test identifiers grouped by type\n' +
+        '   Detects: Duplicates and validation issues'
+      );
     }
 
     // Pattern: Comparing positions/alignment
     if (scriptLower.match(/getboundingclientrect.*getboundingclientrect/) ||
         (scriptLower.match(/\.left|\.top|\.right|\.bottom/) && scriptLower.match(/===|==|!==|!=/))) {
-      suggestions.push('⚖️  Position Comparison - Use compare_positions({ selector1: "...", selector2: "..." })');
+      suggestions.push(
+        '⚖️  Position Comparison - Use compare_positions({ selector1: "...", selector2: "..." })\n' +
+        '   Returns: Alignment status (left/right/top/bottom/center), pixel gaps\n' +
+        '   Perfect for: Checking if elements are aligned or overlapping'
+      );
     }
 
     return suggestions;
@@ -90,10 +126,7 @@ export class EvaluateTool extends BrowserToolBase {
       }
 
       const messages = [
-        `✓ Executed JavaScript:`,
-        `${args.script}`,
-        ``,
-        `Result:`,
+        `✓ JavaScript execution result:`,
         `${resultStr}`
       ];
 
