@@ -102,7 +102,7 @@ node run-tests.cjs     # Alternative way to run tests with coverage
 
 ## Available Tools
 
-**See `src/tools.ts` for complete tool definitions and up-to-date descriptions.**
+**See `src/tools/common/registry.ts` for complete tool definitions and up-to-date descriptions.**
 
 ### Tool Categories
 
@@ -159,9 +159,9 @@ The server follows the Model Context Protocol specification:
 
 ### Tool Organization
 
-All tools are browser automation tools defined in `src/tools.ts`:
+All tools are registered through `src/tools/common/registry.ts` with implementations in `src/tools/browser/`:
 
-- **BROWSER_TOOLS**: All available tools requiring a Playwright browser instance (navigate, click, screenshot, inspect_dom, etc.)
+- **Browser tool registry**: Use `getBrowserToolNames()` to list all tools requiring a Playwright browser instance (navigate, click, screenshot, inspect_dom, etc.)
 
 All browser tools extend `BrowserToolBase` (`src/tools/browser/base.ts`) which provides:
 - `safeExecute()`: Wrapper with browser connection validation and error handling
@@ -171,7 +171,7 @@ All browser tools extend `BrowserToolBase` (`src/tools/browser/base.ts`) which p
 - `formatElementSelectionInfo()`: Formats warnings for duplicate selectors with testid tip
 - Automatic browser state reset on disconnection errors
 
-**Tool parameters documented in `src/tools.ts`**
+**Tool parameters documented in `src/tools/common/registry.ts`**
 
 ### Tool Implementation Pattern
 
@@ -208,7 +208,8 @@ src/
 ├── index.ts                 # MCP server entry point
 ├── requestHandler.ts        # MCP protocol handlers
 ├── toolHandler.ts          # Tool execution dispatcher, browser state
-├── tools.ts                # Tool definitions and categorization
+├── tools/
+│   ├── common/registry.ts  # Tool registry, definitions, and helpers
 ├── tools/
 │   ├── common/types.ts     # Shared interfaces (ToolContext, ToolResponse)
 │   └── browser/            # Browser automation tools
@@ -256,12 +257,11 @@ src/
 ## Contributing Notes
 
 When adding new tools:
-1. Create tool class in `src/tools/browser/` extending `BrowserToolBase`
-2. Add definition to `createToolDefinitions()` in `src/tools.ts`
-3. Add handler in `handleToolCall()` in `src/toolHandler.ts`
-4. Initialize in `initializeTools()` function
-5. Add tests in `src/__tests__/tools/browser/`
-6. **Follow principles in `TOOL_DESIGN_PRINCIPLES.md`**
+1. Create a tool class in `src/tools/browser/` extending `BrowserToolBase`
+2. Append the class to the `BROWSER_TOOL_CLASSES` array in `src/tools/browser/register.ts`
+3. Update `handleToolCall()` in `src/toolHandler.ts` if the tool requires new context handling
+4. Add tests in `src/__tests__/tools/browser/`
+5. **Follow principles in `TOOL_DESIGN_PRINCIPLES.md`**
 
 ### Tool Design Principles (Summary)
 

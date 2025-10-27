@@ -38,6 +38,8 @@ describe('InspectAncestorsTool', () => {
       { page, browser } as any
     );
 
+    console.log(result.content[0].text);
+
     expect(result.isError).toBeFalsy();
     const text = result.content[0].text;
 

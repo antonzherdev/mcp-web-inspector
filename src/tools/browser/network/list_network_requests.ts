@@ -1,6 +1,5 @@
 import type { ToolContext, ToolResponse, ToolMetadata, SessionConfig } from '../../common/types.js';
 import { BrowserToolBase } from '../base.js';
-import { getNetworkLog } from '../../../toolHandler.js';
 
 interface ListNetworkRequestsArgs {
   type?: string;
@@ -33,6 +32,7 @@ export class ListNetworkRequestsTool extends BrowserToolBase {
     return this.safeExecute(context, async () => {
       const { type, limit = 50 } = args;
 
+      const { getNetworkLog } = await import('../../../toolHandler.js');
       const networkLog = getNetworkLog();
 
       // Filter by resource type if specified

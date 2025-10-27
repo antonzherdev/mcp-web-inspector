@@ -18,8 +18,8 @@
     "build": "tsc && shx chmod +x dist/*.js",
     "prepare": "npm run build",
     "watch": "tsc --watch",
-    "test": "jest --testMatch=\"<rootDir>/src/**/*.test.ts\"",
-    "test:coverage": "jest --coverage --testMatch=\"<rootDir>/src/**/*.test.ts\"",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
     "test:custom": "node run-tests.cjs"
   },
   "repository": {

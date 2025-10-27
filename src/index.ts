@@ -2,7 +2,7 @@
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { createToolDefinitions } from "./tools.js";
+import { createToolDefinitions } from "./tools/common/registry.js";
 import { setupRequestHandlers } from "./requestHandler.js";
 import { parseArgs } from "node:util";
 import { setSessionConfig } from "./toolHandler.js";

@@ -18,7 +18,7 @@ module.exports = {
     '!src/tools/browser/visiblePage.ts', // exclude - uses page.evaluate
   ],
   testMatch: [
-    '<rootDir>/src/__tests__/**/*.test.ts'
+    '<rootDir>/src/**/*.test.ts'
   ],
   modulePathIgnorePatterns: [
     "<rootDir>/docs/",

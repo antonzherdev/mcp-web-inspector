@@ -1,93 +1,64 @@
-import type { ToolClass, ToolMetadata, SessionConfig } from './types.js';
+import type { ToolClass, ToolMetadata, SessionConfig, ToolHandler } from './types.js';
+import { createErrorResponse } from './types.js';
+import { BrowserToolBase } from '../browser/base.js';
+import { BROWSER_TOOL_CLASSES } from '../browser/register.js';
 
-/**
- * Tool Registry - manages all available tools and routes execution
- * Eliminates the need for manual switch statements
- */
-export class ToolRegistry {
-  private tools = new Map<string, ToolClass>();
-  private instances = new Map<string, any>();
+const toolClasses = new Map<string, ToolClass>();
+const toolInstances = new Map<string, ToolHandler>();
+const browserToolNames = new Set<string>();
 
-  /**
-   * Register a tool class
-   */
-  register(toolClass: ToolClass): void {
-    const metadata = toolClass.getMetadata();
-    this.tools.set(metadata.name, toolClass);
-  }
-
-  /**
-   * Register multiple tool classes at once
-   */
-  registerAll(toolClasses: ToolClass[]): void {
-    for (const toolClass of toolClasses) {
-      this.register(toolClass);
-    }
-  }
-
-  /**
-   * Get tool instance (lazy initialization)
-   */
-  getInstance(name: string, server: any): any | null {
-    const toolClass = this.tools.get(name);
-    if (!toolClass) {
-      return null;
-    }
-
-    // Check if instance already exists
-    if (!this.instances.has(name)) {
-      // Create new instance
-      this.instances.set(name, new toolClass(server));
-    }
-
-    return this.instances.get(name);
-  }
-
-  /**
-   * Execute a tool by name
-   */
-  async execute(name: string, args: any, context: any, server: any): Promise<any> {
-    const instance = this.getInstance(name, server);
-    if (!instance) {
-      return {
-        content: [{ type: "text", text: `Unknown tool: ${name}` }],
-        isError: true,
-      };
-    }
-
-    return await instance.execute(args, context);
-  }
-
-  /**
-   * Get all tool definitions for MCP
-   */
-  getToolDefinitions(sessionConfig?: SessionConfig): ToolMetadata[] {
-    return Array.from(this.tools.values()).map(toolClass =>
-      toolClass.getMetadata(sessionConfig)
-    );
-  }
-
-  /**
-   * Get list of tool names
-   */
-  getToolNames(): string[] {
-    return Array.from(this.tools.keys());
-  }
-
-  /**
-   * Check if a tool exists
-   */
-  has(name: string): boolean {
-    return this.tools.has(name);
-  }
-
-  /**
-   * Clear all instances (useful for testing)
-   */
-  clearInstances(): void {
-    this.instances.clear();
+function registerTool(toolClass: ToolClass): void {
+  const metadata = toolClass.getMetadata();
+  toolClasses.set(metadata.name, toolClass);
+  if (toolClass.prototype instanceof BrowserToolBase) {
+    browserToolNames.add(metadata.name);
   }
 }
 
-// Export a singleton instance
-export const toolRegistry = new ToolRegistry();
+export function registerTools(toolClassList: ToolClass[]): void {
+  for (const toolClass of toolClassList) {
+    registerTool(toolClass);
+  }
+}
+
+export function getToolInstance(name: string, server: any): ToolHandler | null {
+  const toolClass = toolClasses.get(name);
+  if (!toolClass) {
+    return null;
+  }
+
+  if (!toolInstances.has(name)) {
+    toolInstances.set(name, new toolClass(server));
+  }
+
+  return toolInstances.get(name)!;
+}
+
+export async function executeTool(name: string, args: any, context: any, server: any) {
+  const instance = getToolInstance(name, server);
+  if (!instance) {
+    return createErrorResponse(`Unknown tool: ${name}`);
+  }
+
+  return await instance.execute(args, context);
+}
+
+export function createToolDefinitions(sessionConfig?: SessionConfig): ToolMetadata[] {
+  return Array.from(toolClasses.values()).map(toolClass =>
+    toolClass.getMetadata(sessionConfig)
+  );
+}
+
+export function getBrowserToolNames(): string[] {
+  return Array.from(browserToolNames);
+}
+
+export function isBrowserTool(name: string): boolean {
+  return browserToolNames.has(name);
+}
+
+export function clearToolInstances(): void {
+  toolInstances.clear();
+}
+
+registerTools(BROWSER_TOOL_CLASSES);

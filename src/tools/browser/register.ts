@@ -1,4 +1,4 @@
-import { toolRegistry } from '../common/registry.js';
+import type { ToolClass } from '../common/types.js';
 
 // Navigation
 import { NavigateTool } from './navigation/navigate.js';
@@ -48,58 +48,50 @@ import { GetRequestDetailsTool } from './network/get_request_details.js';
 import { WaitForElementTool } from './waiting/wait_for_element.js';
 import { WaitForNetworkIdleTool } from './waiting/wait_for_network_idle.js';
 
-/**
- * Register all browser tools with the registry
- */
-export function registerAllTools(): void {
-  toolRegistry.registerAll([
-    // Navigation (4)
-    NavigateTool,
-    GoBackTool,
-    GoForwardTool,
-    CloseTool,
+export const BROWSER_TOOL_CLASSES: ToolClass[] = [
+  // Navigation (4)
+  NavigateTool,
+  GoBackTool,
+  GoForwardTool,
+  CloseTool,
 
-    // Interaction (7)
-    ClickTool,
-    FillTool,
-    SelectTool,
-    HoverTool,
-    UploadFileTool,
-    DragTool,
-    PressKeyTool,
+  // Interaction (7)
+  ClickTool,
+  FillTool,
+  SelectTool,
+  HoverTool,
+  UploadFileTool,
+  DragTool,
+  PressKeyTool,
 
-    // Content (3)
-    ScreenshotTool,
-    GetTextTool,
-    GetHtmlTool,
+  // Content (3)
+  ScreenshotTool,
+  GetTextTool,
+  GetHtmlTool,
 
-    // Inspection (10)
-    InspectDomTool,
-    GetTestIdsTool,
-    QuerySelectorTool,
-    FindByTextTool,
-    CheckVisibilityTool,
-    CompareElementAlignmentTool,
-    InspectAncestorsTool,
-    ElementExistsTool,
-    MeasureElementTool,
-    GetComputedStylesTool,
+  // Inspection (10)
+  InspectDomTool,
+  GetTestIdsTool,
+  QuerySelectorTool,
+  FindByTextTool,
+  CheckVisibilityTool,
+  CompareElementAlignmentTool,
+  InspectAncestorsTool,
+  ElementExistsTool,
+  MeasureElementTool,
+  GetComputedStylesTool,
 
-    // Evaluation (1)
-    EvaluateTool,
+  // Evaluation (1)
+  EvaluateTool,
 
-    // Console (1)
-    GetConsoleLogsTool,
+  // Console (1)
+  GetConsoleLogsTool,
 
-    // Network (2)
-    ListNetworkRequestsTool,
-    GetRequestDetailsTool,
+  // Network (2)
+  ListNetworkRequestsTool,
+  GetRequestDetailsTool,
 
-    // Waiting (2)
-    WaitForElementTool,
-    WaitForNetworkIdleTool,
-  ]);
-}
-
-// Auto-register on import
-registerAllTools();
+  // Waiting (2)
+  WaitForElementTool,
+  WaitForNetworkIdleTool,
+];

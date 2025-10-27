@@ -1,10 +1,9 @@
 import type { Browser, Page } from 'playwright';
 import { chromium, firefox, webkit, devices } from 'playwright';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { BROWSER_TOOLS } from './toolConstants.js';
-import type { ToolContext } from './tools/common/types.js';
+import type { ToolContext, SessionConfig } from './tools/common/types.js';
 import { checkBrowsersInstalled, getInstallationInstructions } from './utils/browserCheck.js';
-import { toolRegistry } from './tools/common/registry.js';
+import { getToolInstance, isBrowserTool, executeTool } from './tools/common/registry.js';
 import { ScreenshotTool } from './tools/browser/content/screenshot.js';
 import { GetConsoleLogsTool } from './tools/browser/console/get_console_logs.js';
 
@@ -33,14 +32,6 @@ let browser: Browser | undefined;
 let page: Page | undefined;
 let currentBrowserType: 'chromium' | 'firefox' | 'webkit' = 'chromium';
 let networkLog: NetworkRequest[] = [];
-
-// Session configuration
-interface SessionConfig {
-  saveSession: boolean;
-  userDataDir: string;
-  screenshotsDir: string;
-  headlessDefault: boolean;
-}
 
 let sessionConfig: SessionConfig = {
   saveSession: false,
@@ -225,7 +216,7 @@ async function registerNetworkListeners(page) {
 
 async function registerConsoleMessage(page) {
   page.on("console", (msg) => {
-    const consoleLogsTool = toolRegistry.getInstance("get_console_logs", null) as GetConsoleLogsTool;
+    const consoleLogsTool = getToolInstance("get_console_logs", null) as GetConsoleLogsTool;
     if (consoleLogsTool) {
       const type = msg.type();
       let text = msg.text();
@@ -250,7 +241,7 @@ async function registerConsoleMessage(page) {
 
   // Uncaught exception
   page.on("pageerror", (error) => {
-    const consoleLogsTool = toolRegistry.getInstance("get_console_logs", null) as GetConsoleLogsTool;
+    const consoleLogsTool = getToolInstance("get_console_logs", null) as GetConsoleLogsTool;
     if (consoleLogsTool) {
       const message = error.message;
       const stack = error.stack || "";
@@ -703,8 +694,10 @@ export async function handleToolCall(
       };
     }
 
+    const requiresBrowser = isBrowserTool(name);
+
     // Check if we have a disconnected browser that needs cleanup
-    if (browser && !browser.isConnected() && BROWSER_TOOLS.includes(name)) {
+    if (browser && !browser.isConnected() && requiresBrowser) {
       console.error("Detected disconnected browser before tool execution, cleaning up...");
       try {
         await browser.close().catch(() => {}); // Ignore errors
@@ -714,46 +707,46 @@ export async function handleToolCall(
       resetBrowserState();
     }
 
-  // Prepare context based on tool requirements
-  const context: ToolContext = {
-    server
-  };
-
-  // Set up browser if needed
-  if (BROWSER_TOOLS.includes(name)) {
-    const browserSettings = {
-      viewport: {
-        width: args.width,
-        height: args.height
-      },
-      userAgent: name === "set_user_agent" ? args.userAgent : undefined,
-      headless: args.headless,
-      browserType: args.browserType || 'chromium',
-      device: args.device
+    // Prepare context based on tool requirements
+    const context: ToolContext = {
+      server
     };
 
-    try {
-      context.page = await ensureBrowser(browserSettings);
-      context.browser = browser;
-    } catch (error) {
-      console.error("Failed to ensure browser:", error);
-      return {
-        content: [{
-          type: "text",
-          text: `Failed to initialize browser: ${(error as Error).message}. Please try again.`,
-        }],
-        isError: true,
+    // Set up browser if needed
+    if (requiresBrowser) {
+      const browserSettings = {
+        viewport: {
+          width: args.width,
+          height: args.height
+        },
+        userAgent: name === "set_user_agent" ? args.userAgent : undefined,
+        headless: args.headless,
+        browserType: args.browserType || 'chromium',
+        device: args.device
       };
+
+      try {
+        context.page = await ensureBrowser(browserSettings);
+        context.browser = browser;
+      } catch (error) {
+        console.error("Failed to ensure browser:", error);
+        return {
+          content: [{
+            type: "text",
+            text: `Failed to initialize browser: ${(error as Error).message}. Please try again.`,
+          }],
+          isError: true,
+        };
+      }
     }
-  }
 
     // Route to appropriate tool using registry
-    return await toolRegistry.execute(name, args, context, server);
+    return await executeTool(name, args, context, server);
   } catch (error) {
     console.error(`Error handling tool ${name}:`, error);
     
     // Handle browser-specific errors at the top level
-    if (BROWSER_TOOLS.includes(name)) {
+    if (isBrowserTool(name)) {
       const errorMessage = (error as Error).message;
       if (
         errorMessage.includes("Target page, context or browser has been closed") || 
@@ -789,7 +782,7 @@ export async function handleToolCall(
  * Get console logs
  */
 export function getConsoleLogs(): string[] {
-  const consoleLogsTool = toolRegistry.getInstance("get_console_logs", null) as GetConsoleLogsTool;
+  const consoleLogsTool = getToolInstance("get_console_logs", null) as GetConsoleLogsTool;
   return consoleLogsTool?.getConsoleLogs() ?? [];
 }
 
@@ -797,7 +790,7 @@ export function getConsoleLogs(): string[] {
  * Get screenshots
  */
 export function getScreenshots(): Map<string, string> {
-  const screenshotTool = toolRegistry.getInstance("screenshot", null) as ScreenshotTool;
+  const screenshotTool = getToolInstance("screenshot", null) as ScreenshotTool;
   return screenshotTool?.getScreenshots() ?? new Map();
 }
 
@@ -805,7 +798,7 @@ export function getScreenshots(): Map<string, string> {
  * Update last interaction timestamp
  */
 export function updateLastInteractionTimestamp(): void {
-  const consoleLogsTool = toolRegistry.getInstance("get_console_logs", null) as GetConsoleLogsTool;
+  const consoleLogsTool = getToolInstance("get_console_logs", null) as GetConsoleLogsTool;
   consoleLogsTool?.updateLastInteractionTimestamp();
 }
 
@@ -813,7 +806,7 @@ export function updateLastInteractionTimestamp(): void {
  * Update last navigation timestamp
  */
 export function updateLastNavigationTimestamp(): void {
-  const consoleLogsTool = toolRegistry.getInstance("get_console_logs", null) as GetConsoleLogsTool;
+  const consoleLogsTool = getToolInstance("get_console_logs", null) as GetConsoleLogsTool;
   consoleLogsTool?.updateLastNavigationTimestamp();
 }
 
@@ -821,7 +814,7 @@ export function updateLastNavigationTimestamp(): void {
  * Clear console logs
  */
 export function clearConsoleLogs(): void {
-  const consoleLogsTool = toolRegistry.getInstance("get_console_logs", null) as GetConsoleLogsTool;
+  const consoleLogsTool = getToolInstance("get_console_logs", null) as GetConsoleLogsTool;
   consoleLogsTool?.clearConsoleLogs();
 }
 

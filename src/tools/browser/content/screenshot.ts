@@ -4,7 +4,6 @@ import * as os from 'node:os';
 import type { Page } from 'playwright';
 import { BrowserToolBase } from '../base.js';
 import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, createSuccessResponse } from '../../common/types.js';
-import { getScreenshotsDir } from '../../../toolHandler.js';
 
 /**
  * Tool for taking screenshots of pages or elements
@@ -66,6 +65,7 @@ export class ScreenshotTool extends BrowserToolBase {
         screenshotOptions.element = element;
       }
 
+      const { getScreenshotsDir } = await import('../../../toolHandler.js');
       // Generate output path
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const filename = `${args.name || 'screenshot'}-${timestamp}.png`;

@@ -1,6 +1,10 @@
 import { BrowserToolBase } from '../base.js';
 import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, createSuccessResponse, createErrorResponse } from '../../common/types.js';
-import { resetBrowserState } from '../../../toolHandler.js';
+
+async function resetState() {
+  const { resetBrowserState } = await import('../../../toolHandler.js');
+  resetBrowserState();
+}
 
 /**
  * Tool for navigating to URLs
@@ -47,7 +51,7 @@ export class NavigateTool extends BrowserToolBase {
     // Check if browser is available
     if (!context.browser || !context.browser.isConnected()) {
       // If browser is not connected, we need to reset the state to force recreation
-      resetBrowserState();
+      await resetState();
       return createErrorResponse(
         "Browser is not connected. The connection has been reset - please retry your navigation."
       );
@@ -79,7 +83,7 @@ export class NavigateTool extends BrowserToolBase {
           errorMessage.includes("Browser has been disconnected")
         ) {
           // Reset browser state to force recreation on next attempt
-          resetBrowserState();
+          await resetState();
           return createErrorResponse(
             `Browser connection issue: ${errorMessage}. Connection has been reset - please retry your navigation.`
           );

@@ -1,6 +1,5 @@
 import type { ToolContext, ToolResponse, ToolMetadata, SessionConfig } from '../../common/types.js';
 import { BrowserToolBase } from '../base.js';
-import { getNetworkLog } from '../../../toolHandler.js';
 
 interface GetRequestDetailsArgs {
   index: number;
@@ -28,6 +27,7 @@ export class GetRequestDetailsTool extends BrowserToolBase {
     return this.safeExecute(context, async () => {
       const { index } = args;
 
+      const { getNetworkLog } = await import('../../../toolHandler.js');
       const networkLog = getNetworkLog();
 
       if (index < 0 || index >= networkLog.length) {

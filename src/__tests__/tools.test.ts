@@ -1,4 +1,4 @@
-import { createToolDefinitions, BROWSER_TOOLS } from '../tools';
+import { createToolDefinitions, getBrowserToolNames } from '../tools/common/registry.js';
 
 describe('Tool Definitions', () => {
   const toolDefinitions = createToolDefinitions();
@@ -18,11 +18,12 @@ describe('Tool Definitions', () => {
     });
   });
 
-  test('BROWSER_TOOLS should contain browser-related tool names', () => {
-    expect(Array.isArray(BROWSER_TOOLS)).toBe(true);
-    expect(BROWSER_TOOLS.length).toBeGreaterThan(0);
+  test('browser tool list should contain registered tool names', () => {
+    const browserTools = getBrowserToolNames();
+    expect(Array.isArray(browserTools)).toBe(true);
+    expect(browserTools.length).toBeGreaterThan(0);
     
-    BROWSER_TOOLS.forEach(toolName => {
+    browserTools.forEach(toolName => {
       expect(toolDefinitions.some(tool => tool.name === toolName)).toBe(true);
     });
   });
@@ -86,8 +87,9 @@ describe('Tool Definitions', () => {
     expect(waitForNetworkIdleTool!.inputSchema.required).toEqual([]);
   });
 
-  test('should have 30 tools in BROWSER_TOOLS export', () => {
-    expect(BROWSER_TOOLS.length).toBe(30);
+  test('should have 30 tools registered as browser tools', () => {
+    const browserTools = getBrowserToolNames();
+    expect(browserTools.length).toBe(30);
   });
 
   test('should have all tool definitions available (30 total - browser tools only)', () => {
@@ -95,7 +97,8 @@ describe('Tool Definitions', () => {
     expect(toolDefinitions.length).toBe(30);
   });
 
-  test('BROWSER_TOOLS should only contain web inspection tools', () => {
+  test('browser tool list should only contain web inspection tools', () => {
+    const browserTools = getBrowserToolNames();
     const expectedTools = [
       'navigate', 'go_back', 'go_forward', 'screenshot', 'close',
       'inspect_dom', 'inspect_ancestors', 'get_test_ids', 'query_selector', 'find_by_text',
@@ -105,17 +108,18 @@ describe('Tool Definitions', () => {
       'evaluate', 'wait_for_element', 'wait_for_network_idle', 'list_network_requests', 'get_request_details'
     ];
 
-    expect(BROWSER_TOOLS.sort()).toEqual(expectedTools.sort());
+    expect(browserTools.sort()).toEqual(expectedTools.sort());
   });
 
-  test('should not export removed tools in BROWSER_TOOLS', () => {
+  test('should not include removed tools in browser tool list', () => {
+    const browserTools = getBrowserToolNames();
     const removedTools = ['get', 'post', 'put', 'patch', 'delete', 'save_pdf',
                           'start_codegen_session', 'end_codegen_session',
                           'iframe_click', 'iframe_fill', 'click_and_switch_tab',
                           'expect_response', 'assert_response', 'set_user_agent'];
 
     removedTools.forEach(toolName => {
-      expect(BROWSER_TOOLS.includes(toolName)).toBe(false);
+      expect(browserTools.includes(toolName)).toBe(false);
     });
   });
 }); 

@@ -1,6 +1,10 @@
 import { BrowserToolBase } from '../base.js';
 import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, createSuccessResponse } from '../../common/types.js';
-import { resetBrowserState } from '../../../toolHandler.js';
+
+async function resetState() {
+  const { resetBrowserState } = await import('../../../toolHandler.js');
+  resetBrowserState();
+}
 
 /**
  * Tool for closing the browser
@@ -34,7 +38,7 @@ export class CloseTool extends BrowserToolBase {
         // Continue with resetting state even if close fails
       } finally {
         // Always reset the global browser and page references
-        resetBrowserState();
+        await resetState();
       }
 
       return createSuccessResponse("Browser closed successfully");
