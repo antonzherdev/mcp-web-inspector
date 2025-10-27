@@ -207,7 +207,10 @@ export class FindByTextTool extends BrowserToolBase implements ToolHandler {
           stateStr += ', ✗ disabled';
         }
 
-        elements.push(`[${i}] ${selectorStr}\n${positionStr}\n${textStr}\n${stateStr}`);
+        const nthSelector = `${selector} >> nth=${i}`;
+        elements.push(
+          `[${i}] ${selectorStr}\n${positionStr}\n${textStr}\n${stateStr}\n    selector: ${nthSelector}`
+        );
       }
 
       // Build header message based on search type

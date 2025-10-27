@@ -208,17 +208,22 @@ More efficient than get_html() or evaluate(). Supports testid shortcuts.`,
               return false;
             };
 
+            // Helper to get preferred test ID attribute
+            const getTestId = (el: Element): string | null => {
+              return (
+                el.getAttribute('data-testid') ||
+                el.getAttribute('data-test') ||
+                el.getAttribute('data-cy') ||
+                null
+              );
+            };
+
             // Get selector for element
             const getSelector = (el: Element): string => {
               // Prefer test IDs
-              if (el.hasAttribute('data-testid')) {
-                return `[data-testid="${el.getAttribute('data-testid')}"]`;
-              }
-              if (el.hasAttribute('data-test')) {
-                return `[data-test="${el.getAttribute('data-test')}"]`;
-              }
-              if (el.hasAttribute('data-cy')) {
-                return `[data-cy="${el.getAttribute('data-cy')}"]`;
+              const testId = getTestId(el);
+              if (testId) {
+                return `[data-testid="${testId}"]`;
               }
 
               // Use ID if available
@@ -252,6 +257,16 @@ More efficient than get_html() or evaluate(). Supports testid shortcuts.`,
 
             // Get target element info
             const targetInfo = getElementInfo(target);
+            const targetTestId = getTestId(target);
+            const targetRole = target.getAttribute('role') || undefined;
+            const targetText = target.textContent?.trim().slice(0, 120) || '';
+            const targetSemantic = {
+              isSemantic: isSemanticElement(target),
+              isInteractive: isInteractive(target),
+              testId: targetTestId || undefined,
+              role: targetRole,
+              text: targetText,
+            };
 
             // Get all immediate children
             const allChildren = Array.from(target.children);
@@ -306,11 +321,7 @@ More efficient than get_html() or evaluate(). Supports testid shortcuts.`,
                 if (isSemantic) {
                   // This is a semantic element - add it to the list and stop drilling
                   const text = child.textContent?.trim().slice(0, 100) || '';
-                  const testId =
-                    child.getAttribute('data-testid') ||
-                    child.getAttribute('data-test') ||
-                    child.getAttribute('data-cy') ||
-                    undefined;
+                  const testId = getTestId(child) || undefined;
 
                   const semanticChild = {
                     tag: child.tagName.toLowerCase(),
@@ -345,6 +356,60 @@ More efficient than get_html() or evaluate(). Supports testid shortcuts.`,
 
             // Start collecting semantic children from immediate children
             collectSemanticChildren(allChildren);
+
+            // Collect deep preview candidates when wrappers dominate
+            const deepPreview: any[] = [];
+            const deepPreviewLimit = 3;
+            const deepPreviewMaxDepth = Math.min(Math.max(maxDepth + 5, 12), 20);
+            const targetArea = Math.max(targetInfo.rect.width * targetInfo.rect.height, 1);
+
+            const collectDeepPreview = (elements: Element[], depth: number): void => {
+              if (deepPreview.length >= deepPreviewLimit || depth > deepPreviewMaxDepth) {
+                return;
+              }
+
+              for (const child of elements) {
+                const childInfo = getElementInfo(child);
+
+                // Skip hidden children unless explicitly requested
+                if (!hidden && !childInfo.isVisible) {
+                  continue;
+                }
+
+                const semantic = isSemanticElement(child);
+                if (semantic && depth > maxDepth) {
+                  const area = Math.max(childInfo.rect.width * childInfo.rect.height, 0);
+                  const areaRatio = targetArea > 0 ? area / targetArea : null;
+
+                  deepPreview.push({
+                    tag: child.tagName.toLowerCase(),
+                    selector: getSelector(child),
+                    testId: getTestId(child) || undefined,
+                    role: child.getAttribute('role') || undefined,
+                    text: child.textContent?.trim().slice(0, 80) || '',
+                    isVisible: childInfo.isVisible,
+                    isInteractive: isInteractive(child),
+                    depth,
+                    areaRatio,
+                    position: childInfo.rect,
+                    childCount: child.children.length,
+                  });
+                }
+
+                if (deepPreview.length >= deepPreviewLimit) {
+                  break;
+                }
+
+                collectDeepPreview(Array.from(child.children), depth + 1);
+                if (deepPreview.length >= deepPreviewLimit) {
+                  break;
+                }
+              }
+            };
+
+            if (skippedWrappers > 0) {
+              collectDeepPreview(allChildren, 1);
+            }
 
             // For body/main containers, also count elements in entire tree
             const targetTag = target.tagName.toLowerCase();
@@ -401,6 +466,8 @@ More efficient than get_html() or evaluate(). Supports testid shortcuts.`,
               interactiveCounts,
               treeCounts,
               layoutPattern,
+              targetSemantic,
+              deepPreview,
             };
           },
           { hidden: includeHidden, max: maxChildren, maxDepth }
@@ -420,7 +487,17 @@ More efficient than get_html() or evaluate(). Supports testid shortcuts.`,
 
         // Format compact text output
         const lines: string[] = [];
-        const { target, children, stats, layoutPattern, elementCounts, interactiveCounts, treeCounts } = result;
+        const {
+          target,
+          children,
+          stats,
+          layoutPattern,
+          elementCounts,
+          interactiveCounts,
+          treeCounts,
+          targetSemantic,
+          deepPreview,
+        } = result;
 
         // Add selection warning if multiple elements matched
         const selectionWarning = this.formatElementSelectionInfo(
@@ -438,6 +515,18 @@ More efficient than get_html() or evaluate(). Supports testid shortcuts.`,
         lines.push(
           `@ (${target.position.x},${target.position.y}) ${target.position.width}x${target.position.height}px`
         );
+        const targetStatusParts: string[] = [];
+        targetStatusParts.push(target.isVisible ? '✓ visible' : '✗ hidden');
+        if (targetSemantic?.isInteractive) targetStatusParts.push('⚡ interactive');
+        if (targetSemantic?.isSemantic) targetStatusParts.push('semantic element');
+        if (targetSemantic?.testId) targetStatusParts.push(`testid=${targetSemantic.testId}`);
+        if (targetSemantic?.role) targetStatusParts.push(`role=${targetSemantic.role}`);
+        if (targetStatusParts.length > 0) {
+          lines.push(`State: ${targetStatusParts.join(', ')}`);
+        }
+        if (targetSemantic?.text) {
+          lines.push(`Text: "${targetSemantic.text}"`);
+        }
         lines.push('');
 
         // Add page/section overview for top-level containers
@@ -485,13 +574,24 @@ More efficient than get_html() or evaluate(). Supports testid shortcuts.`,
 
         // Children summary
         if (stats.semanticCount === 0) {
-          lines.push(`Children (0 semantic, skipped ${stats.skippedWrappers} wrapper divs):`);
+          const wrapperNote =
+            stats.skippedWrappers > 0
+              ? ` (skipped ${stats.skippedWrappers} wrapper${stats.skippedWrappers === 1 ? '' : 's'})`
+              : '';
+          lines.push(`Children (0 semantic${wrapperNote}):`);
           lines.push('');
 
+          if (targetSemantic?.isSemantic || targetSemantic?.isInteractive) {
+            lines.push(
+              `Target element is already semantic${targetSemantic.isInteractive ? ' and interactive' : ''}; no semantic descendants surfaced within maxDepth=${maxDepth}.`
+            );
+            lines.push('');
+          }
+
           // Show interactive element summary if available
-          const hasInteractive = Object.keys(interactiveCounts).length > 0;
-          if (hasInteractive) {
-            lines.push('Interactive Elements Found:');
+          const interactiveSummaryKeys = Object.keys(interactiveCounts);
+          if (interactiveSummaryKeys.length > 0) {
+            lines.push('Interactive elements exist deeper in the tree:');
             const interactiveTypes = ['button', 'a', 'input', 'select', 'textarea'];
             interactiveTypes.forEach(tag => {
               const count = interactiveCounts[tag] || 0;
@@ -500,34 +600,74 @@ More efficient than get_html() or evaluate(). Supports testid shortcuts.`,
                 lines.push(`  • ${count} ${label}${count > 1 ? 's' : ''}`);
               }
             });
+            lines.push('  • Increase maxDepth or drill down with more specific selectors.');
             lines.push('');
-            lines.push(`💡 Tip: Use maxChildren parameter or drill down with specific selectors (e.g., "button", "a")`);
-            lines.push(`   to inspect these elements. They were skipped because they lack test IDs or semantic containers.`);
           } else {
-            lines.push('⚠ No semantic or interactive elements found at this level.');
+            lines.push('⚠ No semantic or interactive descendants surfaced at this level.');
+            lines.push('   Likely dominated by anonymous <div> wrappers without ARIA roles or test IDs.');
             lines.push('');
-            lines.push(
-              'The page uses generic <div> wrappers without semantic HTML, test IDs, or ARIA roles.'
-            );
           }
-          lines.push('');
-          lines.push('Suggestions:');
-          lines.push(`1. Use get_visible_html({ selector: "${args.selector || 'body'}" }) to see raw HTML`);
-          lines.push('2. Look for interactive elements by class/id (e.g., .button, #submit-btn)');
-          lines.push('3. Recommend adding data-testid attributes for better testability');
-          lines.push('');
-          lines.push('To improve this page\'s structure, consider:');
-          lines.push('  - Adding semantic HTML: <header>, <main>, <nav>, <button>');
-          lines.push('  - Adding test IDs: data-testid="submit-button"');
-          lines.push('  - Adding ARIA roles: role="button", role="navigation"');
 
-          // Add drill-down suggestions when Page Overview shows interactive but Children shows none
-          if (treeCounts && Object.keys(interactiveCounts).length === 0 && Object.keys(treeCounts.interactiveCounts).length > 0) {
+          if (deepPreview && deepPreview.length > 0) {
+            lines.push(`Deep preview (first ${deepPreview.length} semantic candidates past maxDepth):`);
+            deepPreview.forEach((candidate, idx) => {
+              const label = candidate.testId
+                ? `<${candidate.tag} data-testid="${candidate.testId}">`
+                : `<${candidate.tag}${candidate.selector ? ' ' + candidate.selector : ''}>`;
+              lines.push(
+                `  • depth ${candidate.depth}: ${label}`
+              );
+
+              const statusParts: string[] = [];
+              statusParts.push(candidate.isVisible ? '✓ visible' : '✗ hidden');
+              if (candidate.isInteractive) statusParts.push('⚡ interactive');
+              if (candidate.role) statusParts.push(`role=${candidate.role}`);
+              if (candidate.childCount > 0) statusParts.push(`${candidate.childCount} children`);
+              lines.push(`    ${statusParts.join(', ')}`);
+
+              if (candidate.areaRatio !== null && candidate.areaRatio !== undefined) {
+                const pct = Math.round(candidate.areaRatio * 100);
+                lines.push(`    size ≈ ${pct}% of parent area`);
+                if (pct > 0 && pct < 35) {
+                  lines.push('    ↘ Large wrapper detected: child occupies a small portion of the container.');
+                }
+              }
+
+              if (candidate.text) {
+                lines.push(`    "${candidate.text}"`);
+              }
+
+              const suggestedSelector = candidate.testId
+                ? `testid:${candidate.testId}`
+                : candidate.selector;
+              const recommendedDepth = Math.max(maxDepth + 3, candidate.depth + 1);
+              lines.push(
+                `    Try: inspect_dom({ selector: "${suggestedSelector}", maxDepth: ${recommendedDepth} })`
+              );
+            });
             lines.push('');
-            lines.push('💡 Try drilling down to find interactive elements:');
+          } else if (stats.skippedWrappers > 0) {
+            lines.push(`💡 Increase maxDepth (e.g., ${maxDepth + 3}) to drill through wrapper divs.`);
+            lines.push('');
+          }
 
-            const currentSelector = args.selector || 'body';
-            // Suggest specific selectors based on what's in the tree
+          lines.push('Next steps:');
+          const currentSelector = args.selector || 'body';
+          lines.push(
+            `1. Re-run inspect_dom({ selector: "${currentSelector}", maxDepth: ${Math.max(maxDepth + 3, 8)} }) to include deeper children`
+          );
+          lines.push(
+            `2. Use get_visible_html({ selector: "${currentSelector}" }) when structure remains opaque`
+          );
+          lines.push('3. Add data-testid attributes or semantic tags to reduce wrapper skipping');
+
+          if (
+            treeCounts &&
+            interactiveSummaryKeys.length === 0 &&
+            Object.keys(treeCounts.interactiveCounts).length > 0
+          ) {
+            lines.push('');
+            lines.push('Selectors to surface known interactive elements:');
             if (treeCounts.interactiveCounts.button && treeCounts.interactiveCounts.button > 0) {
               lines.push(`   inspect_dom({ selector: "${currentSelector} button" })`);
             }

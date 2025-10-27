@@ -37,6 +37,7 @@ describe('FindByTextTool', () => {
     expect(result.isError).toBeFalsy();
     expect(result.content[0].text).toContain('Found');
     expect(result.content[0].text).toContain('Sign');
+    expect(result.content[0].text).toContain('selector: text=/Sign in/i >> nth=0');
   });
 
   it('should find elements with exact text match', async () => {
@@ -56,6 +57,7 @@ describe('FindByTextTool', () => {
 
     expect(result.isError).toBeFalsy();
     expect(result.content[0].text).toContain('1 element');
+    expect(result.content[0].text).toContain('selector: text="Login" >> nth=0');
   });
 
   it('should respect case sensitivity', async () => {

@@ -186,10 +186,18 @@ export abstract class BrowserToolBase implements ToolHandler {
     // Check for multiple elements with errorOnMultiple flag
     if (options?.errorOnMultiple && count > 1) {
       const selector = options.originalSelector || 'selector';
-      const warning = this.getDuplicateTestIdWarning(selector, count);
-      throw new Error(
-        `Selector "${selector}" matched ${count} elements. Please use a more specific selector.\n${warning.trimEnd()}`
-      );
+      const nthHint = this.buildNthSelectorHint(selector, count).trimEnd();
+      const warning = this.getDuplicateTestIdWarning(selector, count).trimEnd();
+
+      let message = `Selector "${selector}" matched ${count} elements. Please use a more specific selector.`;
+      if (nthHint) {
+        message += `\n${nthHint}`;
+      }
+      if (warning) {
+        message += `\n${warning}`;
+      }
+
+      throw new Error(message);
     }
 
     // Handle explicit element index (1-based)
@@ -256,13 +264,15 @@ export abstract class BrowserToolBase implements ToolHandler {
       return '';
     }
 
-    const duplicateWarning = this.getDuplicateTestIdWarning(selector, totalCount);
+    const duplicateWarning = this.getDuplicateTestIdWarning(selector, totalCount).trimEnd();
+    const nthHint = this.buildNthSelectorHint(selector, totalCount).trimEnd();
+    const extraHints = [duplicateWarning, nthHint].filter(Boolean).join('\n');
 
-    if (preferredVisible) {
-      return `⚠ Found ${totalCount} elements matching "${selector}", using element ${elementIndex + 1} (first visible)\n${duplicateWarning}`;
-    } else {
-      return `⚠ Found ${totalCount} elements matching "${selector}", using element ${elementIndex + 1}\n${duplicateWarning}`;
-    }
+    const baseMessage = preferredVisible
+      ? `⚠ Found ${totalCount} elements matching "${selector}", using element ${elementIndex + 1} (first visible)`
+      : `⚠ Found ${totalCount} elements matching "${selector}", using element ${elementIndex + 1}`;
+
+    return extraHints ? `${baseMessage}\n${extraHints}` : baseMessage;
   }
 
   /**
@@ -290,4 +300,23 @@ export abstract class BrowserToolBase implements ToolHandler {
 
     return '\n';
   }
-} 
+
+  /**
+   * Provide a hint for using >> nth= when multiple elements match a selector
+   *
+   * @param selector Original selector string
+   * @param totalCount Total number of matches
+   */
+  protected buildNthSelectorHint(selector: string, totalCount: number): string {
+    const trimmed = selector.trim();
+    if (!trimmed || trimmed.includes('>> nth=')) {
+      return '';
+    }
+
+    const firstExample = `${trimmed} >> nth=0`;
+    const lastIndex = Math.max(totalCount - 1, 1);
+    const lastExample = `${trimmed} >> nth=${lastIndex}`;
+
+    return `💡 Hint: Append ">> nth=<index>" to target a specific match.\n   Example: ${firstExample} (first match)\n   Or: ${lastExample} (last match)`;
+  }
+}

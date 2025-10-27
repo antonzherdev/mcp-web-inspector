@@ -201,10 +201,11 @@ describe('InspectDomTool', () => {
     const result = await inspectDomTool.execute(args, mockContext);
 
     expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('⚠ No semantic');
-    expect(result.content[0].text).toContain('Suggestions:');
-    expect(result.content[0].text).toContain('get_visible_html');
-    expect(result.content[0].text).toContain('Adding semantic HTML');
+    expect(result.content[0].text).toContain('Children (0 semantic');
+    expect(result.content[0].text).toContain('⚠ No semantic or interactive descendants surfaced at this level.');
+    expect(result.content[0].text).toContain('Next steps:');
+    expect(result.content[0].text).toContain('Re-run inspect_dom({ selector: ".wrapper", maxDepth: 8 })');
+    expect(result.content[0].text).toContain('Use get_visible_html({ selector: ".wrapper" })');
   });
 
   test('should handle element with testid selector', async () => {
@@ -557,11 +558,11 @@ describe('InspectDomTool', () => {
     const result = await inspectDomTool.execute(args, mockContext);
 
     expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('Interactive Elements Found:');
+    expect(result.content[0].text).toContain('Interactive elements exist deeper in the tree:');
     expect(result.content[0].text).toContain('3 buttons');
     expect(result.content[0].text).toContain('2 links');
     expect(result.content[0].text).toContain('1 input');
-    expect(result.content[0].text).toContain('💡 Tip: Use maxChildren parameter');
+    expect(result.content[0].text).toContain('Increase maxDepth or drill down with more specific selectors.');
   });
 
   test('should show page overview for top-level containers', async () => {
@@ -639,11 +640,11 @@ describe('InspectDomTool', () => {
     const result = await inspectDomTool.execute(args, mockContext);
 
     expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('Interactive Elements Found:');
+    expect(result.content[0].text).toContain('Interactive elements exist deeper in the tree:');
     expect(result.content[0].text).toContain('57 buttons');
     expect(result.content[0].text).toContain('12 links');
     expect(result.content[0].text).toContain('3 inputs');
-    expect(result.content[0].text).toContain('💡 Tip: Use maxChildren parameter');
+    expect(result.content[0].text).toContain('Increase maxDepth or drill down with more specific selectors.');
     // Should NOT say "No semantic or interactive elements found"
     expect(result.content[0].text).not.toContain('⚠ No semantic or interactive elements found');
   });
@@ -675,9 +676,9 @@ describe('InspectDomTool', () => {
     const result = await inspectDomTool.execute(args, mockContext);
 
     expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('Interactive Elements Found:');
+    expect(result.content[0].text).toContain('Interactive elements exist deeper in the tree:');
     expect(result.content[0].text).toContain('3 buttons');
-    expect(result.content[0].text).toContain('💡 Tip:');
+    expect(result.content[0].text).toContain('Increase maxDepth or drill down with more specific selectors.');
   });
 
   test('should show both semantic and interactive counts when mixed', async () => {
@@ -855,10 +856,10 @@ describe('InspectDomTool', () => {
     expect(result.isError).toBe(false);
 
     // Should now show interactive elements summary
-    expect(result.content[0].text).toContain('Interactive Elements Found:');
+    expect(result.content[0].text).toContain('Interactive elements exist deeper in the tree:');
     expect(result.content[0].text).toContain('5 buttons');
     expect(result.content[0].text).toContain('1 input');
-    expect(result.content[0].text).toContain('💡 Tip:');
+    expect(result.content[0].text).toContain('Increase maxDepth or drill down with more specific selectors.');
   });
 
   test('should count interactive elements in wrapper div children', async () => {
@@ -945,7 +946,7 @@ describe('InspectDomTool', () => {
     expect(result.content[0].text).toContain('57 buttons');
 
     // Should suggest specific ways to access those 57 buttons
-    expect(result.content[0].text).toContain('💡 Try drilling down to find interactive elements:');
+    expect(result.content[0].text).toContain('Selectors to surface known interactive elements:');
     expect(result.content[0].text).toContain('inspect_dom({ selector: "testid:main-layout button" })');
     expect(result.content[0].text).toContain('inspect_dom({ selector: "testid:main-layout input" })');
   });
