@@ -1,5 +1,12 @@
 import { BrowserToolBase } from '../base.js';
-import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, createSuccessResponse, createErrorResponse } from '../../common/types.js';
+import {
+  ToolContext,
+  ToolResponse,
+  ToolMetadata,
+  SessionConfig,
+  createSuccessResponse,
+  createErrorResponse,
+} from '../../common/types.js';
 
 /**
  * Tool for getting visible text from the page
@@ -31,50 +38,91 @@ export class GetTextTool extends BrowserToolBase {
   }
 
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
+    const requestedMaxLength =
+      typeof args.maxLength === 'number' && Number.isFinite(args.maxLength) && args.maxLength > 0
+        ? Math.floor(args.maxLength)
+        : 20000;
+
+    if (!context.page) {
+      return createErrorResponse('Page is not available');
+    }
+
+    if (context.browser && !context.browser.isConnected()) {
+      return createErrorResponse('Browser is not connected');
+    }
+
+    if (context.page.isClosed()) {
+      return createErrorResponse('Page is not available or has been closed');
+    }
+
     return this.safeExecute(context, async (page) => {
-      const maxLength = args.maxLength || 20000;
-      const selector = args.selector ? this.normalizeSelector(args.selector) : 'body';
-
       try {
-        const locator = page.locator(selector);
-        const count = await locator.count();
+        const hasSelector = typeof args.selector === 'string' && args.selector.length > 0;
+        const scopeLabel = hasSelector ? ` (from "${args.selector}")` : ' (entire page)';
+        const lines: string[] = [`Visible text content${scopeLabel}`];
 
-        if (count === 0) {
-          return createErrorResponse(`Element not found: ${args.selector || 'body'}`);
+        let selectionWarning = '';
+        let textContent = '';
+
+        if (hasSelector) {
+          const normalizedSelector = this.normalizeSelector(args.selector);
+          const locator = page.locator(normalizedSelector);
+
+          const { element, elementIndex, totalCount } = await this.selectPreferredLocator(locator, {
+            elementIndex: args.elementIndex,
+          });
+
+          selectionWarning = this.formatElementSelectionInfo(
+            args.selector,
+            elementIndex,
+            totalCount,
+            true
+          );
+
+          textContent = await element.evaluate((target: HTMLElement | null) => {
+            if (!target) {
+              return '';
+            }
+            if (typeof target.innerText === 'string') {
+              return target.innerText;
+            }
+            return target.textContent ?? '';
+          });
+        } else {
+          textContent = await page.evaluate(() => document.body?.innerText ?? '');
         }
 
-        const { element, elementIndex, totalCount } = await this.selectPreferredLocator(locator, {
-          elementIndex: args.elementIndex
-        });
+        textContent = textContent ?? '';
 
-        const text = await element.innerText();
-        const truncated = text.length > maxLength;
-        const displayText = truncated ? text.substring(0, maxLength) + '...[truncated]' : text;
-
-        const messages = [];
-
-        // Add selection warning if multiple elements matched
-        const selectionWarning = this.formatElementSelectionInfo(
-          args.selector || 'body',
-          elementIndex,
-          totalCount,
-          true
-        );
         if (selectionWarning) {
-          messages.push(selectionWarning.trimEnd());
+          lines.push(selectionWarning.trimEnd());
         }
 
-        messages.push(displayText);
+        lines.push('');
+
+        const safeMaxLength = requestedMaxLength > 0 ? requestedMaxLength : 20000;
+        let displayText = textContent;
+        const truncated = displayText.length > safeMaxLength;
 
         if (truncated) {
-          messages.push('');
-          messages.push(`⚠ Text truncated at ${maxLength} characters (original length: ${text.length})`);
-          messages.push(`   Use maxLength parameter to retrieve more text if needed.`);
+          displayText = `${displayText.slice(0, safeMaxLength)}\n[Output truncated due to size limits]`;
         }
 
-        return createSuccessResponse(messages.join('\n'));
+        lines.push(displayText);
+
+        if (truncated) {
+          lines.push('');
+          lines.push(
+            `Output truncated due to size limits (returned ${safeMaxLength} of ${textContent.length} characters)`
+          );
+        }
+
+        lines.push('');
+        lines.push('💡 TIP: If you need structured inspection, try inspect_dom(), find_by_text(), or query_selector().');
+
+        return createSuccessResponse(lines.join('\n'));
       } catch (error) {
-        return createErrorResponse(`Failed to get text: ${(error as Error).message}`);
+        return createErrorResponse(`Failed to get visible text content: ${(error as Error).message}`);
       }
     });
   }

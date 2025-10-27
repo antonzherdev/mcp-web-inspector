@@ -1,5 +1,12 @@
 import { BrowserToolBase } from '../base.js';
-import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, createSuccessResponse, createErrorResponse } from '../../common/types.js';
+import {
+  ToolContext,
+  ToolResponse,
+  ToolMetadata,
+  SessionConfig,
+  createSuccessResponse,
+  createErrorResponse,
+} from '../../common/types.js';
 
 /**
  * Tool for getting HTML from the page
@@ -35,65 +42,121 @@ export class GetHtmlTool extends BrowserToolBase {
   }
 
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
+    const requestedMaxLength =
+      typeof args.maxLength === 'number' && Number.isFinite(args.maxLength) && args.maxLength > 0
+        ? Math.floor(args.maxLength)
+        : 20000;
+    const clean = args.clean ?? false;
+
+    if (!context.page) {
+      return createErrorResponse('Page is not available');
+    }
+
+    if (context.browser && !context.browser.isConnected()) {
+      return createErrorResponse('Browser is not connected');
+    }
+
+    if (context.page.isClosed()) {
+      return createErrorResponse('Page is not available or has been closed');
+    }
+
     return this.safeExecute(context, async (page) => {
-      const maxLength = args.maxLength || 20000;
-      const selector = args.selector ? this.normalizeSelector(args.selector) : 'body';
-      const clean = args.clean ?? false;
-
       try {
-        const locator = page.locator(selector);
-        const count = await locator.count();
+        const hasSelector = typeof args.selector === 'string' && args.selector.length > 0;
+        const scopeLabel = hasSelector ? ` (from "${args.selector}")` : ' (entire page)';
+        const lines: string[] = [`HTML content${scopeLabel}`];
+        let selectionWarning = '';
+        let rawHtml = '';
 
-        if (count === 0) {
-          return createErrorResponse(`Element not found: ${args.selector || 'body'}`);
-        }
+        if (hasSelector) {
+          const normalizedSelector = this.normalizeSelector(args.selector);
+          const locator = page.locator(normalizedSelector);
 
-        const { element, elementIndex, totalCount } = await this.selectPreferredLocator(locator, {
-          elementIndex: args.elementIndex
-        });
+          const { element, elementIndex, totalCount } = await this.selectPreferredLocator(locator, {
+            elementIndex: args.elementIndex,
+          });
 
-        let html = await element.innerHTML();
+          selectionWarning = this.formatElementSelectionInfo(
+            args.selector,
+            elementIndex,
+            totalCount,
+            true
+          );
 
-        // Clean HTML based on options
-        if (clean) {
-          // Remove scripts, styles, comments, meta tags
-          html = html
-            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-            .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-            .replace(/<!--[\s\S]*?-->/g, '')
-            .replace(/<meta\b[^>]*>/gi, '');
+          rawHtml = await element.evaluate((target: Element | null) => {
+            if (!target) {
+              return '';
+            }
+            const htmlElement = target as HTMLElement;
+            if (typeof htmlElement.outerHTML === 'string') {
+              return htmlElement.outerHTML;
+            }
+            return htmlElement.innerHTML ?? '';
+          });
         } else {
-          // Just remove scripts for safety/size
-          html = html.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+          rawHtml = await page.content();
         }
 
-        const truncated = html.length > maxLength;
-        const displayHtml = truncated ? html.substring(0, maxLength) + '...[truncated]' : html;
+        rawHtml = rawHtml ?? '';
 
-        const messages = [];
+        const sanitizedHtml = await page.evaluate(
+          ({ html, clean }): string => {
+            if (!html) {
+              return '';
+            }
 
-        // Add selection warning if multiple elements matched
-        const selectionWarning = this.formatElementSelectionInfo(
-          args.selector || 'body',
-          elementIndex,
-          totalCount,
-          true
+            const stripScripts = (input: string) =>
+              input.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+            const stripStyles = (input: string) =>
+              input.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '');
+            const stripComments = (input: string) => input.replace(/<!--[\s\S]*?-->/g, '');
+            const stripMeta = (input: string) => input.replace(/<meta\b[^>]*>/gi, '');
+
+            let cleaned = stripScripts(html);
+            if (clean) {
+              cleaned = stripMeta(stripComments(stripStyles(cleaned)));
+            }
+            return cleaned;
+          },
+          { html: rawHtml, clean }
         );
+
         if (selectionWarning) {
-          messages.push(selectionWarning.trimEnd());
+          lines.push(selectionWarning.trimEnd());
         }
 
-        messages.push(displayHtml);
+        lines.push(
+          clean
+            ? 'clean mode enabled (scripts, styles, comments, meta removed)'
+            : 'scripts removed (clean=false default)'
+        );
+        lines.push('');
+
+        const safeMaxLength = requestedMaxLength > 0 ? requestedMaxLength : 20000;
+        const processedHtml = sanitizedHtml ?? '';
+        const originalLength = processedHtml.length;
+        let displayHtml = processedHtml;
+        const truncated = displayHtml.length > safeMaxLength;
 
         if (truncated) {
-          messages.push('');
-          messages.push(`⚠ HTML truncated at ${maxLength} characters (original length: ${html.length})`);
-          messages.push(`   Use maxLength parameter to retrieve more HTML if needed.`);
+          displayHtml = `${displayHtml.slice(0, safeMaxLength)}\n<!-- Output truncated due to size limits -->`;
         }
 
-        return createSuccessResponse(messages.join('\n'));
+        lines.push(displayHtml);
+
+        if (truncated) {
+          lines.push('');
+          lines.push(
+            `Output truncated due to size limits (returned ${safeMaxLength} of ${originalLength} characters)`
+          );
+        }
+
+        lines.push('');
+        lines.push('💡 TIP: If you need structured inspection, try inspect_dom(), query_selector(), or get_computed_styles().');
+
+        return createSuccessResponse(lines.join('\n'));
       } catch (error) {
-        return createErrorResponse(`Failed to get HTML: ${(error as Error).message}`);
+        return createErrorResponse(`Failed to get visible HTML content: ${(error as Error).message}`);
       }
     });
   }
