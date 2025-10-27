@@ -613,16 +613,18 @@ More efficient than get_html() or evaluate(). Supports testid shortcuts.`,
           }
 
           // Mixed structure tip
-          if (stats.skippedWrappers > 0 && stats.semanticCount > 0) {
+          if (stats.skippedWrappers >= 3 && stats.semanticCount > 0) {
             lines.push('');
-            lines.push(`💡 Tip: Some elements found, but ${stats.skippedWrappers} wrapper divs were skipped.`);
+            const wrapperLabel = stats.skippedWrappers === 1 ? 'wrapper container was' : 'wrapper containers were';
+            lines.push(`💡 Tip: Some elements found, but ${stats.skippedWrappers} ${wrapperLabel} skipped.`);
             lines.push('   Consider adding test IDs to key elements for easier selection.');
           }
 
           // Suggest inspect_ancestors when drilling through many wrappers
-          if (stats.skippedWrappers >= 3) {
+          if (stats.skippedWrappers >= 6) {
             lines.push('');
-            lines.push(`💡 Drilled through ${stats.skippedWrappers} wrapper levels. To see parent constraints:`);
+            const wrapperSummary = stats.skippedWrappers === 1 ? 'wrapper container' : 'wrapper containers';
+            lines.push(`💡 Lots of ${wrapperSummary} (${stats.skippedWrappers}). To inspect parent constraints:`);
             lines.push(`   inspect_ancestors({ selector: "${args.selector || 'body'}" })`);
           }
         }

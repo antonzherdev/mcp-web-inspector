@@ -478,7 +478,45 @@ describe('InspectDomTool', () => {
     const result = await inspectDomTool.execute(args, mockContext);
 
     expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('💡 Tip: Some elements found, but 9 wrapper divs were skipped');
+    expect(result.content[0].text).toContain('💡 Tip: Some elements found, but 9 wrapper containers were skipped');
+  });
+
+  test('should not show wrapper tip when only one wrapper is skipped', async () => {
+    const args = {};
+
+    mockPageEvaluate.mockResolvedValue({
+      target: {
+        tag: 'body',
+        selector: 'body',
+        position: { x: 0, y: 0, width: 1200, height: 800 },
+        isVisible: true,
+      },
+      children: [
+        {
+          tag: 'button',
+          selector: 'button',
+          text: 'Click me',
+          position: { x: 100, y: 100, width: 120, height: 40 },
+          isVisible: true,
+          isInteractive: true,
+          childCount: 0,
+        },
+      ],
+      stats: {
+        totalChildren: 5,
+        semanticCount: 1,
+        shownCount: 1,
+        omittedCount: 0,
+        skippedWrappers: 1,
+      },
+      layoutPattern: 'unknown',
+    });
+
+    const result = await inspectDomTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).not.toContain('wrapper container was skipped');
+    expect(result.content[0].text).not.toContain('wrapper containers were skipped');
   });
 
   test('should handle evaluation error gracefully', async () => {
@@ -680,7 +718,7 @@ describe('InspectDomTool', () => {
 
     expect(result.isError).toBe(false);
     expect(result.content[0].text).toContain('[0] <form');
-    expect(result.content[0].text).toContain('💡 Tip: Some elements found, but 19 wrapper divs were skipped');
+    expect(result.content[0].text).toContain('💡 Tip: Some elements found, but 19 wrapper containers were skipped');
   });
 
   test('should handle selector normalization for testid shorthand', async () => {
@@ -863,9 +901,8 @@ describe('InspectDomTool', () => {
 
     expect(result.isError).toBe(false);
 
-    // Shows both the direct button child AND the nested inputs
-    expect(result.content[0].text).toContain('2 wrapper divs were skipped');
-    expect(result.content[0].text).toContain('💡 Tip:');
+    // Shows both the direct button child AND the nested inputs without adding noisy wrapper warnings
+    expect(result.content[0].text).not.toContain('wrapper containers were skipped');
     // The button is shown as a direct child
     expect(result.content[0].text).toContain('[0] <button');
   });
