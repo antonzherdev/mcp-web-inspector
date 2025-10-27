@@ -4,40 +4,10 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { BROWSER_TOOLS } from './tools.js';
 import type { ToolContext } from './tools/common/types.js';
 import { checkBrowsersInstalled, getInstallationInstructions } from './utils/browserCheck.js';
-import {
-  ScreenshotTool,
-  NavigationTool,
-  CloseBrowserTool,
-  ConsoleLogsTool
-} from './tools/browser/index.js';
-import {
-  ClickTool,
-  FillTool,
-  SelectTool,
-  HoverTool,
-  EvaluateTool,
-  UploadFileTool
-} from './tools/browser/interaction.js';
-import {
-  VisibleTextTool,
-  VisibleHtmlTool
-} from './tools/browser/visiblePage.js';
-import { ElementVisibilityTool } from './tools/browser/elementVisibility.js';
-import { InspectDomTool } from './tools/browser/inspectDom.js';
-import { GetTestIdsTool } from './tools/browser/getTestIds.js';
-import { QuerySelectorAllTool } from './tools/browser/querySelectorAll.js';
-import { FindByTextTool } from './tools/browser/findByText.js';
-import { GetComputedStylesTool } from './tools/browser/computedStyles.js';
-import { MeasureElementTool } from './tools/browser/measureElement.js';
-import { ElementExistsTool } from './tools/browser/elementExists.js';
-import { CompareElementAlignmentTool } from './tools/browser/compareElementAlignment.js';
-import { InspectAncestorsTool } from './tools/browser/ancestorInspection.js';
-import { GoBackTool, GoForwardTool } from './tools/browser/navigation.js';
-import { DragTool, PressKeyTool } from './tools/browser/interaction.js';
-import { WaitForElementTool } from './tools/browser/waitForElement.js';
-import { WaitForNetworkIdleTool } from './tools/browser/waitForNetworkIdle.js';
-import { ListNetworkRequestsTool } from './tools/browser/listNetworkRequests.js';
-import { GetRequestDetailsTool } from './tools/browser/getRequestDetails.js';
+import { toolRegistry } from './tools/common/registry.js';
+import './tools/browser/register.js'; // Auto-registers all tools
+import { ScreenshotTool } from './tools/browser/content/screenshot.js';
+import { GetConsoleLogsTool } from './tools/browser/console/get_console_logs.js';
 
 // Network request tracking
 export interface NetworkRequest {
@@ -139,38 +109,6 @@ export async function setGlobalPage(newPage: Page): Promise<void> {
   page.bringToFront();// Bring the new tab to the front
   console.log("Global page has been updated with listeners registered.");
 }
-// Tool instances
-let screenshotTool: ScreenshotTool;
-let navigationTool: NavigationTool;
-let closeBrowserTool: CloseBrowserTool;
-let consoleLogsTool: ConsoleLogsTool;
-let clickTool: ClickTool;
-let fillTool: FillTool;
-let selectTool: SelectTool;
-let hoverTool: HoverTool;
-let uploadFileTool: UploadFileTool;
-let evaluateTool: EvaluateTool;
-let visibleTextTool: VisibleTextTool;
-let visibleHtmlTool: VisibleHtmlTool;
-let goBackTool: GoBackTool;
-let goForwardTool: GoForwardTool;
-let dragTool: DragTool;
-let pressKeyTool: PressKeyTool;
-let elementVisibilityTool: ElementVisibilityTool;
-let inspectDomTool: InspectDomTool;
-let getTestIdsTool: GetTestIdsTool;
-let querySelectorAllTool: QuerySelectorAllTool;
-let findByTextTool: FindByTextTool;
-let getComputedStylesTool: GetComputedStylesTool;
-let measureElementTool: MeasureElementTool;
-let elementExistsTool: ElementExistsTool;
-let compareElementAlignmentTool: CompareElementAlignmentTool;
-let inspectAncestorsTool: InspectAncestorsTool;
-let waitForElementTool: WaitForElementTool;
-let waitForNetworkIdleTool: WaitForNetworkIdleTool;
-let listNetworkRequestsTool: ListNetworkRequestsTool;
-let getRequestDetailsTool: GetRequestDetailsTool;
-
 
 interface BrowserSettings {
   viewport?: {
@@ -288,6 +226,7 @@ async function registerNetworkListeners(page) {
 
 async function registerConsoleMessage(page) {
   page.on("console", (msg) => {
+    const consoleLogsTool = toolRegistry.getInstance("get_console_logs", null) as GetConsoleLogsTool;
     if (consoleLogsTool) {
       const type = msg.type();
       let text = msg.text();
@@ -312,6 +251,7 @@ async function registerConsoleMessage(page) {
 
   // Uncaught exception
   page.on("pageerror", (error) => {
+    const consoleLogsTool = toolRegistry.getInstance("get_console_logs", null) as GetConsoleLogsTool;
     if (consoleLogsTool) {
       const message = error.message;
       const stack = error.stack || "";
@@ -726,43 +666,6 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
 
 
 /**
- * Initialize all tool instances
- */
-function initializeTools(server: any) {
-  // Browser tools
-  if (!screenshotTool) screenshotTool = new ScreenshotTool(server);
-  if (!navigationTool) navigationTool = new NavigationTool(server);
-  if (!closeBrowserTool) closeBrowserTool = new CloseBrowserTool(server);
-  if (!consoleLogsTool) consoleLogsTool = new ConsoleLogsTool(server);
-  if (!clickTool) clickTool = new ClickTool(server);
-  if (!fillTool) fillTool = new FillTool(server);
-  if (!selectTool) selectTool = new SelectTool(server);
-  if (!hoverTool) hoverTool = new HoverTool(server);
-  if (!uploadFileTool) uploadFileTool = new UploadFileTool(server);
-  if (!evaluateTool) evaluateTool = new EvaluateTool(server);
-  if (!visibleTextTool) visibleTextTool = new VisibleTextTool(server);
-  if (!visibleHtmlTool) visibleHtmlTool = new VisibleHtmlTool(server);
-  if (!goBackTool) goBackTool = new GoBackTool(server);
-  if (!goForwardTool) goForwardTool = new GoForwardTool(server);
-  if (!dragTool) dragTool = new DragTool(server);
-  if (!pressKeyTool) pressKeyTool = new PressKeyTool(server);
-  if (!elementVisibilityTool) elementVisibilityTool = new ElementVisibilityTool(server);
-  if (!inspectDomTool) inspectDomTool = new InspectDomTool(server);
-  if (!getTestIdsTool) getTestIdsTool = new GetTestIdsTool(server);
-  if (!querySelectorAllTool) querySelectorAllTool = new QuerySelectorAllTool(server);
-  if (!findByTextTool) findByTextTool = new FindByTextTool(server);
-  if (!getComputedStylesTool) getComputedStylesTool = new GetComputedStylesTool(server);
-  if (!measureElementTool) measureElementTool = new MeasureElementTool(server);
-  if (!elementExistsTool) elementExistsTool = new ElementExistsTool(server);
-  if (!compareElementAlignmentTool) compareElementAlignmentTool = new CompareElementAlignmentTool(server);
-  if (!inspectAncestorsTool) inspectAncestorsTool = new InspectAncestorsTool(server);
-  if (!waitForElementTool) waitForElementTool = new WaitForElementTool(server);
-  if (!waitForNetworkIdleTool) waitForNetworkIdleTool = new WaitForNetworkIdleTool(server);
-  if (!listNetworkRequestsTool) listNetworkRequestsTool = new ListNetworkRequestsTool(server);
-  if (!getRequestDetailsTool) getRequestDetailsTool = new GetRequestDetailsTool(server);
-}
-
-/**
  * Main handler for tool calls
  */
 export async function handleToolCall(
@@ -770,9 +673,6 @@ export async function handleToolCall(
   args: any,
   server: any
 ): Promise<CallToolResult> {
-  // Initialize tools
-  initializeTools(server);
-
   try {
 
     // Special case for browser close to ensure it always works
@@ -819,7 +719,7 @@ export async function handleToolCall(
   const context: ToolContext = {
     server
   };
-  
+
   // Set up browser if needed
   if (BROWSER_TOOLS.includes(name)) {
     const browserSettings = {
@@ -832,7 +732,7 @@ export async function handleToolCall(
       browserType: args.browserType || 'chromium',
       device: args.device
     };
-    
+
     try {
       context.page = await ensureBrowser(browserSettings);
       context.browser = browser;
@@ -848,105 +748,8 @@ export async function handleToolCall(
     }
   }
 
-    // Route to appropriate tool
-    switch (name) {
-      // Browser tools
-      case "navigate":
-        return await navigationTool.execute(args, context);
-        
-      case "screenshot":
-        return await screenshotTool.execute(args, context);
-        
-      case "close":
-        return await closeBrowserTool.execute(args, context);
-        
-      case "get_console_logs":
-        return await consoleLogsTool.execute(args, context);
-        
-      case "click":
-        return await clickTool.execute(args, context);
-
-      case "fill":
-        return await fillTool.execute(args, context);
-        
-      case "select":
-        return await selectTool.execute(args, context);
-        
-      case "hover":
-        return await hoverTool.execute(args, context);
-
-      case "upload_file":
-        return await uploadFileTool.execute(args, context);
-        
-      case "evaluate":
-        return await evaluateTool.execute(args, context);
-
-      case "get_text":
-        return await visibleTextTool.execute(args, context);
-      
-      case "get_html":
-        return await visibleHtmlTool.execute(args, context);
-
-      case "go_back":
-        return await goBackTool.execute(args, context);
-      case "go_forward":
-        return await goForwardTool.execute(args, context);
-      case "drag":
-        return await dragTool.execute(args, context);
-      case "press_key":
-        return await pressKeyTool.execute(args, context);
-
-      case "check_visibility":
-        return await elementVisibilityTool.execute(args, context);
-
-      case "inspect_dom":
-        return await inspectDomTool.execute(args, context);
-
-      case "get_test_ids":
-        return await getTestIdsTool.execute(args, context);
-
-      case "query_selector":
-        return await querySelectorAllTool.execute(args, context);
-
-      case "find_by_text":
-        return await findByTextTool.execute(args, context);
-
-      case "get_computed_styles":
-        return await getComputedStylesTool.execute(args, context);
-
-      case "measure_element":
-        return await measureElementTool.execute(args, context);
-
-      case "element_exists":
-        return await elementExistsTool.execute(args, context);
-
-      case "compare_element_alignment":
-        return await compareElementAlignmentTool.execute(args, context);
-
-      case "inspect_ancestors":
-        return await inspectAncestorsTool.execute(args, context);
-
-      case "wait_for_element":
-        return await waitForElementTool.execute(args, context);
-
-      case "wait_for_network_idle":
-        return await waitForNetworkIdleTool.execute(args, context);
-
-      case "list_network_requests":
-        return await listNetworkRequestsTool.execute(args, context);
-
-      case "get_request_details":
-        return await getRequestDetailsTool.execute(args, context);
-
-      default:
-        return {
-          content: [{
-            type: "text",
-            text: `Unknown tool: ${name}`,
-          }],
-          isError: true,
-        };
-    }
+    // Route to appropriate tool using registry
+    return await toolRegistry.execute(name, args, context, server);
   } catch (error) {
     console.error(`Error handling tool ${name}:`, error);
     
@@ -987,6 +790,7 @@ export async function handleToolCall(
  * Get console logs
  */
 export function getConsoleLogs(): string[] {
+  const consoleLogsTool = toolRegistry.getInstance("get_console_logs", null) as GetConsoleLogsTool;
   return consoleLogsTool?.getConsoleLogs() ?? [];
 }
 
@@ -994,6 +798,7 @@ export function getConsoleLogs(): string[] {
  * Get screenshots
  */
 export function getScreenshots(): Map<string, string> {
+  const screenshotTool = toolRegistry.getInstance("screenshot", null) as ScreenshotTool;
   return screenshotTool?.getScreenshots() ?? new Map();
 }
 
@@ -1001,6 +806,7 @@ export function getScreenshots(): Map<string, string> {
  * Update last interaction timestamp
  */
 export function updateLastInteractionTimestamp(): void {
+  const consoleLogsTool = toolRegistry.getInstance("get_console_logs", null) as GetConsoleLogsTool;
   consoleLogsTool?.updateLastInteractionTimestamp();
 }
 
@@ -1008,6 +814,7 @@ export function updateLastInteractionTimestamp(): void {
  * Update last navigation timestamp
  */
 export function updateLastNavigationTimestamp(): void {
+  const consoleLogsTool = toolRegistry.getInstance("get_console_logs", null) as GetConsoleLogsTool;
   consoleLogsTool?.updateLastNavigationTimestamp();
 }
 
@@ -1015,6 +822,7 @@ export function updateLastNavigationTimestamp(): void {
  * Clear console logs
  */
 export function clearConsoleLogs(): void {
+  const consoleLogsTool = toolRegistry.getInstance("get_console_logs", null) as GetConsoleLogsTool;
   consoleLogsTool?.clearConsoleLogs();
 }
 

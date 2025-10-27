@@ -1,5 +1,13 @@
-import type { CallToolResult, TextContent, ImageContent } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult, TextContent, ImageContent, Tool } from '@modelcontextprotocol/sdk/types.js';
 import type { Page, Browser, APIRequestContext } from 'playwright';
+
+// Session configuration (matches toolHandler.ts)
+export interface SessionConfig {
+  saveSession: boolean;
+  userDataDir: string;
+  screenshotsDir: string;
+  headlessDefault: boolean;
+}
 
 // Context for tool execution
 export interface ToolContext {
@@ -15,9 +23,18 @@ export interface ToolResponse extends CallToolResult {
   isError: boolean;
 }
 
+// Tool metadata (MCP Tool definition)
+export type ToolMetadata = Tool;
+
 // Interface that all tool implementations must follow
 export interface ToolHandler {
   execute(args: any, context: ToolContext): Promise<ToolResponse>;
+}
+
+// Interface for tool classes with metadata
+export interface ToolClass {
+  new (server: any): ToolHandler;
+  getMetadata(sessionConfig?: SessionConfig): ToolMetadata;
 }
 
 // Helper functions for creating responses
