@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import { chromium, Browser, Page } from 'playwright';
-import { InspectAncestorsTool } from '../../../tools/browser/ancestorInspection.js';
+import { InspectAncestorsTool } from '../inspect_ancestors.js';
 
 describe('InspectAncestorsTool', () => {
   let browser: Browser;

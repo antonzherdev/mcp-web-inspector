@@ -1,5 +1,5 @@
-import { WaitForElementTool } from '../../../tools/browser/waitForElement.js';
-import type { ToolContext } from '../../../tools/common/types.js';
+import { WaitForElementTool } from '../wait_for_element.js';
+import type { ToolContext } from '../../../common/types.js';
 import type { Page } from 'playwright';
 
 describe('WaitForElementTool', () => {

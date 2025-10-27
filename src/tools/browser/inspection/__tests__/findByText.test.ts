@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import { chromium, Browser, Page } from 'playwright';
-import { FindByTextTool } from '../../../tools/browser/findByText.js';
+import { FindByTextTool } from '../find_by_text.js';
 
 describe('FindByTextTool', () => {
   let browser: Browser;

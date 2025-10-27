@@ -1,5 +1,6 @@
-import { DragTool, PressKeyTool } from '../../../tools/browser/interaction.js';
-import { ToolContext } from '../../../tools/common/types.js';
+import { DragTool } from '../drag.js';
+import { PressKeyTool } from '../press_key.js';
+import { ToolContext } from '../../../common/types.js';
 import { Page, Browser } from 'playwright';
 import { jest } from '@jest/globals';
 

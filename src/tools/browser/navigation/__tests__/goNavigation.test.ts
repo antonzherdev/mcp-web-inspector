@@ -1,5 +1,6 @@
-import { GoBackTool, GoForwardTool } from '../../../tools/browser/navigation.js';
-import { ToolContext } from '../../../tools/common/types.js';
+import { GoBackTool } from '../go_back.js';
+import { GoForwardTool } from '../go_forward.js';
+import { ToolContext } from '../../../common/types.js';
 import { Page, Browser } from 'playwright';
 import { jest } from '@jest/globals';
 

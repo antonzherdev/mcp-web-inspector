@@ -1,5 +1,5 @@
-import { ScreenshotTool } from '../../../tools/browser/screenshot.js';
-import { ToolContext } from '../../../tools/common/types.js';
+import { ScreenshotTool } from '../screenshot.js';
+import { ToolContext } from '../../../common/types.js';
 import { Page, Browser } from 'playwright';
 import { jest } from '@jest/globals';
 import fs from 'node:fs';

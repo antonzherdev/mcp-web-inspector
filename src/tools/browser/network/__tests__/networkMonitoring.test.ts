@@ -1,9 +1,9 @@
 import { test, expect, beforeEach, afterAll, describe } from '@jest/globals';
 import { chromium, Browser, Page } from 'playwright';
-import { ListNetworkRequestsTool } from '../../../tools/browser/listNetworkRequests.js';
-import { GetRequestDetailsTool } from '../../../tools/browser/getRequestDetails.js';
-import type { ToolContext } from '../../../tools/common/types.js';
-import { clearNetworkLog, getNetworkLog, ensureBrowser, resetBrowserState } from '../../../toolHandler.js';
+import { ListNetworkRequestsTool } from '../list_network_requests.js';
+import { GetRequestDetailsTool } from '../get_request_details.js';
+import type { ToolContext } from '../../../common/types.js';
+import { clearNetworkLog, getNetworkLog, ensureBrowser, resetBrowserState } from '../../../../toolHandler.js';
 
 describe('Network Monitoring Tools', () => {
   let browser: Browser;

@@ -1,5 +1,5 @@
-import { GetTestIdsTool } from '../../../tools/browser/getTestIds.js';
-import { ToolContext } from '../../../tools/common/types.js';
+import { GetTestIdsTool } from '../get_test_ids.js';
+import { ToolContext } from '../../../common/types.js';
 import { Page, Browser } from 'playwright';
 import { jest } from '@jest/globals';
 

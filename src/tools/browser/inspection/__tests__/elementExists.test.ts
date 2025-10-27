@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import { chromium, Browser, Page } from 'playwright';
-import { ElementExistsTool } from '../../../tools/browser/elementExists.js';
+import { ElementExistsTool } from '../element_exists.js';
 
 describe('ElementExistsTool', () => {
   let browser: Browser;

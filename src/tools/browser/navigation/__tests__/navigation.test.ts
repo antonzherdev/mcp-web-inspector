@@ -1,5 +1,5 @@
-import { NavigationTool } from '../../../tools/browser/navigation.js';
-import { ToolContext } from '../../../tools/common/types.js';
+import { NavigateTool } from '../navigate.js';
+import { ToolContext } from '../../../common/types.js';
 import { Page, Browser } from 'playwright';
 import { jest } from '@jest/globals';
 
@@ -31,12 +31,12 @@ const mockContext = {
   server: mockServer
 } as ToolContext;
 
-describe('NavigationTool', () => {
-  let navigationTool: NavigationTool;
+describe('NavigateTool', () => {
+  let navigationTool: NavigateTool;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    navigationTool = new NavigationTool(mockServer);
+    navigationTool = new NavigateTool(mockServer);
     // Reset mocks
     mockIsConnected.mockReturnValue(true);
     mockIsClosed.mockReturnValue(false);

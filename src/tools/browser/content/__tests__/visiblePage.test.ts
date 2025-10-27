@@ -1,5 +1,6 @@
-import { VisibleTextTool, VisibleHtmlTool } from '../../../tools/browser/visiblePage.js';
-import { ToolContext } from '../../../tools/common/types.js';
+import { GetTextTool } from '../get_text.js';
+import { GetHtmlTool } from '../get_html.js';
+import { ToolContext } from '../../../common/types.js';
 import { Page, Browser } from 'playwright';
 import { jest } from '@jest/globals';
 
@@ -34,12 +35,12 @@ const mockContext = {
   server: mockServer
 } as ToolContext;
 
-describe('VisibleTextTool', () => {
-  let visibleTextTool: VisibleTextTool;
+describe('GetTextTool', () => {
+  let visibleTextTool: GetTextTool;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    visibleTextTool = new VisibleTextTool(mockServer);
+    visibleTextTool = new GetTextTool(mockServer);
     // Reset mocks
     mockIsConnected.mockReturnValue(true);
     mockIsClosed.mockReturnValue(false);
@@ -235,12 +236,12 @@ describe('VisibleTextTool', () => {
   });
 });
 
-describe('VisibleHtmlTool', () => {
-  let visibleHtmlTool: VisibleHtmlTool;
+describe('GetHtmlTool', () => {
+  let visibleHtmlTool: GetHtmlTool;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    visibleHtmlTool = new VisibleHtmlTool(mockServer);
+    visibleHtmlTool = new GetHtmlTool(mockServer);
     // Reset mocks
     mockIsConnected.mockReturnValue(true);
     mockIsClosed.mockReturnValue(false);

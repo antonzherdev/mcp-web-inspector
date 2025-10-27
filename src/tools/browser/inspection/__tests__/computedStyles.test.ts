@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import { chromium, Browser, Page } from 'playwright';
-import { GetComputedStylesTool } from '../../../tools/browser/computedStyles.js';
+import { GetComputedStylesTool } from '../get_computed_styles.js';
 
 describe('GetComputedStylesTool', () => {
   let browser: Browser;

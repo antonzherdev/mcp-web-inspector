@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import { chromium, Browser, Page } from 'playwright';
-import { MeasureElementTool } from '../../../tools/browser/measureElement.js';
+import { MeasureElementTool } from '../measure_element.js';
 
 describe('MeasureElementTool', () => {
   let browser: Browser;

@@ -1,5 +1,5 @@
-import { QuerySelectorAllTool } from '../../../tools/browser/querySelectorAll.js';
-import { ToolContext } from '../../../tools/common/types.js';
+import { QuerySelectorTool } from '../query_selector.js';
+import { ToolContext } from '../../../common/types.js';
 import { Page, Browser, Locator } from 'playwright';
 import { jest } from '@jest/globals';
 
@@ -50,12 +50,12 @@ const mockContext = {
   server: mockServer,
 } as ToolContext;
 
-describe('QuerySelectorAllTool', () => {
-  let querySelectorAllTool: QuerySelectorAllTool;
+describe('QuerySelectorTool', () => {
+  let querySelectorAllTool: QuerySelectorTool;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    querySelectorAllTool = new QuerySelectorAllTool(mockServer);
+    querySelectorAllTool = new QuerySelectorTool(mockServer);
     mockIsConnected.mockReturnValue(true);
     mockIsClosed.mockReturnValue(false);
   });

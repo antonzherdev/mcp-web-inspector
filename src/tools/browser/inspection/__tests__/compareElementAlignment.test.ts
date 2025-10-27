@@ -1,5 +1,5 @@
-import { CompareElementAlignmentTool } from '../../../tools/browser/compareElementAlignment.js';
-import { ToolContext } from '../../../tools/common/types.js';
+import { CompareElementAlignmentTool } from '../compare_element_alignment.js';
+import { ToolContext } from '../../../common/types.js';
 import { Page, Browser, Locator } from 'playwright';
 import { jest } from '@jest/globals';
 

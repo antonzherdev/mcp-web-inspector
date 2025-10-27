@@ -1,5 +1,5 @@
-import { ElementVisibilityTool } from '../../../tools/browser/elementVisibility.js';
-import { ToolContext } from '../../../tools/common/types.js';
+import { CheckVisibilityTool } from '../check_visibility.js';
+import { ToolContext } from '../../../common/types.js';
 import { Page, Browser, Locator } from 'playwright';
 import { jest } from '@jest/globals';
 
@@ -49,12 +49,12 @@ const mockContext = {
   server: mockServer,
 } as ToolContext;
 
-describe('ElementVisibilityTool', () => {
-  let visibilityTool: ElementVisibilityTool;
+describe('CheckVisibilityTool', () => {
+  let visibilityTool: CheckVisibilityTool;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    visibilityTool = new ElementVisibilityTool(mockServer);
+    visibilityTool = new CheckVisibilityTool(mockServer);
     mockIsConnected.mockReturnValue(true);
     mockIsClosed.mockReturnValue(false);
   });

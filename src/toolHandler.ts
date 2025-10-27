@@ -1,11 +1,10 @@
 import type { Browser, Page } from 'playwright';
 import { chromium, firefox, webkit, devices } from 'playwright';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { BROWSER_TOOLS } from './tools.js';
+import { BROWSER_TOOLS } from './toolConstants.js';
 import type { ToolContext } from './tools/common/types.js';
 import { checkBrowsersInstalled, getInstallationInstructions } from './utils/browserCheck.js';
 import { toolRegistry } from './tools/common/registry.js';
-import './tools/browser/register.js'; // Auto-registers all tools
 import { ScreenshotTool } from './tools/browser/content/screenshot.js';
 import { GetConsoleLogsTool } from './tools/browser/console/get_console_logs.js';
 

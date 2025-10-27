@@ -1,5 +1,5 @@
-import { ConsoleLogsTool } from '../../../tools/browser/console.js';
-import { ToolContext } from '../../../tools/common/types.js';
+import { GetConsoleLogsTool } from '../get_console_logs.js';
+import { ToolContext } from '../../../common/types.js';
 import { jest } from '@jest/globals';
 
 // Mock the server
@@ -12,12 +12,12 @@ const mockContext = {
   server: mockServer
 } as ToolContext;
 
-describe('ConsoleLogsTool', () => {
-  let consoleLogsTool: ConsoleLogsTool;
+describe('GetConsoleLogsTool', () => {
+  let consoleLogsTool: GetConsoleLogsTool;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    consoleLogsTool = new ConsoleLogsTool(mockServer);
+    consoleLogsTool = new GetConsoleLogsTool(mockServer);
   });
 
   test('should register console messages', () => {

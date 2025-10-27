@@ -1,5 +1,5 @@
-import { InspectDomTool } from '../../../tools/browser/inspectDom.js';
-import { ToolContext } from '../../../tools/common/types.js';
+import { InspectDomTool } from '../inspect_dom.js';
+import { ToolContext } from '../../../common/types.js';
 import { Page, Browser } from 'playwright';
 import { jest } from '@jest/globals';
 
