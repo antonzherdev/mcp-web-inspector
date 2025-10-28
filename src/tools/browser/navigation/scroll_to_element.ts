@@ -49,8 +49,11 @@ export class ScrollToElementTool extends BrowserToolBase {
         ]);
       }
 
-      // Get element info for output
-      const { element, elementIndex, totalCount } = await this.selectPreferredLocator(locator);
+      // Use standard element selection with error on multiple matches
+      const { element } = await this.selectPreferredLocator(locator, {
+        errorOnMultiple: true,
+        originalSelector: args.selector,
+      });
 
       // Scroll into view based on position
       if (position === 'center') {
@@ -88,12 +91,6 @@ export class ScrollToElementTool extends BrowserToolBase {
       messages.push('');
       messages.push('💡 Common next step - Verify visibility:');
       messages.push(`   element_visibility({ selector: "${args.selector}" }) - Check if element is in viewport`);
-
-      // Add selection warning if multiple elements matched
-      const warning = this.formatElementSelectionInfo(args.selector, elementIndex, totalCount);
-      if (warning) {
-        messages.push('', warning);
-      }
 
       return createSuccessResponse(messages);
     });

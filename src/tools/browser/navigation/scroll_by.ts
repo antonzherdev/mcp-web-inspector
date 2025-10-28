@@ -96,8 +96,11 @@ export class ScrollByTool extends BrowserToolBase {
           ]);
         }
 
-        // Select preferred element if multiple matches
-        const { element, elementIndex, totalCount } = await this.selectPreferredLocator(locator);
+        // Use standard element selection with error on multiple matches
+        const { element } = await this.selectPreferredLocator(locator, {
+          errorOnMultiple: true,
+          originalSelector: args.selector,
+        });
 
         // Scroll the element
         const scrollResult = await element.evaluate((el, scrollAmount) => {
@@ -146,12 +149,6 @@ export class ScrollByTool extends BrowserToolBase {
             messages.push('💡 At container bottom - Check for lazy-loaded content:');
             messages.push(`   inspect_dom({ selector: "${args.selector}" }) - See if new children appeared`);
           }
-        }
-
-        // Add selection warning if multiple elements matched
-        const warning = this.formatElementSelectionInfo(args.selector, elementIndex, totalCount);
-        if (warning) {
-          messages.push('', warning);
         }
 
         return createSuccessResponse(messages);
