@@ -54,6 +54,7 @@ export class GetComputedStylesTool extends BrowserToolBase implements ToolHandle
       const locator = page.locator(normalizedSelector);
       const { element, elementIndex, totalCount } = await this.selectPreferredLocator(locator, {
         elementIndex: args.elementIndex,
+        originalSelector: args.selector,
       });
 
       // Format selection warning if multiple elements matched

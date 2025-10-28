@@ -39,6 +39,7 @@ export class CheckVisibilityTool extends BrowserToolBase {
         // Use standard element selection with visibility preference
         const { element, elementIndex, totalCount } = await this.selectPreferredLocator(locator, {
           elementIndex: args.elementIndex,
+          originalSelector: args.selector,
         });
 
         // Format selection warning if multiple elements matched

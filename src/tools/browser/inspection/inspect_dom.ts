@@ -104,7 +104,9 @@ More efficient than get_html() or evaluate(). Supports testid shortcuts.`,
           return createErrorResponse(`Element not found: ${args.selector || 'body'}`);
         }
 
-        const { element, elementIndex, totalCount } = await this.selectPreferredLocator(locator);
+        const { element, elementIndex, totalCount } = await this.selectPreferredLocator(locator, {
+          originalSelector: args.selector || 'body',
+        });
 
         // Get the target element and its semantic children
         const inspectionData = await element.evaluate(

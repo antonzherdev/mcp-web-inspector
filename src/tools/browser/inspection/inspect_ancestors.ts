@@ -93,7 +93,9 @@ export class InspectAncestorsTool extends BrowserToolBase {
         };
       }
 
-      const { element, elementIndex, totalCount } = await this.selectPreferredLocator(locator);
+      const { element, elementIndex, totalCount } = await this.selectPreferredLocator(locator, {
+        originalSelector: args.selector,
+      });
 
       // Use the selected element for ancestor traversal
       const ancestors = await element.evaluate(

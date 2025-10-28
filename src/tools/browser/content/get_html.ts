@@ -82,6 +82,7 @@ export class GetHtmlTool extends BrowserToolBase {
 
           const { element, elementIndex, totalCount } = await this.selectPreferredLocator(locator, {
             elementIndex: args.elementIndex,
+            originalSelector: args.selector,
           });
 
           selectionWarning = this.formatElementSelectionInfo(

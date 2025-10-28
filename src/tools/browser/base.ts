@@ -18,11 +18,14 @@ export abstract class BrowserToolBase implements ToolHandler {
   abstract execute(args: any, context: ToolContext): Promise<ToolResponse>;
 
   /**
-   * Normalize selector shortcuts to full Playwright selectors
+   * Normalize selector shortcuts to full Playwright selectors and clean common escaping mistakes
    * - "testid:foo" → "[data-testid='foo']"
    * - "data-test:bar" → "[data-test='bar']"
    * - "data-cy:baz" → "[data-cy='baz']"
-   * - Everything else → pass through
+   * - Removes unnecessary backslash escapes from CSS selectors that LLMs often add
+   * - ".dark\\:bg-gray-700" → ".dark:bg-gray-700"
+   * - ".top-\\[36px\\]" → ".top-[36px]"
+   * - ".top-\\\\[36px\\\\]" → ".top-[36px]" (double-escaped)
    * @param selector The selector string
    * @returns Normalized selector
    */
@@ -33,6 +36,7 @@ export abstract class BrowserToolBase implements ToolHandler {
       'data-cy:': 'data-cy',
     };
 
+    // Handle testid shortcuts first
     for (const [prefix, attr] of Object.entries(prefixMap)) {
       if (selector.startsWith(prefix)) {
         const value = selector.slice(prefix.length);
@@ -40,7 +44,17 @@ export abstract class BrowserToolBase implements ToolHandler {
       }
     }
 
-    return selector;  // CSS, text=, etc. pass through
+    // Clean up common escaping mistakes that LLMs make in CSS selectors
+    // These characters don't need to be escaped in CSS selectors: [ ] :
+    let cleaned = selector;
+
+    // Remove backslash escapes before brackets and colons
+    // Handle both single escapes (\[) and double escapes (\\[)
+    cleaned = cleaned.replace(/\\+\[/g, '[');
+    cleaned = cleaned.replace(/\\+\]/g, ']');
+    cleaned = cleaned.replace(/\\+:/g, ':');
+
+    return cleaned;
   }
 
   /**
@@ -177,7 +191,40 @@ export abstract class BrowserToolBase implements ToolHandler {
     elementIndex: number;
     totalCount: number;
   }> {
-    const count = await locator.count();
+    let count: number;
+
+    try {
+      count = await locator.count();
+    } catch (error) {
+      // Catch selector syntax errors and provide helpful guidance
+      const errorMsg = (error as Error).message;
+      const selector = options?.originalSelector || 'selector';
+
+      if (errorMsg.includes('Unexpected token') ||
+          errorMsg.includes('Invalid selector') ||
+          errorMsg.includes('SyntaxError') ||
+          errorMsg.includes('selector')) {
+        throw new Error(
+          `Invalid CSS selector: "${selector}"\n\n` +
+          `Selector syntax error: ${errorMsg}\n\n` +
+          `💡 Tips:\n` +
+          `  • CSS selectors don't need backslash escapes for [ ] or :\n` +
+          `  • Use .class-name or #id without escaping\n` +
+          `  • For data attributes, use [data-attr="value"]\n` +
+          `  • For testid shortcuts, use testid:name\n\n` +
+          `Examples:\n` +
+          `  ✓ .dark:bg-gray-700\n` +
+          `  ✓ .top-[36px]\n` +
+          `  ✓ testid:submit-button\n` +
+          `  ✓ #login-form\n` +
+          `  ✗ .dark\\:bg-gray-700 (unnecessary escape)\n` +
+          `  ✗ .top-\\[36px\\] (unnecessary escape)`
+        );
+      }
+
+      // Re-throw other errors as-is
+      throw error;
+    }
 
     if (count === 0) {
       throw new Error('No elements found');
