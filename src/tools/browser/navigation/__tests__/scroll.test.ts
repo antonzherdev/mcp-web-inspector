@@ -93,6 +93,11 @@ describe('Scroll Tools', () => {
       expect(mockScrollIntoViewIfNeeded).toHaveBeenCalled();
       expect(result.isError).toBe(false);
       expect(result.content[0].text).toContain('Scrolled to element');
+
+      // Should suggest verifying visibility
+      const fullResponse = result.content.map(c => c.text).join('\n');
+      expect(fullResponse).toContain('💡 Common next step');
+      expect(fullResponse).toContain('element_visibility');
     });
 
     test('should scroll element into view with center position', async () => {
@@ -182,6 +187,12 @@ describe('Scroll Tools', () => {
       expect(mockPageEvaluate).toHaveBeenCalled();
       expect(result.isError).toBe(false);
       expect(result.content[0].text).toContain('Scrolled page down 500px');
+
+      // Should suggest testing sticky headers when scrolling down and not hitting boundary
+      const fullResponse = result.content.map(c => c.text).join('\n');
+      expect(fullResponse).toContain('💡 Common next step');
+      expect(fullResponse).toContain('sticky header');
+      expect(fullResponse).toContain('measure_element');
     });
 
     test('should scroll page by negative pixels', async () => {
@@ -220,6 +231,12 @@ describe('Scroll Tools', () => {
       expect(result.isError).toBe(false);
       expect(result.content[0].text).toContain('Scrolled page down 1000px');
       expect(result.content.some(c => typeof c.text === 'string' && c.text.includes('Reached bottom'))).toBe(true);
+
+      // Should suggest checking for infinite scroll/lazy-loaded content at bottom
+      const fullResponse = result.content.map(c => c.text).join('\n');
+      expect(fullResponse).toContain('💡 At page bottom');
+      expect(fullResponse).toContain('dynamic content');
+      expect(fullResponse).toContain('element_visibility');
     });
 
     test('should scroll element container by pixels', async () => {
@@ -277,6 +294,12 @@ describe('Scroll Tools', () => {
 
       expect(result.isError).toBe(false);
       expect(result.content.some(c => typeof c.text === 'string' && c.text.includes('Reached bottom'))).toBe(true);
+
+      // Should suggest checking for lazy-loaded content in container
+      const fullResponse = result.content.map(c => c.text).join('\n');
+      expect(fullResponse).toContain('💡 At container bottom');
+      expect(fullResponse).toContain('lazy-loaded content');
+      expect(fullResponse).toContain('inspect_dom');
     });
 
     test('should handle missing page', async () => {

@@ -84,6 +84,11 @@ export class ScrollToElementTool extends BrowserToolBase {
         elementDesc
       ];
 
+      // Add contextual suggestion - verify element is now visible
+      messages.push('');
+      messages.push('💡 Common next step - Verify visibility:');
+      messages.push(`   element_visibility({ selector: "${args.selector}" }) - Check if element is in viewport`);
+
       // Add selection warning if multiple elements matched
       const warning = this.formatElementSelectionInfo(args.selector, elementIndex, totalCount);
       if (warning) {

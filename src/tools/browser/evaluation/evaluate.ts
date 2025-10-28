@@ -109,6 +109,19 @@ export class EvaluateTool extends BrowserToolBase {
       );
     }
 
+    // Pattern: Scrolling operations
+    if (scriptLower.match(/scrollto|scrollby|scrollintoview|scrolltop|scrollleft|window\.scroll|pageyoffset|scrolly/)) {
+      suggestions.push(
+        '📜 Scrolling - Use specialized scroll tools\n' +
+        '   • scroll_to_element({ selector: "...", position: "start|center|end" })\n' +
+        '     → Scrolls element into view (handles containers automatically)\n' +
+        '   • scroll_by({ selector: "html", pixels: 500 })\n' +
+        '     → Precise pixel scrolling for testing sticky headers, infinite scroll\n' +
+        '   Why: Playwright auto-scrolls before interactions, but these tools help with\n' +
+        '        testing scroll behavior, lazy-loading, and scroll-triggered content'
+      );
+    }
+
     return suggestions;
   }
 

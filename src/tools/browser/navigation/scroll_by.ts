@@ -58,9 +58,24 @@ export class ScrollByTool extends BrowserToolBase {
         ];
 
         // Add info if we hit the scroll boundary
-        if (Math.abs(scrollResult.actualScrolled) < Math.abs(pixels)) {
+        const hitBoundary = Math.abs(scrollResult.actualScrolled) < Math.abs(pixels);
+        if (hitBoundary) {
           const boundary = pixels > 0 ? 'bottom' : 'top';
           messages.push(`⚠️  Reached ${boundary} of page (max scroll: ${scrollResult.maxScroll}px)`);
+        }
+
+        // Contextual suggestions
+        if (pixels > 0 && !hitBoundary) {
+          // Scrolling down on page - suggest sticky header testing
+          messages.push('');
+          messages.push('💡 Common next step - Test sticky header/footer:');
+          messages.push('   measure_element({ selector: "header" }) - Check if position stays fixed');
+        } else if (hitBoundary && pixels > 0) {
+          // Hit bottom - suggest checking for infinite scroll or lazy-loaded content
+          messages.push('');
+          messages.push('💡 At page bottom - Check for dynamic content:');
+          messages.push('   element_visibility({ selector: "..." }) - Verify lazy-loaded elements appeared');
+          messages.push('   inspect_dom() - See if new content was added');
         }
 
         return createSuccessResponse(messages);
@@ -120,9 +135,17 @@ export class ScrollByTool extends BrowserToolBase {
         ];
 
         // Add info if we hit the scroll boundary
-        if (Math.abs(scrollResult.actualScrolled) < Math.abs(pixels)) {
+        const hitBoundary = Math.abs(scrollResult.actualScrolled) < Math.abs(pixels);
+        if (hitBoundary) {
           const boundary = pixels > 0 ? 'bottom' : 'top';
           messages.push(`⚠️  Reached ${boundary} of container (max scroll: ${scrollResult.maxScroll}px)`);
+
+          // Suggest checking for lazy-loaded content at container bottom
+          if (pixels > 0) {
+            messages.push('');
+            messages.push('💡 At container bottom - Check for lazy-loaded content:');
+            messages.push(`   inspect_dom({ selector: "${args.selector}" }) - See if new children appeared`);
+          }
         }
 
         // Add selection warning if multiple elements matched

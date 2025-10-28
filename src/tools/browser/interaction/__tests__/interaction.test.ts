@@ -376,6 +376,20 @@ describe('Browser Interaction Tools', () => {
       expect(fullResponse).toContain('compare_positions');
     });
 
+    test('should suggest scroll tools for scrolling operations', async () => {
+      const args = {
+        script: 'window.scrollTo(0, 500); document.querySelector("#el").scrollIntoView();'
+      };
+
+      const result = await evaluateTool.execute(args, mockContext);
+      const fullResponse = result.content.map(c => c.text).join('\n');
+
+      expect(result.isError).toBe(false);
+      expect(fullResponse).toContain('💡 Consider using specialized tools instead');
+      expect(fullResponse).toContain('scroll_to_element');
+      expect(fullResponse).toContain('scroll_by');
+    });
+
     test('should NOT suggest tools for legitimate custom logic', async () => {
       const args = {
         script: 'myCustomFunction(); return mySpecialCalculation();'
