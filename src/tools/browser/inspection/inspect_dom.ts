@@ -30,11 +30,11 @@ export class InspectDomTool extends BrowserToolBase {
   static getMetadata(sessionConfig?: SessionConfig): ToolMetadata {
     return {
       name: "inspect_dom",
-      description: `START HERE FOR LAYOUT DEBUGGING: Progressive DOM inspection that shows parent-child relationships, centering issues, and spacing gaps. Skips wrapper divs and shows only semantic elements (header, nav, main, form, button, elements with test IDs, ARIA roles, etc.).
+      description: `🔍 PRIMARY INSPECTION TOOL - START HERE FOR LAYOUT DEBUGGING: Progressive DOM inspection that shows parent-child relationships, centering issues, spacing gaps, and scrollable containers. Skips wrapper divs and shows only semantic elements (header, nav, main, form, button, elements with test IDs, ARIA roles, etc.).
 
 WORKFLOW: Call without selector for page overview, then drill down by calling with child's selector.
 
-DETECTS: Parent-relative positioning, vertical/horizontal centering, sibling spacing gaps, layout patterns.
+DETECTS: Scrollable containers (shows "scrollable ↕️ 36px" when scrollHeight > clientHeight), parent-relative positioning, vertical/horizontal centering, sibling spacing gaps, layout patterns.
 
 OUTPUT FORMAT:
 [0] <button data-testid="menu">
@@ -50,12 +50,13 @@ OUTPUT FORMAT:
     "Title"
     ✓ visible, 2 children
 
-SYMBOLS: ✓=visible, ✗=hidden, ⚡=interactive, ←→=horizontal edges, ↑↓=vertical edges
+SYMBOLS: ✓=visible, ✗=hidden, ⚡=interactive, ←→=horizontal edges, ↑↓=vertical edges, ↕️=vertical scroll, ↔️=horizontal scroll
 CENTERING: Equal left/right distances = horizontally centered, equal top/bottom = vertically centered
+SCROLL DETECTION: Automatically detects scrollable containers and shows overflow amount (e.g., "scrollable ↕️ 397px" means 397px of hidden content). No need to use evaluate() to compare scrollHeight/clientHeight.
 
 RELATED TOOLS: For comparing TWO elements' alignment (not parent-child), use compare_element_alignment(). For box model (padding/margin), use measure_element().
 
-More efficient than get_html() or evaluate(). Supports testid shortcuts.`,
+⚠️ More efficient than get_html() or evaluate() for structural analysis. Use BEFORE visual tools (screenshot) or evaluate(). Supports testid shortcuts.`,
       inputSchema: {
         type: "object",
         properties: {

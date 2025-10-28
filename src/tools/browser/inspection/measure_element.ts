@@ -11,7 +11,7 @@ export class MeasureElementTool extends BrowserToolBase implements ToolHandler {
   static getMetadata(sessionConfig?: SessionConfig): ToolMetadata {
     return {
       name: "measure_element",
-      description: "DEBUG SPACING ISSUES: See padding, margin, and border measurements in visual box model format. Use when elements have unexpected spacing or size. Returns compact visual representation showing content → padding → border → margin with directional arrows (↑24px for top margin, etc.). For parent-child centering issues, use inspect_dom() first (shows if child is centered in parent). For comparing alignment between two elements, use compare_element_alignment(). More readable than get_computed_styles() for box model debugging.",
+      description: "📏 MEASUREMENT TOOL - DEBUG SPACING ISSUES: See padding, margin, border, and dimension measurements in visual box model format. Use when elements have unexpected spacing or size. Returns compact visual representation showing content → padding → border → margin with directional arrows (↑24px for top margin, etc.). Also provides raw dimensions useful for scroll detection (clientHeight vs content height). For parent-child centering issues, use inspect_dom() first (shows if child is centered in parent). For comparing alignment between two elements, use compare_element_alignment(). For quick scroll detection, use inspect_dom() instead (shows 'scrollable ↕️'). More readable than get_computed_styles() or evaluate() for box model debugging.",
       inputSchema: {
         type: "object",
         properties: {

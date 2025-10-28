@@ -8,7 +8,7 @@ export class EvaluateTool extends BrowserToolBase {
   static getMetadata(sessionConfig?: SessionConfig): ToolMetadata {
     return {
       name: "evaluate",
-      description: "Execute JavaScript in the browser console and return the result (JSON-stringified). Automatically detects common patterns and suggests specialized tools when applicable. ⚠️ AVOID for common tasks - use specialized tools instead: inspect_dom() for page structure, compare_positions() for alignment, measure_element() for spacing/dimensions, query_selector() for finding elements. Only use evaluate() for custom logic not covered by other tools.",
+      description: "⚙️ CUSTOM JAVASCRIPT EXECUTION - Execute arbitrary JavaScript in the browser console and return the result (JSON-stringified). ⚠️ NOT for: scroll detection (inspect_dom shows 'scrollable ↕️'), element dimensions (use measure_element), DOM inspection (use inspect_dom), CSS properties (use get_computed_styles), position comparison (use compare_positions). Use ONLY when specialized tools cannot accomplish the task. Essential for: custom page interactions, complex calculations not covered by other tools. Automatically detects common patterns and suggests better alternatives. High flexibility but less efficient than specialized tools.",
       inputSchema: {
         type: "object",
         properties: {
@@ -44,8 +44,21 @@ export class EvaluateTool extends BrowserToolBase {
       );
     }
 
+    // Pattern: Checking if element is scrollable (scrollHeight > clientHeight)
+    if (scriptLower.match(/scrollheight|clientheight|scrollwidth|clientwidth/) &&
+        (scriptLower.match(/scrollheight.*clientheight|clientheight.*scrollheight|scrollwidth.*clientwidth|clientwidth.*scrollwidth/) ||
+         scriptLower.match(/>\s*el\.clientheight|<\s*el\.scrollheight/))) {
+      suggestions.push(
+        '📜 Scroll Detection - Use inspect_dom({ selector: "..." })\n' +
+        '   Why: Already shows "scrollable ↕️ [amount]px" for overflow containers\n' +
+        '   Token savings: ~90% fewer tokens than evaluate() + manual calculation\n' +
+        '   Better than: Comparing scrollHeight > clientHeight manually'
+      );
+    }
+
     // Pattern: Getting element position/size/layout
-    if (scriptLower.match(/getboundingclientrect|offsetwidth|offsetheight|offsetleft|offsettop|clientwidth|clientheight/)) {
+    if (scriptLower.match(/getboundingclientrect|offsetwidth|offsetheight|offsetleft|offsettop/) ||
+        (scriptLower.match(/clientwidth|clientheight/) && !scriptLower.match(/scrollheight|scrollwidth/))) {
       suggestions.push(
         '📏 Element Measurements - Use measure_element({ selector: "..." })\n' +
         '   Why: Returns position, size, gaps to siblings, and visibility state\n' +
