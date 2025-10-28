@@ -8,7 +8,7 @@ export class ScrollByTool extends BrowserToolBase {
   static getMetadata(sessionConfig?: SessionConfig): ToolMetadata {
     return {
       name: "scroll_by",
-      description: "Scroll a container (or page) by a specific number of pixels. Auto-detects scroll direction when only one is available. Essential for: testing sticky headers/footers, triggering infinite scroll, carousel navigation, precise scroll position testing. Use 'html' or 'body' for page scrolling. Positive pixels = down/right, negative = up/left. Reports scroll position as percentage.",
+      description: "Scroll a container (or page) by a specific number of pixels. Auto-detects scroll direction when only one is available. Essential for: testing sticky headers/footers, triggering infinite scroll, carousel navigation, precise scroll position testing. Use 'html' or 'body' for page scrolling. Positive pixels = down/right, negative = up/left. Outputs: ✓ success summary with axis position and percent of max scroll; ⚠️ boundary notice when movement is limited; ⚠️ ambiguous-direction guidance when both axes scroll; ⚠️ not-scrollable report with ancestor suggestions; 💡 follow-up tips matching the detected scenario.",
       inputSchema: {
         type: "object",
         properties: {
@@ -176,128 +176,152 @@ export class ScrollByTool extends BrowserToolBase {
         });
 
         // Scroll the element and collect scrollable ancestor info
-        const scrollResult = await element.evaluate(({ scrollAmount, scrollDirection }) => {
-          const el = this as unknown as Element;
-          const maxVertical = el.scrollHeight - el.clientHeight;
-          const maxHorizontal = el.scrollWidth - el.clientWidth;
+        const scrollResult = await element.evaluate(
+          (el, { scrollAmount, scrollDirection }) => {
+            const maxVertical = el.scrollHeight - el.clientHeight;
+            const maxHorizontal = el.scrollWidth - el.clientWidth;
 
-          // Auto-detect direction if needed
-          let actualDirection = scrollDirection;
-          if (scrollDirection === 'auto') {
-            const verticalScrollable = maxVertical > 0;
-            const horizontalScrollable = maxHorizontal > 0;
-
-            if (verticalScrollable && !horizontalScrollable) {
-              actualDirection = 'vertical';
-            } else if (horizontalScrollable && !verticalScrollable) {
-              actualDirection = 'horizontal';
-            } else if (verticalScrollable && horizontalScrollable) {
-              // Both directions scrollable - need explicit direction
-              return {
-                error: 'ambiguous',
-                maxVertical,
-                maxHorizontal,
-                tagName: el.tagName.toLowerCase(),
-                testId: el.getAttribute('data-testid'),
-                id: el.id,
-                className: el.className
-              };
-            } else {
-              // Neither direction scrollable - collect ancestors
-              const scrollableAncestors: Array<{
-                tagName: string;
-                testId: string | null;
-                id: string;
-                className: string;
-                maxScrollVertical: number;
-                maxScrollHorizontal: number;
-              }> = [];
-
-              let parent = el.parentElement;
-              while (parent && scrollableAncestors.length < 3) {
-                const maxParentVertical = parent.scrollHeight - parent.clientHeight;
-                const maxParentHorizontal = parent.scrollWidth - parent.clientWidth;
-                if (maxParentVertical > 0 || maxParentHorizontal > 0) {
-                  scrollableAncestors.push({
-                    tagName: parent.tagName.toLowerCase(),
-                    testId: parent.getAttribute('data-testid'),
-                    id: parent.id,
-                    className: parent.className,
-                    maxScrollVertical: maxParentVertical,
-                    maxScrollHorizontal: maxParentHorizontal
-                  });
-                }
-                parent = parent.parentElement;
+            const getClassName = (element: Element) => {
+              const value = (element as any).className as unknown;
+              if (typeof value === 'string') {
+                return value;
               }
+              if (
+                value &&
+                typeof (value as { baseVal?: unknown }).baseVal === 'string'
+              ) {
+                return (value as { baseVal: string }).baseVal;
+              }
+              return '';
+            };
 
-              return {
-                error: 'not-scrollable',
-                maxVertical: 0,
-                maxHorizontal: 0,
-                tagName: el.tagName.toLowerCase(),
-                testId: el.getAttribute('data-testid'),
-                id: el.id,
-                className: el.className,
-                scrollableAncestors
-              };
+            // Auto-detect direction if needed
+            let actualDirection = scrollDirection;
+            if (scrollDirection === 'auto') {
+              const verticalScrollable = maxVertical > 0;
+              const horizontalScrollable = maxHorizontal > 0;
+
+              if (verticalScrollable && !horizontalScrollable) {
+                actualDirection = 'vertical';
+              } else if (horizontalScrollable && !verticalScrollable) {
+                actualDirection = 'horizontal';
+              } else if (verticalScrollable && horizontalScrollable) {
+                // Both directions scrollable - need explicit direction
+                return {
+                  error: 'ambiguous',
+                  maxVertical,
+                  maxHorizontal,
+                  tagName: el.tagName ? el.tagName.toLowerCase() : 'element',
+                  testId: el.getAttribute('data-testid'),
+                  id: (el as any).id ?? null,
+                  className: getClassName(el)
+                };
+              } else {
+                // Neither direction scrollable - collect ancestors
+                const scrollableAncestors: Array<{
+                  tagName: string;
+                  testId: string | null;
+                  id: string | null;
+                  className: string;
+                  maxScrollVertical: number;
+                  maxScrollHorizontal: number;
+                }> = [];
+
+                let parent = el.parentElement;
+                while (parent && scrollableAncestors.length < 3) {
+                  const maxParentVertical =
+                    parent.scrollHeight - parent.clientHeight;
+                  const maxParentHorizontal =
+                    parent.scrollWidth - parent.clientWidth;
+                  if (maxParentVertical > 0 || maxParentHorizontal > 0) {
+                    scrollableAncestors.push({
+                      tagName: parent.tagName
+                        ? parent.tagName.toLowerCase()
+                        : 'element',
+                      testId: parent.getAttribute('data-testid'),
+                      id: (parent as any).id ?? null,
+                      className: getClassName(parent),
+                      maxScrollVertical: maxParentVertical,
+                      maxScrollHorizontal: maxParentHorizontal
+                    });
+                  }
+                  parent = parent.parentElement;
+                }
+
+                return {
+                  error: 'not-scrollable',
+                  maxVertical: 0,
+                  maxHorizontal: 0,
+                  tagName: el.tagName ? el.tagName.toLowerCase() : 'element',
+                  testId: el.getAttribute('data-testid'),
+                  id: (el as any).id ?? null,
+                  className: getClassName(el),
+                  scrollableAncestors
+                };
+              }
             }
-          }
 
-          // Perform the scroll
-          const isVertical = actualDirection === 'vertical';
-          const previousScroll = isVertical ? el.scrollTop : el.scrollLeft;
+            // Perform the scroll
+            const isVertical = actualDirection === 'vertical';
+            const previousScroll = isVertical ? el.scrollTop : el.scrollLeft;
 
-          if (isVertical) {
-            el.scrollTop += scrollAmount;
-          } else {
-            el.scrollLeft += scrollAmount;
-          }
-
-          const newScroll = isVertical ? el.scrollTop : el.scrollLeft;
-          const actualScrolled = newScroll - previousScroll;
-
-          // Find scrollable ancestors (up to 3)
-          const scrollableAncestors: Array<{
-            tagName: string;
-            testId: string | null;
-            id: string;
-            className: string;
-            maxScrollVertical: number;
-            maxScrollHorizontal: number;
-          }> = [];
-
-          let parent = el.parentElement;
-          while (parent && scrollableAncestors.length < 3) {
-            const maxParentVertical = parent.scrollHeight - parent.clientHeight;
-            const maxParentHorizontal = parent.scrollWidth - parent.clientWidth;
-            if (maxParentVertical > 0 || maxParentHorizontal > 0) {
-              scrollableAncestors.push({
-                tagName: parent.tagName.toLowerCase(),
-                testId: parent.getAttribute('data-testid'),
-                id: parent.id,
-                className: parent.className,
-                maxScrollVertical: maxParentVertical,
-                maxScrollHorizontal: maxParentHorizontal
-              });
+            if (isVertical) {
+              el.scrollTop += scrollAmount;
+            } else {
+              el.scrollLeft += scrollAmount;
             }
-            parent = parent.parentElement;
-          }
 
-          return {
-            previous: previousScroll,
-            new: newScroll,
-            actualScrolled,
-            maxScroll: isVertical ? maxVertical : maxHorizontal,
-            direction: actualDirection,
-            maxVertical,
-            maxHorizontal,
-            tagName: el.tagName.toLowerCase(),
-            testId: el.getAttribute('data-testid'),
-            id: el.id,
-            className: el.className,
-            scrollableAncestors
-          };
-        }, { scrollAmount: pixels, scrollDirection: direction });
+            const newScroll = isVertical ? el.scrollTop : el.scrollLeft;
+            const actualScrolled = newScroll - previousScroll;
+
+            // Find scrollable ancestors (up to 3)
+            const scrollableAncestors: Array<{
+              tagName: string;
+              testId: string | null;
+              id: string | null;
+              className: string;
+              maxScrollVertical: number;
+              maxScrollHorizontal: number;
+            }> = [];
+
+            let parent = el.parentElement;
+            while (parent && scrollableAncestors.length < 3) {
+              const maxParentVertical =
+                parent.scrollHeight - parent.clientHeight;
+              const maxParentHorizontal =
+                parent.scrollWidth - parent.clientWidth;
+              if (maxParentVertical > 0 || maxParentHorizontal > 0) {
+                scrollableAncestors.push({
+                  tagName: parent.tagName
+                    ? parent.tagName.toLowerCase()
+                    : 'element',
+                  testId: parent.getAttribute('data-testid'),
+                  id: (parent as any).id ?? null,
+                  className: getClassName(parent),
+                  maxScrollVertical: maxParentVertical,
+                  maxScrollHorizontal: maxParentHorizontal
+                });
+              }
+              parent = parent.parentElement;
+            }
+
+            return {
+              previous: previousScroll,
+              new: newScroll,
+              actualScrolled,
+              maxScroll: isVertical ? maxVertical : maxHorizontal,
+              direction: actualDirection,
+              maxVertical,
+              maxHorizontal,
+              tagName: el.tagName ? el.tagName.toLowerCase() : 'element',
+              testId: el.getAttribute('data-testid'),
+              id: (el as any).id ?? null,
+              className: getClassName(el),
+              scrollableAncestors
+            };
+          },
+          { scrollAmount: pixels, scrollDirection: direction }
+        );
 
         // Build element description
         let elementDesc = `<${scrollResult.tagName}`;

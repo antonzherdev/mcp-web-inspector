@@ -327,6 +327,36 @@ describe('Scroll Tools', () => {
       expect(fullResponse).toContain('inspect_dom');
     });
 
+    test('should handle containers without tagName gracefully', async () => {
+      const args = { selector: 'testid:chart-region', pixels: 150 };
+
+      mockEvaluate.mockImplementationOnce((fn, params: any) => {
+        if (typeof fn === 'function') {
+          const element = {
+            scrollHeight: 400,
+            clientHeight: 200,
+            scrollWidth: 0,
+            clientWidth: 0,
+            parentElement: null,
+            scrollTop: 0,
+            scrollLeft: 0,
+            getAttribute: () => null,
+            tagName: undefined,
+            className: { baseVal: 'chart-svg-root' }
+          };
+          return Promise.resolve(fn(element as any, params));
+        }
+        return Promise.resolve();
+      });
+
+      const result = await scrollByTool.execute(args, mockContext);
+
+      expect(result.isError).toBe(false);
+      const combined = result.content.map(entry => entry.text).join('\n');
+      expect(combined).toContain('✓ Scrolled <element');
+      expect(combined).toContain('Position: y=');
+    });
+
     test('should handle missing page', async () => {
       const args = { selector: 'html', pixels: 100 };
 
