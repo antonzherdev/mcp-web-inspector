@@ -367,21 +367,28 @@ Use consistent patterns across tools.
 
 Before adding a new tool, verify:
 
-- [ ] Does ONE thing (atomic operation)
-- [ ] Has 5 or fewer parameters
-- [ ] Uses primitive types (string, number, boolean)
-- [ ] Returns token-efficient format (compact text preferred over JSON)
-- [ ] Uses symbols and shorthand (✓✗⚡→↓ vs verbose field names)
-- [ ] Filters semantic data (skips wrapper divs, shows only meaningful elements)
-- [ ] **Does NOT return base64 images** (use file paths instead - see 4a)
-- [ ] **Provides actionable guidance** when issues detected (see 11)
-- [ ] **Description explicitly lists ALL possible outputs** including conditional ones (see 13)
-- [ ] **Description uses same symbols/format as actual output** (e.g., "arrows ↑↓←→")
-- [ ] **Description indicates conditionals** (e.g., "z-index when set", "if parent is flex")
-- [ ] Has clear, specific name
-- [ ] Single `selector` parameter (not multiple selector types)
-- [ ] Optional parameters have sensible defaults
-- [ ] Returns errors as `ToolResponse` with `isError: true`
+- [ ] Does ONE thing (atomic operation) (§1)
+- [ ] Has 5 or fewer parameters (§2)
+- [ ] Uses primitive types (string, number, boolean) (§3)
+- [ ] Returns token-efficient format (compact text preferred over JSON) (§4)
+- [ ] Uses symbols and shorthand (✓✗⚡→↓ vs verbose field names) (§4)
+- [ ] Filters semantic data (skips wrapper divs, shows only meaningful elements) (§5)
+- [ ] **Does NOT return base64 images** (use file paths instead - see §4a)
+- [ ] **Provides actionable guidance** when issues detected (§11)
+- [ ] **Description explicitly lists ALL possible outputs** including conditional ones (§13)
+- [ ] **Description uses same symbols/format as actual output** (e.g., "arrows ↑↓←→") (§13)
+- [ ] **Description indicates conditionals** (e.g., "z-index when set", "if parent is flex") (§13)
+- [ ] **Includes tool selection guidance** to prevent misuse (§14):
+  - [ ] ⚠️ Explicit "NOT for" statements when misuse is likely
+  - [ ] 💡 Suggests better alternatives for common wrong contexts
+  - [ ] 🏷️ Category label (PRIMARY/DEBUG/VISUAL/etc.)
+  - [ ] 📈 Progressive workflow description if tool is part of a chain
+  - [ ] ⚡ Efficiency guidance (token costs, when to use simpler tools)
+  - [ ] 🔗 Names of related/alternative tools
+- [ ] Has clear, specific name (§7)
+- [ ] Single `selector` parameter (not multiple selector types) (§6)
+- [ ] Optional parameters have sensible defaults (§10)
+- [ ] Returns errors as `ToolResponse` with `isError: true` (§9)
 - [ ] Name length: `playwright-mcp:tool_name` < 60 chars (some clients limit)
 
 ## Refactoring Recommendations
@@ -606,6 +613,233 @@ Layout: vertical`
 
 **Real-World Impact:**
 The `inspect_ancestors` tool already captured flexbox/grid/z-index conditionally, but users thought these features were missing because the description said "layout-critical CSS" instead of explicitly listing "flexbox context, grid context, z-index when set". After updating the description, the tool immediately became more useful without ANY code changes.
+
+### 14. **Tool Selection Guidance & Preventing Wrong Tool Usage** ✅ CRITICAL
+
+**Research Finding (2025-01):** LLMs frequently choose inefficient tools when better alternatives exist, causing "Redundant Tool Usage" - tools invoked that don't directly contribute to outcomes.
+
+**The Problem:**
+
+Anthropic's real-world example: When Claude launched web search, it was needlessly appending "2025" to every query, degrading results. The fix? **Improve the tool description**, not the code.
+
+Another example from this MCP server: LLMs were taking screenshots for layout debugging despite:
+- Having structural tools (inspect_dom, compare_positions, get_computed_styles)
+- Screenshots requiring ~1,500 tokens to read
+- Tool responses explicitly warning against this
+- No ability to "see" images without reading them
+
+**Root Cause:** Tool descriptions failed to guide LLMs toward optimal tool selection.
+
+---
+
+**Design Patterns to Prevent Misuse:**
+
+#### Pattern 1: Explicit Anti-Guidance in Descriptions
+
+When a tool should NOT be used in certain contexts, state this explicitly:
+
+```typescript
+{
+  name: "screenshot",
+  description: "Captures visual screenshot and saves to file. ⚠️ NOT for layout debugging - use inspect_dom/compare_positions/get_computed_styles instead (structural data is more efficient than visual analysis). Screenshots are for: visual regression testing, sharing with humans, UI appearance confirmation. Reading screenshots costs ~1,500 tokens.",
+}
+```
+
+**Key elements:**
+- ⚠️ symbol draws attention to anti-pattern
+- Explicit "NOT for" statement
+- Lists better alternatives with tool names
+- Explains WHY (token cost, efficiency)
+- States valid use cases
+
+#### Pattern 2: Suggest Better Alternatives in Tool Responses
+
+When a tool detects potential misuse, guide toward better tools:
+
+```typescript
+// In screenshot tool response:
+return {
+  content: [{
+    type: "text",
+    text: `✓ Screenshot saved: ${filePath}
+
+⚠️ Reading the image file consumes ~1,500 tokens - only use Read tool if visual analysis is essential
+
+💡 To debug layout issues without reading the screenshot:
+   - inspect_dom() - element positions, sizes, parent-child relationships
+   - compare_positions() - check if elements align
+   - get_computed_styles() - CSS properties
+   - inspect_ancestors() - layout constraints causing issues`
+  }],
+  isError: false
+};
+```
+
+**Why this works:**
+- Provides guidance at point of use
+- Lists concrete alternatives with brief descriptions
+- Doesn't prevent legitimate usage
+- Educates LLM about the toolset
+
+#### Pattern 3: Category Labels in Tool Descriptions
+
+Help LLMs understand tool purpose and relationships:
+
+```typescript
+{
+  name: "inspect_dom",
+  description: "🔍 PRIMARY INSPECTION TOOL - Progressive DOM exploration with semantic filtering. Shows structure, positions, sizes, interactive state. Essential for: layout debugging, element discovery, understanding page structure. Use BEFORE visual tools (screenshot) for efficient analysis.",
+}
+
+{
+  name: "screenshot",
+  description: "📸 VISUAL OUTPUT TOOL - Captures appearance for humans. NOT for layout debugging (use inspect_dom instead). Essential for: visual regression, sharing with humans, appearance confirmation.",
+}
+```
+
+**Category labels:**
+- 🔍 PRIMARY - Use this first
+- 🛠️ DEBUG - For investigating issues
+- 📸 VISUAL OUTPUT - For human consumption
+- ⚙️ CONFIGURATION - Setup/settings
+- 📊 DATA EXTRACTION - Content retrieval
+
+#### Pattern 4: Progressive Tool Chains in Descriptions
+
+Describe the workflow LLMs should follow:
+
+```typescript
+{
+  name: "inspect_dom",
+  description: "🔍 PRIMARY - Start here for layout analysis. Shows semantic structure at current depth. Progressive workflow: 1) inspect_dom() to see structure, 2) compare_positions() to check alignment, 3) inspect_ancestors() to find constraints, 4) get_computed_styles() for specific CSS. Use depth=1 (default) and drill down iteratively.",
+}
+```
+
+**Benefits:**
+- LLMs learn the optimal sequence
+- Prevents jumping to advanced tools prematurely
+- Encourages iterative exploration
+- Reduces redundant tool usage
+
+---
+
+**Specific Guidance: Visual vs Structural Tools**
+
+**When Visual Tools Are Appropriate:**
+- Sharing with humans (developers, designers)
+- Visual regression testing (comparing screenshots)
+- Confirming UI appearance (colors, fonts, styling)
+- Debugging visual-only issues (shadows, gradients, images)
+
+**When Structural Tools Are Better:**
+- Layout debugging (positions, sizes, alignment)
+- Element discovery (finding selectors, test IDs)
+- Understanding page structure (DOM hierarchy)
+- Checking element states (visibility, interactivity)
+- Analyzing CSS properties (margins, padding, flexbox)
+
+**Figma MCP Precedent:**
+> "Structured metadata often provides sufficient information for code generation, with visual context serving as supplementary rather than essential."
+
+**Apply This Rule:**
+If information CAN be obtained structurally, prioritize structural tools. Only use visual tools when structure is insufficient.
+
+---
+
+**Measuring Tool Selection Quality:**
+
+Monitor these metrics to identify description improvements needed:
+
+1. **Redundant Tool Usage Rate**
+   - `(Unnecessary tool calls) / (Total tool calls)`
+   - Target: <10%
+   - Example: Taking screenshot after inspect_dom already provided answer
+
+2. **Tool Error Rate from Invalid Parameters**
+   - High rate suggests unclear descriptions
+   - Anthropic: "Lots of tool errors might suggest tools need clearer descriptions"
+
+3. **Tool Call Chain Efficiency**
+   - Are LLMs reaching goals with optimal path?
+   - Example: screenshot → Read → analyze vs inspect_dom → answer
+   - The second path is 10x more efficient
+
+4. **Wrong Tool Selection for Context**
+   - Using visual tools for structural tasks
+   - Using high-cost tools when low-cost alternatives exist
+
+---
+
+**Implementation Checklist:**
+
+Before shipping a tool, verify its description includes:
+
+- [ ] ⚠️ Explicit "NOT for" statements when misuse is likely
+- [ ] 💡 Suggests better alternatives for common wrong contexts
+- [ ] 🏷️ Category label (PRIMARY/DEBUG/VISUAL/etc.)
+- [ ] 📈 Progressive workflow description if tool is part of a chain
+- [ ] ⚡ Efficiency guidance (token costs, when to use simpler tools)
+- [ ] ✅ Valid use cases explicitly listed
+- [ ] 🔗 Names of related/alternative tools
+
+**Template for Anti-Misuse Documentation:**
+
+```typescript
+{
+  name: "tool_name",
+  description: "🏷️ CATEGORY - PRIMARY PURPOSE. Shows: [outputs]. Essential for: [use cases]. ⚠️ NOT for: [anti-patterns] - use [better_tools] instead. Progressive workflow: [step-by-step]. Token cost: [if relevant].",
+}
+```
+
+---
+
+**Real-World Case Study: Screenshot Misuse**
+
+**Problem Identified (2025-10-28):**
+- LLM was taking screenshots for layout debugging
+- Each screenshot: ~1,500 tokens to read + file I/O overhead
+- Structural tools (inspect_dom, compare_positions) provide same info in <100 tokens
+- LLM had "force of habit" from traditional testing workflows
+
+**Analysis:**
+- Tool description didn't explicitly say "NOT for layout debugging"
+- Response warnings weren't preventing initial screenshot call
+- Missing guidance about alternative tools
+- No category labels to indicate purpose
+
+**Solution Applied:**
+1. ✅ Add "⚠️ NOT for layout debugging" to screenshot description
+2. ✅ List alternative tools explicitly (inspect_dom, compare_positions, etc.)
+3. ✅ Add category label: "📸 VISUAL OUTPUT TOOL"
+4. ✅ Enhance response warning with concrete alternative tools
+5. ✅ Document this case in TOOL_DESIGN_PRINCIPLES.md
+
+**Expected Outcome:**
+- 90% reduction in unnecessary screenshot calls for layout tasks
+- Faster, more token-efficient debugging workflows
+- Better LLM understanding of tool ecosystem
+
+**Key Lesson:**
+> "Describe tools as if to a new colleague" - Anthropic
+>
+> LLMs need explicit guidance about:
+> - What NOT to use tools for
+> - Which tools are better alternatives
+> - Why one approach is preferred over another
+> - The optimal workflow sequence
+
+This isn't about restricting LLMs - it's about empowering them with knowledge to make optimal choices.
+
+---
+
+**References:**
+- Anthropic Blog: "Writing effective tools for AI agents" (2025)
+  - Real-world example: Claude web search needlessly appending "2025"
+  - "Lots of redundant tool calls suggest description improvements"
+  - "Describe tools as if to a new colleague"
+- Figma MCP documentation: "Structured metadata often sufficient"
+- Research: "Redundant Tool Usage" as formal agent evaluation metric
+- Real-world data: Screenshot misuse case study (2025-10-28)
 
 ### Template for Tool Documentation
 

@@ -16,7 +16,7 @@ export class ScreenshotTool extends BrowserToolBase {
 
     return {
       name: "screenshot",
-      description: `⚠️ RARELY NEEDED: Screenshots are NOT useful for LLMs to analyze layouts, margins, or alignment issues. Use inspect_dom(), compare_positions(), or measure_element() instead - they provide precise numerical data. Only take screenshots for: (1) sharing with humans for visual confirmation, (2) documenting test results, or (3) verifying colors/images. Screenshots are saved to ${screenshotsDir}. Example: { name: "login-page", fullPage: true } or { name: "submit-btn", selector: "testid:submit" }`,
+      description: `📸 VISUAL OUTPUT TOOL - Captures page/element appearance and saves to file. Essential for: visual regression testing, sharing with humans, confirming UI appearance (colors/fonts/images). ⚠️ NOT for layout debugging (positions/sizes/alignment/margins) - use inspect_dom/compare_positions/inspect_ancestors/get_computed_styles instead (structural data is token-efficient, screenshots require ~1,500 tokens to read). Screenshots saved to ${screenshotsDir}. Example: { name: "login-page", fullPage: true } or { name: "submit-btn", selector: "testid:submit" }`,
       inputSchema: {
         type: "object",
         properties: {
