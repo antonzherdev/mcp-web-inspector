@@ -40,6 +40,9 @@ let sessionConfig: SessionConfig = {
   headlessDefault: false,
 };
 
+type ColorSchemeOverride = 'light' | 'dark' | 'no-preference';
+let colorSchemeOverride: ColorSchemeOverride | null = null;
+
 /**
  * Sets the session configuration
  */
@@ -95,9 +98,40 @@ export async function setGlobalPage(newPage: Page): Promise<void> {
   // Register console message handlers and network listeners for the new page
   await registerConsoleMessage(page);
   await registerNetworkListeners(page);
+  await applyColorScheme(page);
 
   page.bringToFront();// Bring the new tab to the front
   console.log("Global page has been updated with listeners registered.");
+}
+
+function getColorSchemeValue(): ColorSchemeOverride | null {
+  return colorSchemeOverride;
+}
+
+async function applyColorScheme(targetPage: Page | undefined): Promise<void> {
+  if (!targetPage) {
+    return;
+  }
+
+  try {
+    const scheme = getColorSchemeValue();
+    await targetPage.emulateMedia({ colorScheme: scheme ?? null });
+  } catch (error) {
+    console.error("Failed to apply color scheme:", error);
+  }
+}
+
+export async function setColorSchemeOverride(
+  scheme: ColorSchemeOverride | null
+): Promise<void> {
+  colorSchemeOverride = scheme;
+  if (page && !page.isClosed()) {
+    await applyColorScheme(page);
+  }
+}
+
+export function getColorSchemeOverride(): ColorSchemeOverride | null {
+  return colorSchemeOverride;
 }
 
 interface BrowserSettings {
@@ -506,6 +540,7 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
       // Register console message handler and network listeners
       await registerConsoleMessage(page);
       await registerNetworkListeners(page);
+      await applyColorScheme(page);
     }
     
     // Verify page is still valid
@@ -518,8 +553,10 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
       // Re-register console message handler and network listeners
       await registerConsoleMessage(page);
       await registerNetworkListeners(page);
+      await applyColorScheme(page);
     }
     
+    await applyColorScheme(page);
     return page!;
   } catch (error) {
     console.error("Error ensuring browser:", error);
@@ -649,6 +686,7 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
 
     await registerConsoleMessage(page);
     await registerNetworkListeners(page);
+    await applyColorScheme(page);
 
     return page!;
   }

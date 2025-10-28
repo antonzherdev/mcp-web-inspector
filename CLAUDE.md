@@ -123,8 +123,8 @@ node run-tests.cjs     # Alternative way to run tests with coverage
 **Network & Responses** (2 tools):
 - `expect_response`, `assert_response`
 
-**Configuration** (2 tools):
-- `custom_user_agent`, `close`
+**Configuration** (3 tools):
+- `custom_user_agent`, `set_color_scheme`, `close`
 
 **HTTP Requests** (5 tools):
 - `get`, `post`, `put`, `patch`, `delete`

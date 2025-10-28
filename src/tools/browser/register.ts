@@ -9,6 +9,7 @@ import { ScrollByTool } from './navigation/scroll_by.js';
 
 // Lifecycle
 import { CloseTool } from './lifecycle/close.js';
+import { SetColorSchemeTool } from './lifecycle/set_color_scheme.js';
 
 // Interaction
 import { ClickTool } from './interaction/click.js';
@@ -51,13 +52,16 @@ import { WaitForElementTool } from './waiting/wait_for_element.js';
 import { WaitForNetworkIdleTool } from './waiting/wait_for_network_idle.js';
 
 export const BROWSER_TOOL_CLASSES: ToolClass[] = [
-  // Navigation (6)
+  // Navigation (5)
   NavigateTool,
   GoBackTool,
   GoForwardTool,
   ScrollToElementTool,
   ScrollByTool,
+
+  // Lifecycle (2)
   CloseTool,
+  SetColorSchemeTool,
 
   // Interaction (7)
   ClickTool,
