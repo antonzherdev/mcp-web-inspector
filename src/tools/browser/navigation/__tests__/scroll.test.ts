@@ -26,14 +26,19 @@ const mockLocator = {
 const mockPageLocator = jest.fn().mockReturnValue(mockLocator);
 
 // Mock page.evaluate for scroll_by
-const mockPageEvaluate = jest.fn().mockImplementation((fn, arg) => {
+const mockPageEvaluate = jest.fn().mockImplementation((fn, arg: any) => {
   // Simulate scrolling the page
   if (typeof fn === 'function') {
+    const scrollAmount = typeof arg === 'object' ? arg.scrollAmount : arg;
+    const scrollDirection = typeof arg === 'object' ? arg.scrollDirection : 'vertical';
     return Promise.resolve({
       previous: 0,
-      new: arg,
-      actualScrolled: arg,
-      maxScroll: 1000
+      new: scrollAmount,
+      actualScrolled: scrollAmount,
+      maxScroll: 1000,
+      direction: scrollDirection || 'vertical',
+      maxVertical: 1000,
+      maxHorizontal: 0
     });
   }
   return Promise.resolve();
@@ -173,12 +178,16 @@ describe('Scroll Tools', () => {
     test('should scroll page by positive pixels', async () => {
       const args = { selector: 'html', pixels: 500 };
 
-      mockPageEvaluate.mockImplementationOnce((fn, pixels) => {
+      mockPageEvaluate.mockImplementationOnce((fn, arg: any) => {
+        const scrollAmount = arg.scrollAmount;
         return Promise.resolve({
           previous: 0,
-          new: pixels,
-          actualScrolled: pixels,
-          maxScroll: 1000
+          new: scrollAmount,
+          actualScrolled: scrollAmount,
+          maxScroll: 1000,
+          direction: 'vertical',
+          maxVertical: 1000,
+          maxHorizontal: 0
         });
       });
 
@@ -198,12 +207,16 @@ describe('Scroll Tools', () => {
     test('should scroll page by negative pixels', async () => {
       const args = { selector: 'body', pixels: -200 };
 
-      mockPageEvaluate.mockImplementationOnce((fn, pixels) => {
+      mockPageEvaluate.mockImplementationOnce((fn, arg: any) => {
+        const scrollAmount = arg.scrollAmount;
         return Promise.resolve({
           previous: 500,
           new: 300,
-          actualScrolled: pixels,
-          maxScroll: 1000
+          actualScrolled: scrollAmount,
+          maxScroll: 1000,
+          direction: 'vertical',
+          maxVertical: 1000,
+          maxHorizontal: 0
         });
       });
 
@@ -217,12 +230,15 @@ describe('Scroll Tools', () => {
     test('should detect hitting bottom of page', async () => {
       const args = { selector: 'html', pixels: 1000 };
 
-      mockPageEvaluate.mockImplementationOnce((fn, pixels) => {
+      mockPageEvaluate.mockImplementationOnce((fn, arg: any) => {
         return Promise.resolve({
           previous: 500,
           new: 800,
           actualScrolled: 300, // Only scrolled 300px, not full 1000px
-          maxScroll: 800
+          maxScroll: 800,
+          direction: 'vertical',
+          maxVertical: 800,
+          maxHorizontal: 0
         });
       });
 
@@ -234,7 +250,7 @@ describe('Scroll Tools', () => {
 
       // Should suggest checking for infinite scroll/lazy-loaded content at bottom
       const fullResponse = result.content.map(c => c.text).join('\n');
-      expect(fullResponse).toContain('💡 At page bottom');
+      expect(fullResponse).toContain('💡 At page boundary');
       expect(fullResponse).toContain('dynamic content');
       expect(fullResponse).toContain('element_visibility');
     });
@@ -243,16 +259,21 @@ describe('Scroll Tools', () => {
       const args = { selector: 'testid:chat-container', pixels: 300 };
 
       // Mock element evaluation for scrolling
-      mockEvaluate.mockImplementationOnce((fn, pixels) => {
+      mockEvaluate.mockImplementationOnce((fn, arg: any) => {
+        const scrollAmount = arg.scrollAmount;
         return Promise.resolve({
           previous: 0,
-          new: pixels,
-          actualScrolled: pixels,
+          new: scrollAmount,
+          actualScrolled: scrollAmount,
           maxScroll: 1000,
+          direction: 'vertical',
+          maxVertical: 1000,
+          maxHorizontal: 0,
           tagName: 'div',
           testId: 'chat-container',
           id: null,
-          className: ''
+          className: '',
+          scrollableAncestors: []
         });
       });
 
@@ -277,16 +298,20 @@ describe('Scroll Tools', () => {
       const args = { selector: 'testid:chat-container', pixels: 500 };
 
       // Mock element evaluation
-      mockEvaluate.mockImplementationOnce((fn, pixels) => {
+      mockEvaluate.mockImplementationOnce((fn, arg: any) => {
         return Promise.resolve({
           previous: 200,
           new: 400,
           actualScrolled: 200, // Only scrolled 200px, not full 500px
           maxScroll: 400,
+          direction: 'vertical',
+          maxVertical: 400,
+          maxHorizontal: 0,
           tagName: 'div',
           testId: 'chat-container',
           id: null,
-          className: ''
+          className: '',
+          scrollableAncestors: []
         });
       });
 
@@ -297,7 +322,7 @@ describe('Scroll Tools', () => {
 
       // Should suggest checking for lazy-loaded content in container
       const fullResponse = result.content.map(c => c.text).join('\n');
-      expect(fullResponse).toContain('💡 At container bottom');
+      expect(fullResponse).toContain('💡 At container boundary');
       expect(fullResponse).toContain('lazy-loaded content');
       expect(fullResponse).toContain('inspect_dom');
     });
@@ -315,12 +340,11 @@ describe('Scroll Tools', () => {
       const args = { selector: 'testid:non-scrollable', pixels: 100 };
 
       // Mock element evaluation - container is not scrollable
-      mockEvaluate.mockImplementationOnce((fn, pixels) => {
+      mockEvaluate.mockImplementationOnce((fn, arg: any) => {
         return Promise.resolve({
-          previous: 0,
-          new: 0,
-          actualScrolled: 0,
-          maxScroll: 0, // Not scrollable!
+          error: 'not-scrollable',
+          maxVertical: 0,
+          maxHorizontal: 0,
           tagName: 'div',
           testId: 'non-scrollable',
           id: null,
@@ -333,8 +357,8 @@ describe('Scroll Tools', () => {
 
       expect(result.isError).toBe(false);
       const fullResponse = result.content.map(c => c.text).join('\n');
-      expect(fullResponse).toContain('⚠️  Container is not scrollable');
-      expect(fullResponse).toContain('max scroll: 0px');
+      expect(fullResponse).toContain('⚠️  Container is not scrollable in any direction');
+      expect(fullResponse).toContain('0px vertical, 0px horizontal');
       expect(fullResponse).toContain('unchanged');
       // Should NOT contain success message with "Scrolled down 100px"
       expect(fullResponse).not.toContain('✓ Scrolled');
@@ -344,12 +368,11 @@ describe('Scroll Tools', () => {
       const args = { selector: 'testid:non-scrollable', pixels: 100 };
 
       // Mock element evaluation - container is not scrollable but has scrollable parent
-      mockEvaluate.mockImplementationOnce((fn, pixels) => {
+      mockEvaluate.mockImplementationOnce((fn, arg: any) => {
         return Promise.resolve({
-          previous: 0,
-          new: 0,
-          actualScrolled: 0,
-          maxScroll: 0,
+          error: 'not-scrollable',
+          maxVertical: 0,
+          maxHorizontal: 0,
           tagName: 'div',
           testId: 'non-scrollable',
           id: null,
@@ -360,7 +383,8 @@ describe('Scroll Tools', () => {
               testId: 'scrollable-parent',
               id: null,
               className: 'overflow-y-auto',
-              maxScroll: 500
+              maxScrollVertical: 500,
+              maxScrollHorizontal: 0
             }
           ]
         });
@@ -370,22 +394,25 @@ describe('Scroll Tools', () => {
 
       expect(result.isError).toBe(false);
       const fullResponse = result.content.map(c => c.text).join('\n');
-      expect(fullResponse).toContain('⚠️  Container is not scrollable');
+      expect(fullResponse).toContain('⚠️  Container is not scrollable in any direction');
       expect(fullResponse).toContain('💡 Try these scrollable ancestors:');
       expect(fullResponse).toContain('testid:scrollable-parent');
-      expect(fullResponse).toContain('500px scrollable height');
+      expect(fullResponse).toContain('500px vertical');
     });
 
     test('should include percentage in scroll position reporting', async () => {
       const args = { selector: 'testid:chat-container', pixels: 300 };
 
       // Mock element evaluation - scrolled to 50% of max
-      mockEvaluate.mockImplementationOnce((fn, pixels) => {
+      mockEvaluate.mockImplementationOnce((fn, arg: any) => {
         return Promise.resolve({
           previous: 0,
           new: 300,
           actualScrolled: 300,
           maxScroll: 600,
+          direction: 'vertical',
+          maxVertical: 600,
+          maxHorizontal: 0,
           tagName: 'div',
           testId: 'chat-container',
           id: null,
