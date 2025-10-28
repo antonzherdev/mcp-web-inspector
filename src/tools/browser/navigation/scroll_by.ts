@@ -8,7 +8,7 @@ export class ScrollByTool extends BrowserToolBase {
   static getMetadata(sessionConfig?: SessionConfig): ToolMetadata {
     return {
       name: "scroll_by",
-      description: "Scroll a container (or page) vertically by a specific number of pixels. Essential for: testing sticky headers/footers, triggering infinite scroll, precise scroll position testing, scroll-triggered animations. Use 'html' or 'body' selector for page scrolling. Positive pixels = scroll down, negative = scroll up. Reports scroll position as percentage of max scroll height.",
+      description: "Scroll a container (or page) by a specific number of pixels. Auto-detects scroll direction when only one is available. Essential for: testing sticky headers/footers, triggering infinite scroll, carousel navigation, precise scroll position testing. Use 'html' or 'body' for page scrolling. Positive pixels = down/right, negative = up/left. Reports scroll position as percentage.",
       inputSchema: {
         type: "object",
         properties: {
@@ -18,7 +18,12 @@ export class ScrollByTool extends BrowserToolBase {
           },
           pixels: {
             type: "number",
-            description: "Number of pixels to scroll vertically. Positive scrolls down, negative scrolls up. Example: 500, -200"
+            description: "Number of pixels to scroll. Positive = down/right, negative = up/left. Example: 500, -200"
+          },
+          direction: {
+            type: "string",
+            description: "Scroll direction: 'vertical' (default), 'horizontal', or 'auto' (detects available direction). Use 'auto' for smart detection.",
+            enum: ["vertical", "horizontal", "auto"]
           }
         },
         required: ["selector", "pixels"],
@@ -31,49 +36,117 @@ export class ScrollByTool extends BrowserToolBase {
     return this.safeExecute(context, async (page) => {
       const selector = this.normalizeSelector(args.selector);
       const pixels = args.pixels;
+      const direction = args.direction || 'vertical'; // Default to vertical for backward compatibility
 
       // Check if scrolling the page (html/body) or a specific element
       const isPageScroll = selector === 'html' || selector === 'body';
 
       if (isPageScroll) {
         // Scroll the page
-        const scrollResult = await page.evaluate((scrollAmount) => {
-          const previousScroll = window.scrollY;
-          window.scrollBy(0, scrollAmount);
-          const newScroll = window.scrollY;
+        const scrollResult = await page.evaluate(({ scrollAmount, scrollDirection }) => {
+          const maxVertical = document.documentElement.scrollHeight - window.innerHeight;
+          const maxHorizontal = document.documentElement.scrollWidth - window.innerWidth;
+
+          // Auto-detect direction if needed
+          let actualDirection = scrollDirection;
+          if (scrollDirection === 'auto') {
+            const verticalScrollable = maxVertical > 0;
+            const horizontalScrollable = maxHorizontal > 0;
+
+            if (verticalScrollable && !horizontalScrollable) {
+              actualDirection = 'vertical';
+            } else if (horizontalScrollable && !verticalScrollable) {
+              actualDirection = 'horizontal';
+            } else if (verticalScrollable && horizontalScrollable) {
+              // Both directions scrollable - need explicit direction
+              return {
+                error: 'ambiguous',
+                maxVertical,
+                maxHorizontal
+              };
+            } else {
+              // Neither direction scrollable
+              return {
+                error: 'not-scrollable',
+                maxVertical: 0,
+                maxHorizontal: 0
+              };
+            }
+          }
+
+          // Perform the scroll
+          const isVertical = actualDirection === 'vertical';
+          const previousScroll = isVertical ? window.scrollY : window.scrollX;
+
+          if (isVertical) {
+            window.scrollBy(0, scrollAmount);
+          } else {
+            window.scrollBy(scrollAmount, 0);
+          }
+
+          const newScroll = isVertical ? window.scrollY : window.scrollX;
           const actualScrolled = newScroll - previousScroll;
 
           return {
             previous: previousScroll,
             new: newScroll,
             actualScrolled,
-            maxScroll: document.documentElement.scrollHeight - window.innerHeight
+            maxScroll: isVertical ? maxVertical : maxHorizontal,
+            direction: actualDirection,
+            maxVertical,
+            maxHorizontal
           };
-        }, pixels);
+        }, { scrollAmount: pixels, scrollDirection: direction });
 
-        const direction = pixels > 0 ? 'down' : 'up';
+        // Handle error cases
+        if ('error' in scrollResult) {
+          if (scrollResult.error === 'ambiguous') {
+            return createSuccessResponse([
+              `⚠️  Page is scrollable in both directions`,
+              `Vertical: ${scrollResult.maxVertical}px max scroll`,
+              `Horizontal: ${scrollResult.maxHorizontal}px max scroll`,
+              ``,
+              `💡 Specify direction explicitly:`,
+              `   scroll_by({ selector: "html", pixels: ${pixels}, direction: "vertical" })`,
+              `   scroll_by({ selector: "html", pixels: ${pixels}, direction: "horizontal" })`
+            ]);
+          } else if (scrollResult.error === 'not-scrollable') {
+            return createSuccessResponse([
+              `⚠️  Page is not scrollable in any direction`,
+              `Content fits within viewport (no overflow)`,
+              `Position: unchanged`
+            ]);
+          }
+        }
+
+        const isVertical = scrollResult.direction === 'vertical';
+        const directionWord = isVertical
+          ? (pixels > 0 ? 'down' : 'up')
+          : (pixels > 0 ? 'right' : 'left');
+        const axis = isVertical ? 'y' : 'x';
+
         const messages = [
-          `✓ Scrolled page ${direction} ${Math.abs(pixels)}px`,
-          `Position: y=${scrollResult.new}px (was ${scrollResult.previous}px)`
+          `✓ Scrolled page ${directionWord} ${Math.abs(pixels)}px (${scrollResult.direction})`,
+          `Position: ${axis}=${scrollResult.new}px (was ${scrollResult.previous}px)`
         ];
 
         // Add info if we hit the scroll boundary
         const hitBoundary = Math.abs(scrollResult.actualScrolled) < Math.abs(pixels);
         if (hitBoundary) {
-          const boundary = pixels > 0 ? 'bottom' : 'top';
+          const boundary = pixels > 0 ? (isVertical ? 'bottom' : 'right') : (isVertical ? 'top' : 'left');
           messages.push(`⚠️  Reached ${boundary} of page (max scroll: ${scrollResult.maxScroll}px)`);
         }
 
         // Contextual suggestions
-        if (pixels > 0 && !hitBoundary) {
+        if (isVertical && pixels > 0 && !hitBoundary) {
           // Scrolling down on page - suggest sticky header testing
           messages.push('');
           messages.push('💡 Common next step - Test sticky header/footer:');
           messages.push('   measure_element({ selector: "header" }) - Check if position stays fixed');
         } else if (hitBoundary && pixels > 0) {
-          // Hit bottom - suggest checking for infinite scroll or lazy-loaded content
+          // Hit boundary - suggest checking for infinite scroll or lazy-loaded content
           messages.push('');
-          messages.push('💡 At page bottom - Check for dynamic content:');
+          messages.push('💡 At page boundary - Check for dynamic content:');
           messages.push('   element_visibility({ selector: "..." }) - Verify lazy-loaded elements appeared');
           messages.push('   inspect_dom() - See if new content was added');
         }
@@ -103,12 +176,85 @@ export class ScrollByTool extends BrowserToolBase {
         });
 
         // Scroll the element and collect scrollable ancestor info
-        const scrollResult = await element.evaluate((el, scrollAmount) => {
-          const previousScroll = el.scrollTop;
-          el.scrollTop += scrollAmount;
-          const newScroll = el.scrollTop;
+        const scrollResult = await element.evaluate(({ scrollAmount, scrollDirection }) => {
+          const el = this as unknown as Element;
+          const maxVertical = el.scrollHeight - el.clientHeight;
+          const maxHorizontal = el.scrollWidth - el.clientWidth;
+
+          // Auto-detect direction if needed
+          let actualDirection = scrollDirection;
+          if (scrollDirection === 'auto') {
+            const verticalScrollable = maxVertical > 0;
+            const horizontalScrollable = maxHorizontal > 0;
+
+            if (verticalScrollable && !horizontalScrollable) {
+              actualDirection = 'vertical';
+            } else if (horizontalScrollable && !verticalScrollable) {
+              actualDirection = 'horizontal';
+            } else if (verticalScrollable && horizontalScrollable) {
+              // Both directions scrollable - need explicit direction
+              return {
+                error: 'ambiguous',
+                maxVertical,
+                maxHorizontal,
+                tagName: el.tagName.toLowerCase(),
+                testId: el.getAttribute('data-testid'),
+                id: el.id,
+                className: el.className
+              };
+            } else {
+              // Neither direction scrollable - collect ancestors
+              const scrollableAncestors: Array<{
+                tagName: string;
+                testId: string | null;
+                id: string;
+                className: string;
+                maxScrollVertical: number;
+                maxScrollHorizontal: number;
+              }> = [];
+
+              let parent = el.parentElement;
+              while (parent && scrollableAncestors.length < 3) {
+                const maxParentVertical = parent.scrollHeight - parent.clientHeight;
+                const maxParentHorizontal = parent.scrollWidth - parent.clientWidth;
+                if (maxParentVertical > 0 || maxParentHorizontal > 0) {
+                  scrollableAncestors.push({
+                    tagName: parent.tagName.toLowerCase(),
+                    testId: parent.getAttribute('data-testid'),
+                    id: parent.id,
+                    className: parent.className,
+                    maxScrollVertical: maxParentVertical,
+                    maxScrollHorizontal: maxParentHorizontal
+                  });
+                }
+                parent = parent.parentElement;
+              }
+
+              return {
+                error: 'not-scrollable',
+                maxVertical: 0,
+                maxHorizontal: 0,
+                tagName: el.tagName.toLowerCase(),
+                testId: el.getAttribute('data-testid'),
+                id: el.id,
+                className: el.className,
+                scrollableAncestors
+              };
+            }
+          }
+
+          // Perform the scroll
+          const isVertical = actualDirection === 'vertical';
+          const previousScroll = isVertical ? el.scrollTop : el.scrollLeft;
+
+          if (isVertical) {
+            el.scrollTop += scrollAmount;
+          } else {
+            el.scrollLeft += scrollAmount;
+          }
+
+          const newScroll = isVertical ? el.scrollTop : el.scrollLeft;
           const actualScrolled = newScroll - previousScroll;
-          const maxScroll = el.scrollHeight - el.clientHeight;
 
           // Find scrollable ancestors (up to 3)
           const scrollableAncestors: Array<{
@@ -116,19 +262,22 @@ export class ScrollByTool extends BrowserToolBase {
             testId: string | null;
             id: string;
             className: string;
-            maxScroll: number;
+            maxScrollVertical: number;
+            maxScrollHorizontal: number;
           }> = [];
 
           let parent = el.parentElement;
           while (parent && scrollableAncestors.length < 3) {
-            const maxParentScroll = parent.scrollHeight - parent.clientHeight;
-            if (maxParentScroll > 0) {
+            const maxParentVertical = parent.scrollHeight - parent.clientHeight;
+            const maxParentHorizontal = parent.scrollWidth - parent.clientWidth;
+            if (maxParentVertical > 0 || maxParentHorizontal > 0) {
               scrollableAncestors.push({
                 tagName: parent.tagName.toLowerCase(),
                 testId: parent.getAttribute('data-testid'),
                 id: parent.id,
                 className: parent.className,
-                maxScroll: maxParentScroll
+                maxScrollVertical: maxParentVertical,
+                maxScrollHorizontal: maxParentHorizontal
               });
             }
             parent = parent.parentElement;
@@ -138,14 +287,17 @@ export class ScrollByTool extends BrowserToolBase {
             previous: previousScroll,
             new: newScroll,
             actualScrolled,
-            maxScroll,
+            maxScroll: isVertical ? maxVertical : maxHorizontal,
+            direction: actualDirection,
+            maxVertical,
+            maxHorizontal,
             tagName: el.tagName.toLowerCase(),
             testId: el.getAttribute('data-testid'),
             id: el.id,
             className: el.className,
             scrollableAncestors
           };
-        }, pixels);
+        }, { scrollAmount: pixels, scrollDirection: direction });
 
         // Build element description
         let elementDesc = `<${scrollResult.tagName}`;
@@ -157,42 +309,58 @@ export class ScrollByTool extends BrowserToolBase {
         }
         elementDesc += '>';
 
-        // Check if container is not scrollable
-        if (scrollResult.maxScroll === 0 && pixels !== 0) {
-          const messages = [
-            `⚠️  Container is not scrollable`,
-            `${elementDesc} has max scroll: 0px (no overflow content)`,
-            `Position: y=0px (unchanged)`
-          ];
+        // Handle error cases
+        if ('error' in scrollResult) {
+          if (scrollResult.error === 'ambiguous') {
+            return createSuccessResponse([
+              `⚠️  ${elementDesc} is scrollable in both directions`,
+              `Vertical: ${scrollResult.maxVertical}px max scroll`,
+              `Horizontal: ${scrollResult.maxHorizontal}px max scroll`,
+              ``,
+              `💡 Specify direction explicitly:`,
+              `   scroll_by({ selector: "${args.selector}", pixels: ${pixels}, direction: "vertical" })`,
+              `   scroll_by({ selector: "${args.selector}", pixels: ${pixels}, direction: "horizontal" })`
+            ]);
+          } else if (scrollResult.error === 'not-scrollable') {
+            const messages = [
+              `⚠️  Container is not scrollable in any direction`,
+              `${elementDesc} has max scroll: 0px vertical, 0px horizontal`,
+              `Position: unchanged`
+            ];
 
-          // Suggest scrollable ancestors if found
-          if (scrollResult.scrollableAncestors.length > 0) {
-            messages.push('');
-            messages.push('💡 Try these scrollable ancestors:');
-            scrollResult.scrollableAncestors.forEach((ancestor, i) => {
-              // Build selector suggestion (prefer testid > id > class)
-              let suggestion = '';
-              if (ancestor.testId) {
-                suggestion = `testid:${ancestor.testId}`;
-              } else if (ancestor.id) {
-                suggestion = `#${ancestor.id}`;
-              } else if (ancestor.className) {
-                const firstClass = ancestor.className.split(' ')[0];
-                suggestion = `.${firstClass}`;
-              } else {
-                suggestion = ancestor.tagName;
-              }
+            // Suggest scrollable ancestors if found
+            if (scrollResult.scrollableAncestors.length > 0) {
+              messages.push('');
+              messages.push('💡 Try these scrollable ancestors:');
+              scrollResult.scrollableAncestors.forEach((ancestor, i) => {
+                // Build selector suggestion (prefer testid > id > class)
+                let suggestion = '';
+                if (ancestor.testId) {
+                  suggestion = `testid:${ancestor.testId}`;
+                } else if (ancestor.id) {
+                  suggestion = `#${ancestor.id}`;
+                } else if (ancestor.className) {
+                  const firstClass = ancestor.className.split(' ')[0];
+                  suggestion = `.${firstClass}`;
+                } else {
+                  suggestion = ancestor.tagName;
+                }
 
-              messages.push(`   ${i + 1}. ${suggestion} (${ancestor.maxScroll}px scrollable height)`);
-            });
-          } else {
-            messages.push('');
-            messages.push('💡 Suggestions:');
-            messages.push(`   • Use 'html' or 'body' to scroll the page`);
-            messages.push(`   • Use inspect_dom() to find scrollable containers`);
+                const directions = [];
+                if (ancestor.maxScrollVertical > 0) directions.push(`↕️ ${ancestor.maxScrollVertical}px vertical`);
+                if (ancestor.maxScrollHorizontal > 0) directions.push(`↔️ ${ancestor.maxScrollHorizontal}px horizontal`);
+
+                messages.push(`   ${i + 1}. ${suggestion} (${directions.join(', ')})`);
+              });
+            } else {
+              messages.push('');
+              messages.push('💡 Suggestions:');
+              messages.push(`   • Use 'html' or 'body' to scroll the page`);
+              messages.push(`   • Use inspect_dom() to find scrollable containers`);
+            }
+
+            return createSuccessResponse(messages);
           }
-
-          return createSuccessResponse(messages);
         }
 
         // Calculate percentage of max scroll
@@ -200,22 +368,27 @@ export class ScrollByTool extends BrowserToolBase {
           ? Math.round((scrollResult.new / scrollResult.maxScroll) * 100)
           : 0;
 
-        const direction = pixels > 0 ? 'down' : 'up';
+        const isVertical = scrollResult.direction === 'vertical';
+        const directionWord = isVertical
+          ? (pixels > 0 ? 'down' : 'up')
+          : (pixels > 0 ? 'right' : 'left');
+        const axis = isVertical ? 'y' : 'x';
+
         const messages = [
-          `✓ Scrolled ${elementDesc} ${direction} ${Math.abs(pixels)}px`,
-          `Position: y=${scrollResult.new}px (was ${scrollResult.previous}px) [${percentage}% of max: ${scrollResult.maxScroll}px]`
+          `✓ Scrolled ${elementDesc} ${directionWord} ${Math.abs(pixels)}px (${scrollResult.direction})`,
+          `Position: ${axis}=${scrollResult.new}px (was ${scrollResult.previous}px) [${percentage}% of max: ${scrollResult.maxScroll}px]`
         ];
 
         // Add info if we hit the scroll boundary
         const hitBoundary = Math.abs(scrollResult.actualScrolled) < Math.abs(pixels);
         if (hitBoundary) {
-          const boundary = pixels > 0 ? 'bottom' : 'top';
+          const boundary = pixels > 0 ? (isVertical ? 'bottom' : 'right') : (isVertical ? 'top' : 'left');
           messages.push(`⚠️  Reached ${boundary} of container`);
 
-          // Suggest checking for lazy-loaded content at container bottom
+          // Suggest checking for lazy-loaded content at container boundary
           if (pixels > 0) {
             messages.push('');
-            messages.push('💡 At container bottom - Check for lazy-loaded content:');
+            messages.push('💡 At container boundary - Check for lazy-loaded content:');
             messages.push(`   inspect_dom({ selector: "${args.selector}" }) - See if new children appeared`);
           }
         }
