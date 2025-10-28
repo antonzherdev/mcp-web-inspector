@@ -87,14 +87,14 @@ describe('Tool Definitions', () => {
     expect(waitForNetworkIdleTool!.inputSchema.required).toEqual([]);
   });
 
-  test('should have 32 tools registered as browser tools', () => {
+  test('should have 33 tools registered as browser tools', () => {
     const browserTools = getBrowserToolNames();
-    expect(browserTools.length).toBe(32);
+    expect(browserTools.length).toBe(33);
   });
 
-  test('should have all tool definitions available (32 total - browser tools only)', () => {
+  test('should have all tool definitions available (33 total - browser tools only)', () => {
     // Removed HTTP API, codegen, iframe, and other unused tools
-    expect(toolDefinitions.length).toBe(32);
+    expect(toolDefinitions.length).toBe(33);
   });
 
   test('browser tool list should only contain web inspection tools', () => {
@@ -105,7 +105,8 @@ describe('Tool Definitions', () => {
       'check_visibility', 'compare_element_alignment', 'element_exists',
       'get_computed_styles', 'measure_element', 'get_text', 'get_html', 'get_console_logs',
       'click', 'fill', 'hover', 'select', 'upload_file', 'drag', 'press_key',
-      'evaluate', 'wait_for_element', 'wait_for_network_idle', 'list_network_requests', 'get_request_details'
+      'evaluate', 'wait_for_element', 'wait_for_network_idle', 'list_network_requests', 'get_request_details',
+      'set_color_scheme'
     ];
 
     expect(browserTools.sort()).toEqual(expectedTools.sort());

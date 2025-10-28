@@ -94,9 +94,14 @@ export class ScreenshotTool extends BrowserToolBase {
         messages.push(`Screenshot also stored in memory with name: '${args.name || 'screenshot'}'`);
       }
 
+      // Add token cost warning
+      messages.push('');
+      messages.push('📸 Open the file in your IDE to view the screenshot');
+      messages.push('⚠️  Reading the image file consumes ~1,500 tokens - only use Read tool if visual analysis is essential');
+
       // Add actionable guidance based on screenshot context
       messages.push('');
-      messages.push('💡 To debug layout issues in this screenshot:');
+      messages.push('💡 To debug layout issues without reading the screenshot:');
       if (args.selector) {
         messages.push(`   inspect_ancestors({ selector: "${args.selector}" })`);
         messages.push('   → See parent constraints (width, margins, overflow, borders)');

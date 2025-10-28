@@ -389,11 +389,12 @@ describe('GetHtmlTool', () => {
     expect(result.content[0].text).toContain('HTML content');
   });
 
-  test('should respect maxLength parameter', async () => {
+  test('should respect maxLength parameter for small HTML', async () => {
     const args = { maxLength: 50 };
 
-    const longHtml = '<div>' + 'A'.repeat(100) + '</div>';
-    mockEvaluate.mockImplementationOnce(() => Promise.resolve(longHtml));
+    // Small HTML that won't trigger preview threshold
+    const smallHtml = '<div>' + 'A'.repeat(100) + '</div>';
+    mockEvaluate.mockImplementationOnce(() => Promise.resolve(smallHtml));
 
     const result = await visibleHtmlTool.execute(args, mockContext);
 
@@ -494,5 +495,137 @@ describe('GetHtmlTool', () => {
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('Failed to get visible HTML content');
     expect(result.content[0].text).toContain('Content retrieval failed');
+  });
+
+  test('should return preview with token for large HTML (≥2000 chars)', async () => {
+    const args = {};
+
+    // Large HTML that exceeds preview threshold
+    const largeHtml = '<div>' + 'X'.repeat(3000) + '</div>';
+    mockEvaluate.mockImplementationOnce(() => Promise.resolve(largeHtml));
+
+    const result = await visibleHtmlTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('HTML size:');
+    expect(result.content[0].text).toContain('exceeds 2000 char threshold');
+    expect(result.content[0].text).toContain('Preview (first 500 chars)');
+    expect(result.content[0].text).toContain('⚠️ Full HTML not returned to save tokens');
+    expect(result.content[0].text).toContain('💡 RECOMMENDED: Use token-efficient alternatives');
+    expect(result.content[0].text).toContain('inspect_dom()');
+    expect(result.content[0].text).toMatch(/confirmToken: "[\w\d]{8}"/);
+  });
+
+  test('should return full HTML with valid confirmToken', async () => {
+    const args = {};
+
+    // Large HTML
+    const largeHtml = '<div>' + 'Y'.repeat(3000) + '</div>';
+    mockEvaluate.mockImplementation(() => Promise.resolve(largeHtml));
+
+    // First call - get preview and token
+    const previewResult = await visibleHtmlTool.execute(args, mockContext);
+    expect(previewResult.isError).toBe(false);
+
+    // Extract token from preview
+    const tokenMatch = (previewResult.content[0].text as string).match(/confirmToken: "([\w\d]{8})"/);
+    expect(tokenMatch).toBeTruthy();
+    const token = tokenMatch![1];
+
+    // Second call - with token
+    const fullResult = await visibleHtmlTool.execute({ confirmToken: token }, mockContext);
+
+    expect(fullResult.isError).toBe(false);
+    expect(fullResult.content[0].text).toContain(largeHtml);
+    expect(fullResult.content[0].text).not.toContain('Preview (first 500 chars)');
+    expect(fullResult.content[0].text).toContain('💡 TIP: If you need structured inspection');
+  });
+
+  test('should generate new token for invalid confirmToken', async () => {
+    const args = { confirmToken: 'invalid123' };
+
+    // Large HTML
+    const largeHtml = '<div>' + 'Z'.repeat(3000) + '</div>';
+    mockEvaluate.mockImplementationOnce(() => Promise.resolve(largeHtml));
+
+    const result = await visibleHtmlTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain('HTML size:');
+    expect(result.content[0].text).toContain('Preview (first 500 chars)');
+    expect(result.content[0].text).toMatch(/confirmToken: "[\w\d]{8}"/);
+    // Should not return full HTML
+    expect(result.content[0].text).not.toContain('Z'.repeat(3000));
+  });
+
+  test('should return small HTML directly without token requirement', async () => {
+    const args = {};
+
+    // Small HTML below threshold
+    const smallHtml = '<div>Small content with 1500 chars: ' + 'A'.repeat(1400) + '</div>';
+    mockEvaluate.mockImplementationOnce(() => Promise.resolve(smallHtml));
+
+    const result = await visibleHtmlTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+    expect(result.content[0].text).toContain(smallHtml);
+    expect(result.content[0].text).not.toContain('confirmToken:');
+    expect(result.content[0].text).not.toContain('Preview (first 500 chars)');
+    expect(result.content[0].text).toContain('💡 TIP: If you need structured inspection');
+  });
+
+  test('should consume token only once (one-time use)', async () => {
+    const args = {};
+
+    // Large HTML
+    const largeHtml = '<div>' + 'M'.repeat(3000) + '</div>';
+    mockEvaluate.mockImplementation(() => Promise.resolve(largeHtml));
+
+    // First call - get token
+    const previewResult = await visibleHtmlTool.execute(args, mockContext);
+    const tokenMatch = (previewResult.content[0].text as string).match(/confirmToken: "([\w\d]{8})"/);
+    const token = tokenMatch![1];
+
+    // Second call - use token (should work)
+    const fullResult = await visibleHtmlTool.execute({ confirmToken: token }, mockContext);
+    expect(fullResult.isError).toBe(false);
+    expect(fullResult.content[0].text).toContain(largeHtml);
+
+    // Third call - try to reuse same token (should fail, get new preview)
+    const retryResult = await visibleHtmlTool.execute({ confirmToken: token }, mockContext);
+    expect(retryResult.isError).toBe(false);
+    expect(retryResult.content[0].text).toContain('Preview (first 500 chars)');
+    expect(retryResult.content[0].text).toMatch(/confirmToken: "[\w\d]{8}"/);
+    // Should have different token
+    const newTokenMatch = (retryResult.content[0].text as string).match(/confirmToken: "([\w\d]{8})"/);
+    expect(newTokenMatch![1]).not.toBe(token);
+  });
+
+  test('should handle large HTML with selector and confirmToken', async () => {
+    const largeHtml = '<section>' + 'S'.repeat(3000) + '</section>';
+    const args = { selector: 'testid:large-section' };
+
+    mockLocator.mockImplementation(() => ({}));
+    const mockElement = {
+      evaluate: jest.fn(async () => largeHtml),
+    };
+    const selectSpy = jest
+      .spyOn(visibleHtmlTool as any, 'selectPreferredLocator')
+      .mockResolvedValue({ element: mockElement, elementIndex: 0, totalCount: 1 });
+
+    mockEvaluate.mockImplementation(() => Promise.resolve(largeHtml));
+
+    // First call - get preview
+    const previewResult = await visibleHtmlTool.execute(args, mockContext);
+    expect(previewResult.content[0].text).toContain('(from "testid:large-section")');
+    const tokenMatch = (previewResult.content[0].text as string).match(/confirmToken: "([\w\d]{8})"/);
+    const token = tokenMatch![1];
+
+    // Second call - with token
+    const fullResult = await visibleHtmlTool.execute({ selector: 'testid:large-section', confirmToken: token }, mockContext);
+    expect(fullResult.isError).toBe(false);
+    expect(fullResult.content[0].text).toContain(largeHtml);
+
+    selectSpy.mockRestore();
   });
 });
