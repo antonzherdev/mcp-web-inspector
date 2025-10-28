@@ -31,6 +31,7 @@ export interface NetworkRequest {
 let browser: Browser | undefined;
 let page: Page | undefined;
 let currentBrowserType: 'chromium' | 'firefox' | 'webkit' = 'chromium';
+let currentDevice: string | undefined;
 let networkLog: NetworkRequest[] = [];
 
 let sessionConfig: SessionConfig = {
@@ -72,6 +73,7 @@ export function resetBrowserState() {
   browser = undefined;
   page = undefined;
   currentBrowserType = 'chromium';
+  currentDevice = undefined;
   networkLog = [];
 }
 
@@ -381,6 +383,17 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
       resetBrowserState();
     }
 
+    // Check if device preset has changed (requires browser restart)
+    if (browser && browserSettings?.device && browserSettings.device !== currentDevice) {
+      console.error(`Device preset changed from ${currentDevice || 'none'} to ${browserSettings.device}. Restarting browser...`);
+      try {
+        await browser.close().catch(err => console.error("Error closing browser on device change:", err));
+      } catch (e) {
+        // Ignore errors when closing browser
+      }
+      resetBrowserState();
+    }
+
     // If browser exists and viewport settings changed, resize the viewport
     if (browser && page && !page.isClosed() && browserSettings?.viewport) {
       const { width, height } = browserSettings.viewport;
@@ -420,9 +433,13 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
         deviceConfig = CUSTOM_DEVICE_CONFIGS[playwrightDeviceName] || devices[playwrightDeviceName];
         if (deviceConfig) {
           console.error(`Using device preset: ${device} (${playwrightDeviceName})`);
+          currentDevice = device;
         } else {
           console.error(`Warning: Device preset ${playwrightDeviceName} not found`);
+          currentDevice = undefined;
         }
+      } else {
+        currentDevice = undefined;
       }
 
       console.error(`Launching new ${browserType} browser instance...`);
@@ -580,6 +597,13 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
       const playwrightDeviceName = DEVICE_PRESETS[device];
       // Check custom configs first, then Playwright's built-in devices
       deviceConfig = CUSTOM_DEVICE_CONFIGS[playwrightDeviceName] || devices[playwrightDeviceName];
+      if (deviceConfig) {
+        currentDevice = device;
+      } else {
+        currentDevice = undefined;
+      }
+    } else {
+      currentDevice = undefined;
     }
 
     // Use the appropriate browser engine
