@@ -345,7 +345,8 @@ export abstract class BrowserToolBase implements ToolHandler {
       return `💡 Tip: Test IDs should be unique. Consider making this test ID unique to avoid ambiguity.\n\n`;
     }
 
-    return '\n';
+    // Suggest testid for non-testid selectors
+    return `💡 Tip: Consider adding a unique data-testid attribute for more reliable selection.\n\n`;
   }
 
   /**
