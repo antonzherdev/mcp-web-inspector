@@ -310,5 +310,95 @@ describe('Scroll Tools', () => {
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain('Browser page not initialized');
     });
+
+    test('should detect non-scrollable container and report truthfully', async () => {
+      const args = { selector: 'testid:non-scrollable', pixels: 100 };
+
+      // Mock element evaluation - container is not scrollable
+      mockEvaluate.mockImplementationOnce((fn, pixels) => {
+        return Promise.resolve({
+          previous: 0,
+          new: 0,
+          actualScrolled: 0,
+          maxScroll: 0, // Not scrollable!
+          tagName: 'div',
+          testId: 'non-scrollable',
+          id: null,
+          className: '',
+          scrollableAncestors: []
+        });
+      });
+
+      const result = await scrollByTool.execute(args, mockContext);
+
+      expect(result.isError).toBe(false);
+      const fullResponse = result.content.map(c => c.text).join('\n');
+      expect(fullResponse).toContain('⚠️  Container is not scrollable');
+      expect(fullResponse).toContain('max scroll: 0px');
+      expect(fullResponse).toContain('unchanged');
+      // Should NOT contain success message with "Scrolled down 100px"
+      expect(fullResponse).not.toContain('✓ Scrolled');
+    });
+
+    test('should suggest scrollable ancestors when container is not scrollable', async () => {
+      const args = { selector: 'testid:non-scrollable', pixels: 100 };
+
+      // Mock element evaluation - container is not scrollable but has scrollable parent
+      mockEvaluate.mockImplementationOnce((fn, pixels) => {
+        return Promise.resolve({
+          previous: 0,
+          new: 0,
+          actualScrolled: 0,
+          maxScroll: 0,
+          tagName: 'div',
+          testId: 'non-scrollable',
+          id: null,
+          className: '',
+          scrollableAncestors: [
+            {
+              tagName: 'div',
+              testId: 'scrollable-parent',
+              id: null,
+              className: 'overflow-y-auto',
+              maxScroll: 500
+            }
+          ]
+        });
+      });
+
+      const result = await scrollByTool.execute(args, mockContext);
+
+      expect(result.isError).toBe(false);
+      const fullResponse = result.content.map(c => c.text).join('\n');
+      expect(fullResponse).toContain('⚠️  Container is not scrollable');
+      expect(fullResponse).toContain('💡 Try these scrollable ancestors:');
+      expect(fullResponse).toContain('testid:scrollable-parent');
+      expect(fullResponse).toContain('500px scrollable height');
+    });
+
+    test('should include percentage in scroll position reporting', async () => {
+      const args = { selector: 'testid:chat-container', pixels: 300 };
+
+      // Mock element evaluation - scrolled to 50% of max
+      mockEvaluate.mockImplementationOnce((fn, pixels) => {
+        return Promise.resolve({
+          previous: 0,
+          new: 300,
+          actualScrolled: 300,
+          maxScroll: 600,
+          tagName: 'div',
+          testId: 'chat-container',
+          id: null,
+          className: '',
+          scrollableAncestors: []
+        });
+      });
+
+      const result = await scrollByTool.execute(args, mockContext);
+
+      expect(result.isError).toBe(false);
+      const fullResponse = result.content.map(c => c.text).join('\n');
+      expect(fullResponse).toContain('[50% of max: 600px]');
+    });
   });
 });

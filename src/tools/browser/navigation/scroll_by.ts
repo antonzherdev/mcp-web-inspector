@@ -8,7 +8,7 @@ export class ScrollByTool extends BrowserToolBase {
   static getMetadata(sessionConfig?: SessionConfig): ToolMetadata {
     return {
       name: "scroll_by",
-      description: "Scroll a container (or page) by a specific number of pixels. Essential for: testing sticky headers/footers, triggering infinite scroll, precise scroll position testing, scroll-triggered animations. Use 'html' or 'body' selector for page scrolling. Positive pixels = down/right, negative = up/left.",
+      description: "Scroll a container (or page) vertically by a specific number of pixels. Essential for: testing sticky headers/footers, triggering infinite scroll, precise scroll position testing, scroll-triggered animations. Use 'html' or 'body' selector for page scrolling. Positive pixels = scroll down, negative = scroll up. Reports scroll position as percentage of max scroll height.",
       inputSchema: {
         type: "object",
         properties: {
@@ -18,7 +18,7 @@ export class ScrollByTool extends BrowserToolBase {
           },
           pixels: {
             type: "number",
-            description: "Number of pixels to scroll. Positive scrolls down/right, negative scrolls up/left. Example: 500, -200"
+            description: "Number of pixels to scroll vertically. Positive scrolls down, negative scrolls up. Example: 500, -200"
           }
         },
         required: ["selector", "pixels"],
@@ -102,22 +102,48 @@ export class ScrollByTool extends BrowserToolBase {
           originalSelector: args.selector,
         });
 
-        // Scroll the element
+        // Scroll the element and collect scrollable ancestor info
         const scrollResult = await element.evaluate((el, scrollAmount) => {
           const previousScroll = el.scrollTop;
           el.scrollTop += scrollAmount;
           const newScroll = el.scrollTop;
           const actualScrolled = newScroll - previousScroll;
+          const maxScroll = el.scrollHeight - el.clientHeight;
+
+          // Find scrollable ancestors (up to 3)
+          const scrollableAncestors: Array<{
+            tagName: string;
+            testId: string | null;
+            id: string;
+            className: string;
+            maxScroll: number;
+          }> = [];
+
+          let parent = el.parentElement;
+          while (parent && scrollableAncestors.length < 3) {
+            const maxParentScroll = parent.scrollHeight - parent.clientHeight;
+            if (maxParentScroll > 0) {
+              scrollableAncestors.push({
+                tagName: parent.tagName.toLowerCase(),
+                testId: parent.getAttribute('data-testid'),
+                id: parent.id,
+                className: parent.className,
+                maxScroll: maxParentScroll
+              });
+            }
+            parent = parent.parentElement;
+          }
 
           return {
             previous: previousScroll,
             new: newScroll,
             actualScrolled,
-            maxScroll: el.scrollHeight - el.clientHeight,
+            maxScroll,
             tagName: el.tagName.toLowerCase(),
             testId: el.getAttribute('data-testid'),
             id: el.id,
-            className: el.className
+            className: el.className,
+            scrollableAncestors
           };
         }, pixels);
 
@@ -131,17 +157,60 @@ export class ScrollByTool extends BrowserToolBase {
         }
         elementDesc += '>';
 
+        // Check if container is not scrollable
+        if (scrollResult.maxScroll === 0 && pixels !== 0) {
+          const messages = [
+            `⚠️  Container is not scrollable`,
+            `${elementDesc} has max scroll: 0px (no overflow content)`,
+            `Position: y=0px (unchanged)`
+          ];
+
+          // Suggest scrollable ancestors if found
+          if (scrollResult.scrollableAncestors.length > 0) {
+            messages.push('');
+            messages.push('💡 Try these scrollable ancestors:');
+            scrollResult.scrollableAncestors.forEach((ancestor, i) => {
+              // Build selector suggestion (prefer testid > id > class)
+              let suggestion = '';
+              if (ancestor.testId) {
+                suggestion = `testid:${ancestor.testId}`;
+              } else if (ancestor.id) {
+                suggestion = `#${ancestor.id}`;
+              } else if (ancestor.className) {
+                const firstClass = ancestor.className.split(' ')[0];
+                suggestion = `.${firstClass}`;
+              } else {
+                suggestion = ancestor.tagName;
+              }
+
+              messages.push(`   ${i + 1}. ${suggestion} (${ancestor.maxScroll}px scrollable height)`);
+            });
+          } else {
+            messages.push('');
+            messages.push('💡 Suggestions:');
+            messages.push(`   • Use 'html' or 'body' to scroll the page`);
+            messages.push(`   • Use inspect_dom() to find scrollable containers`);
+          }
+
+          return createSuccessResponse(messages);
+        }
+
+        // Calculate percentage of max scroll
+        const percentage = scrollResult.maxScroll > 0
+          ? Math.round((scrollResult.new / scrollResult.maxScroll) * 100)
+          : 0;
+
         const direction = pixels > 0 ? 'down' : 'up';
         const messages = [
           `✓ Scrolled ${elementDesc} ${direction} ${Math.abs(pixels)}px`,
-          `Position: y=${scrollResult.new}px (was ${scrollResult.previous}px)`
+          `Position: y=${scrollResult.new}px (was ${scrollResult.previous}px) [${percentage}% of max: ${scrollResult.maxScroll}px]`
         ];
 
         // Add info if we hit the scroll boundary
         const hitBoundary = Math.abs(scrollResult.actualScrolled) < Math.abs(pixels);
         if (hitBoundary) {
           const boundary = pixels > 0 ? 'bottom' : 'top';
-          messages.push(`⚠️  Reached ${boundary} of container (max scroll: ${scrollResult.maxScroll}px)`);
+          messages.push(`⚠️  Reached ${boundary} of container`);
 
           // Suggest checking for lazy-loaded content at container bottom
           if (pixels > 0) {
