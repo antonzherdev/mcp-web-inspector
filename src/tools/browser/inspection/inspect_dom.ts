@@ -14,6 +14,12 @@ interface SemanticChildElement {
   isVisible: boolean;
   isInteractive: boolean;
   childCount: number;
+  scrollable?: {
+    vertical: boolean;
+    horizontal: boolean;
+    overflowY?: number;
+    overflowX?: number;
+  };
 }
 
 /**
@@ -205,6 +211,11 @@ More efficient than get_html() or evaluate(). Supports testid shortcuts.`,
 
               if (directText.length > 10) return true;
 
+              // Scrollable containers (actual overflow, not just CSS)
+              const hasVerticalScroll = el.scrollHeight > el.clientHeight;
+              const hasHorizontalScroll = el.scrollWidth > el.clientWidth;
+              if (hasVerticalScroll || hasHorizontalScroll) return true;
+
               return false;
             };
 
@@ -323,6 +334,16 @@ More efficient than get_html() or evaluate(). Supports testid shortcuts.`,
                   const text = child.textContent?.trim().slice(0, 100) || '';
                   const testId = getTestId(child) || undefined;
 
+                  // Detect scrollable content
+                  const hasVerticalScroll = child.scrollHeight > child.clientHeight;
+                  const hasHorizontalScroll = child.scrollWidth > child.clientWidth;
+                  const scrollable = (hasVerticalScroll || hasHorizontalScroll) ? {
+                    vertical: hasVerticalScroll,
+                    horizontal: hasHorizontalScroll,
+                    overflowY: hasVerticalScroll ? child.scrollHeight - child.clientHeight : undefined,
+                    overflowX: hasHorizontalScroll ? child.scrollWidth - child.clientWidth : undefined,
+                  } : undefined;
+
                   const semanticChild = {
                     tag: child.tagName.toLowerCase(),
                     selector: getSelector(child),
@@ -333,6 +354,7 @@ More efficient than get_html() or evaluate(). Supports testid shortcuts.`,
                     isVisible: childInfo.isVisible,
                     isInteractive: isInteractive(child),
                     childCount: child.children.length,
+                    scrollable,
                   };
 
                   semanticChildren.push(semanticChild);
@@ -381,6 +403,16 @@ More efficient than get_html() or evaluate(). Supports testid shortcuts.`,
                   const area = Math.max(childInfo.rect.width * childInfo.rect.height, 0);
                   const areaRatio = targetArea > 0 ? area / targetArea : null;
 
+                  // Detect scrollable content
+                  const hasVerticalScroll = child.scrollHeight > child.clientHeight;
+                  const hasHorizontalScroll = child.scrollWidth > child.clientWidth;
+                  const scrollable = (hasVerticalScroll || hasHorizontalScroll) ? {
+                    vertical: hasVerticalScroll,
+                    horizontal: hasHorizontalScroll,
+                    overflowY: hasVerticalScroll ? child.scrollHeight - child.clientHeight : undefined,
+                    overflowX: hasHorizontalScroll ? child.scrollWidth - child.clientWidth : undefined,
+                  } : undefined;
+
                   deepPreview.push({
                     tag: child.tagName.toLowerCase(),
                     selector: getSelector(child),
@@ -393,6 +425,7 @@ More efficient than get_html() or evaluate(). Supports testid shortcuts.`,
                     areaRatio,
                     position: childInfo.rect,
                     childCount: child.children.length,
+                    scrollable,
                   });
                 }
 
@@ -621,6 +654,12 @@ More efficient than get_html() or evaluate(). Supports testid shortcuts.`,
               const statusParts: string[] = [];
               statusParts.push(candidate.isVisible ? '✓ visible' : '✗ hidden');
               if (candidate.isInteractive) statusParts.push('⚡ interactive');
+              if (candidate.scrollable) {
+                const scrollIcons: string[] = [];
+                if (candidate.scrollable.vertical) scrollIcons.push(`↕️ ${candidate.scrollable.overflowY}px`);
+                if (candidate.scrollable.horizontal) scrollIcons.push(`↔️ ${candidate.scrollable.overflowX}px`);
+                statusParts.push(`scrollable ${scrollIcons.join(' ')}`);
+              }
               if (candidate.role) statusParts.push(`role=${candidate.role}`);
               if (candidate.childCount > 0) statusParts.push(`${candidate.childCount} children`);
               lines.push(`    ${statusParts.join(', ')}`);
@@ -734,6 +773,12 @@ More efficient than get_html() or evaluate(). Supports testid shortcuts.`,
             const statusParts: string[] = [];
             statusParts.push(child.isVisible ? '✓ visible' : '✗ hidden');
             if (child.isInteractive) statusParts.push('⚡ interactive');
+            if (child.scrollable) {
+              const scrollIcons: string[] = [];
+              if (child.scrollable.vertical) scrollIcons.push(`↕️ ${child.scrollable.overflowY}px`);
+              if (child.scrollable.horizontal) scrollIcons.push(`↔️ ${child.scrollable.overflowX}px`);
+              statusParts.push(`scrollable ${scrollIcons.join(' ')}`);
+            }
             if (child.childCount > 0) statusParts.push(`${child.childCount} children`);
             if (child.testId) statusParts.push('has test ID');
 

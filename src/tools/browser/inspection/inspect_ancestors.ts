@@ -19,6 +19,10 @@ interface AncestorData {
   overflow: string;
   overflowX: string;
   overflowY: string;
+  scrollHeight: number;
+  scrollWidth: number;
+  clientHeight: number;
+  clientWidth: number;
   border: string;
   borderTop: string;
   borderRight: string;
@@ -126,6 +130,10 @@ export class InspectAncestorsTool extends BrowserToolBase {
               overflow: computed.overflow,
               overflowX: computed.overflowX,
               overflowY: computed.overflowY,
+              scrollHeight: current.scrollHeight,
+              scrollWidth: current.scrollWidth,
+              clientHeight: current.clientHeight,
+              clientWidth: current.clientWidth,
               border: computed.border,
               borderTop: computed.borderTop,
               borderRight: computed.borderRight,
@@ -349,43 +357,107 @@ export class InspectAncestorsTool extends BrowserToolBase {
   private formatOverflow(ancestor: AncestorData): string | null {
     const parts: string[] = [];
 
+    // Detect actual scrollable content
+    const hasVerticalScroll = ancestor.scrollHeight > ancestor.clientHeight;
+    const hasHorizontalScroll = ancestor.scrollWidth > ancestor.clientWidth;
+    const verticalOverflow = hasVerticalScroll ? ancestor.scrollHeight - ancestor.clientHeight : 0;
+    const horizontalOverflow = hasHorizontalScroll ? ancestor.scrollWidth - ancestor.clientWidth : 0;
+
+    // Check if overflow CSS is set
+    const hasOverflowX = ancestor.overflowX !== "visible";
+    const hasOverflowY = ancestor.overflowY !== "visible";
+
+    // Only show if there's either CSS overflow set OR actual scrollable content
+    if (!hasOverflowX && !hasOverflowY && !hasVerticalScroll && !hasHorizontalScroll) {
+      return null;
+    }
+
     // Handle uniform overflow
     if (
       ancestor.overflow !== "visible" &&
       ancestor.overflowX === ancestor.overflow &&
       ancestor.overflowY === ancestor.overflow
     ) {
-      const icon =
-        ancestor.overflow === "hidden"
-          ? "🔒"
-          : ancestor.overflow === "auto" || ancestor.overflow === "scroll"
-          ? "↕️"
-          : "";
-      return `overflow: ${icon} ${ancestor.overflow}`;
+      let icon = "";
+      let scrollInfo = "";
+
+      if (ancestor.overflow === "hidden") {
+        icon = "🔒";
+        if (hasVerticalScroll || hasHorizontalScroll) {
+          const clippedParts: string[] = [];
+          if (hasVerticalScroll) clippedParts.push(`↕️ ${verticalOverflow}px clipped`);
+          if (hasHorizontalScroll) clippedParts.push(`↔️ ${horizontalOverflow}px clipped`);
+          scrollInfo = ` (${clippedParts.join(', ')})`;
+        }
+      } else if (ancestor.overflow === "auto" || ancestor.overflow === "scroll") {
+        const scrollParts: string[] = [];
+        if (hasVerticalScroll) {
+          icon = "↕️";
+          scrollParts.push(`↕️ ${verticalOverflow}px`);
+        }
+        if (hasHorizontalScroll) {
+          icon = hasVerticalScroll ? "↕️↔️" : "↔️";
+          scrollParts.push(`↔️ ${horizontalOverflow}px`);
+        }
+        if (scrollParts.length > 0) {
+          scrollInfo = ` (${scrollParts.join(', ')} scrollable)`;
+        } else if (ancestor.overflow === "scroll") {
+          scrollInfo = " (no overflow)";
+        }
+      }
+
+      return `overflow: ${icon} ${ancestor.overflow}${scrollInfo}`;
     }
 
     // Handle different overflow-x/y
-    if (
-      ancestor.overflowX !== "visible" ||
-      ancestor.overflowY !== "visible"
-    ) {
-      const xIcon =
-        ancestor.overflowX === "hidden"
-          ? "🔒"
-          : ancestor.overflowX === "auto" || ancestor.overflowX === "scroll"
-          ? "↔️"
-          : "";
-      const yIcon =
-        ancestor.overflowY === "hidden"
-          ? "🔒"
-          : ancestor.overflowY === "auto" || ancestor.overflowY === "scroll"
-          ? "↕️"
-          : "";
+    if (hasOverflowX || hasOverflowY || hasVerticalScroll || hasHorizontalScroll) {
+      const overflowParts: string[] = [];
 
-      parts.push(
-        `overflow-x: ${xIcon} ${ancestor.overflowX}, overflow-y: ${yIcon} ${ancestor.overflowY}`
-      );
-      return parts.join(", ");
+      if (hasOverflowY || hasVerticalScroll) {
+        let yIcon = "";
+        let yInfo = "";
+
+        if (ancestor.overflowY === "hidden") {
+          yIcon = "🔒";
+          if (hasVerticalScroll) {
+            yInfo = ` (${verticalOverflow}px clipped)`;
+          }
+        } else if (ancestor.overflowY === "auto" || ancestor.overflowY === "scroll") {
+          if (hasVerticalScroll) {
+            yIcon = "↕️";
+            yInfo = ` (${verticalOverflow}px scrollable)`;
+          } else if (ancestor.overflowY === "scroll") {
+            yIcon = "↕️";
+            yInfo = " (no overflow)";
+          }
+        }
+
+        overflowParts.push(`overflow-y: ${yIcon} ${ancestor.overflowY}${yInfo}`);
+      }
+
+      if (hasOverflowX || hasHorizontalScroll) {
+        let xIcon = "";
+        let xInfo = "";
+
+        if (ancestor.overflowX === "hidden") {
+          xIcon = "🔒";
+          if (hasHorizontalScroll) {
+            xInfo = ` (${horizontalOverflow}px clipped)`;
+          }
+        } else if (ancestor.overflowX === "auto" || ancestor.overflowX === "scroll") {
+          if (hasHorizontalScroll) {
+            xIcon = "↔️";
+            xInfo = ` (${horizontalOverflow}px scrollable)`;
+          } else if (ancestor.overflowX === "scroll") {
+            xIcon = "↔️";
+            xInfo = " (no overflow)";
+          }
+        }
+
+        overflowParts.push(`overflow-x: ${xIcon} ${ancestor.overflowX}${xInfo}`);
+      }
+
+      return overflowParts.join(", ");
     }
 
     return null;
@@ -537,9 +609,21 @@ export class InspectAncestorsTool extends BrowserToolBase {
   ): string | null {
     const diagnostics: string[] = [];
 
+    // Detect actual scrollable content
+    const hasVerticalScroll = ancestor.scrollHeight > ancestor.clientHeight;
+    const hasHorizontalScroll = ancestor.scrollWidth > ancestor.clientWidth;
+
     // Overflow hidden warning
     if (ancestor.overflow === "hidden" || ancestor.overflowY === "hidden") {
       diagnostics.push("🎯 CLIPPING POINT - May clip overflowing children");
+    }
+
+    // Scrollable container detection
+    if (hasVerticalScroll || hasHorizontalScroll) {
+      const scrollParts: string[] = [];
+      if (hasVerticalScroll) scrollParts.push("vertically");
+      if (hasHorizontalScroll) scrollParts.push("horizontally");
+      diagnostics.push(`🎯 SCROLLABLE CONTAINER - ${scrollParts.join(" & ")}`);
     }
 
     // Width constraint detection

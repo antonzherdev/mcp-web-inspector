@@ -1212,4 +1212,117 @@ describe('InspectDomTool', () => {
     expect(result.content[0].text).toContain('Children (0 semantic');
     expect(result.content[0].text).toContain('skipped 1 wrapper');
   });
+
+  test('should detect and report scrollable containers with direction', async () => {
+    const args = { selector: '.container' };
+
+    mockPageEvaluate.mockResolvedValue({
+      target: {
+        tag: 'div',
+        selector: 'div.container',
+        position: { x: 0, y: 0, width: 800, height: 600 },
+        isVisible: true,
+      },
+      children: [
+        {
+          tag: 'div',
+          selector: 'div.scroll-vertical',
+          testId: 'vertical-scroll',
+          text: 'Vertically scrollable content',
+          position: { x: 10, y: 10, width: 380, height: 580 },
+          isVisible: true,
+          isInteractive: false,
+          childCount: 5,
+          scrollable: {
+            vertical: true,
+            horizontal: false,
+            overflowY: 350,
+            overflowX: undefined,
+          },
+        },
+        {
+          tag: 'div',
+          selector: 'div.scroll-both',
+          text: 'Scrolls both ways',
+          position: { x: 410, y: 10, width: 380, height: 580 },
+          isVisible: true,
+          isInteractive: false,
+          childCount: 3,
+          scrollable: {
+            vertical: true,
+            horizontal: true,
+            overflowY: 200,
+            overflowX: 150,
+          },
+        },
+      ],
+      stats: {
+        totalChildren: 2,
+        semanticCount: 2,
+        shownCount: 2,
+        omittedCount: 0,
+        skippedWrappers: 0,
+      },
+      layoutPattern: 'horizontal',
+    });
+
+    const result = await inspectDomTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+
+    // Should show scrollable indicator with direction and overflow amount
+    expect(result.content[0].text).toContain('scrollable ↕️ 350px');
+    expect(result.content[0].text).toContain('scrollable ↕️ 200px ↔️ 150px');
+
+    // Should treat scrollable containers as semantic elements
+    expect(result.content[0].text).toContain('[0] <div data-testid="vertical-scroll">');
+    expect(result.content[0].text).toContain('[1] <div');
+  });
+
+  test('should treat scrollable containers as semantic elements', async () => {
+    const args = {};
+
+    mockPageEvaluate.mockResolvedValue({
+      target: {
+        tag: 'body',
+        selector: 'body',
+        position: { x: 0, y: 0, width: 1200, height: 800 },
+        isVisible: true,
+      },
+      children: [
+        {
+          tag: 'div',
+          selector: 'div.scroll-container',
+          text: 'This div is only semantic because it scrolls',
+          position: { x: 0, y: 0, width: 1200, height: 400 },
+          isVisible: true,
+          isInteractive: false,
+          childCount: 10,
+          scrollable: {
+            vertical: true,
+            horizontal: false,
+            overflowY: 500,
+            overflowX: undefined,
+          },
+        },
+      ],
+      stats: {
+        totalChildren: 3,
+        semanticCount: 1,
+        shownCount: 1,
+        omittedCount: 0,
+        skippedWrappers: 2,
+      },
+      layoutPattern: 'unknown',
+    });
+
+    const result = await inspectDomTool.execute(args, mockContext);
+
+    expect(result.isError).toBe(false);
+
+    // Scrollable container should be shown even though it's just a div
+    expect(result.content[0].text).toContain('Children (1 of 1, skipped 2 wrappers)');
+    expect(result.content[0].text).toContain('scrollable ↕️ 500px');
+    expect(result.content[0].text).toContain('10 children');
+  });
 });

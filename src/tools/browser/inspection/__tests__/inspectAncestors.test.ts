@@ -289,7 +289,7 @@ describe('InspectAncestorsTool', () => {
     const text = result.content[0].text;
 
     // Should show both overflow-x and overflow-y when different
-    expect(text).toMatch(/overflow-x.*overflow-y|overflow.*hidden.*auto/);
+    expect(text).toMatch(/overflow-[xy].*overflow-[xy]/);
   });
 
   it('should show flexbox layout context', async () => {
@@ -483,5 +483,155 @@ describe('InspectAncestorsTool', () => {
     // Should NOT show testid warning for CSS selectors
     expect(text).not.toContain('Test IDs should be unique');
     expect(text).toContain('Found 2 elements');
+  });
+
+  it('should detect vertically scrollable containers with overflow amount', async () => {
+    await page.setContent(`
+      <html>
+        <body style="margin: 0; padding: 0;">
+          <div style="overflow-y: auto; height: 200px; width: 400px;">
+            <div style="height: 500px;">
+              <p data-testid="scrollable-content">Content that extends beyond container</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
+
+    const result = await tool.execute(
+      { selector: 'testid:scrollable-content' },
+      { page, browser } as any
+    );
+
+    expect(result.isError).toBeFalsy();
+    const text = result.content[0].text;
+
+    // Should show overflow with scrollable indicator (uniform overflow shows as "overflow:")
+    expect(text).toMatch(/overflow(-y)?:/);
+    expect(text).toContain('↕️');
+    expect(text).toContain('scrollable');
+
+    // Should show scrollable container diagnostic
+    expect(text).toContain('SCROLLABLE CONTAINER');
+    expect(text).toContain('vertically');
+  });
+
+  it('should detect horizontally scrollable containers with overflow amount', async () => {
+    await page.setContent(`
+      <html>
+        <body style="margin: 0; padding: 0;">
+          <div style="overflow-x: scroll; width: 300px;">
+            <div style="width: 800px;">
+              <span data-testid="wide-content">Wide content</span>
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
+
+    const result = await tool.execute(
+      { selector: 'testid:wide-content' },
+      { page, browser } as any
+    );
+
+    expect(result.isError).toBeFalsy();
+    const text = result.content[0].text;
+
+    // Should show overflow-x with scrollable indicator
+    expect(text).toContain('overflow-x:');
+    expect(text).toContain('↔️');
+    expect(text).toContain('scrollable');
+
+    // Should show scrollable container diagnostic
+    expect(text).toContain('SCROLLABLE CONTAINER');
+    expect(text).toContain('horizontally');
+  });
+
+  it('should detect both vertically and horizontally scrollable containers', async () => {
+    await page.setContent(`
+      <html>
+        <body style="margin: 0; padding: 0;">
+          <div style="overflow: auto; height: 200px; width: 300px;">
+            <div style="height: 500px; width: 800px;">
+              <div data-testid="scroll-both">Content scrolls both ways</div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
+
+    const result = await tool.execute(
+      { selector: 'testid:scroll-both' },
+      { page, browser } as any
+    );
+
+    expect(result.isError).toBeFalsy();
+    const text = result.content[0].text;
+
+    // Should show overflow with both indicators
+    expect(text).toContain('overflow:');
+    expect(text).toContain('scrollable');
+
+    // Should show scrollable container diagnostic
+    expect(text).toContain('SCROLLABLE CONTAINER');
+    expect(text).toContain('vertically & horizontally');
+  });
+
+  it('should show clipped content when overflow:hidden with actual overflow', async () => {
+    await page.setContent(`
+      <html>
+        <body style="margin: 0; padding: 0;">
+          <div style="overflow: hidden; height: 150px;">
+            <div style="height: 400px;">
+              <p data-testid="clipped">This content is clipped</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
+
+    const result = await tool.execute(
+      { selector: 'testid:clipped' },
+      { page, browser } as any
+    );
+
+    expect(result.isError).toBeFalsy();
+    const text = result.content[0].text;
+
+    // Should show overflow:hidden with clipped amount
+    expect(text).toContain('overflow:');
+    expect(text).toContain('🔒');
+    expect(text).toContain('hidden');
+    expect(text).toContain('clipped');
+
+    // Should show both clipping point and (still show it even though content is scrollable)
+    expect(text).toContain('CLIPPING POINT');
+  });
+
+  it('should not show overflow info when no CSS overflow is set and no actual overflow exists', async () => {
+    await page.setContent(`
+      <html>
+        <body style="margin: 0; padding: 0;">
+          <div style="height: 300px; width: 400px;">
+            <div style="height: 100px; width: 200px;">
+              <p data-testid="no-overflow">Normal content</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `);
+
+    const result = await tool.execute(
+      { selector: 'testid:no-overflow' },
+      { page, browser } as any
+    );
+
+    expect(result.isError).toBeFalsy();
+    const text = result.content[0].text as string;
+
+    // Should NOT show overflow info when there's no overflow
+    // (overflow: visible is the default and is not shown)
+    const hasOverflowInfo = text.includes('overflow:') || text.includes('overflow-x:') || text.includes('overflow-y:');
+    expect(hasOverflowInfo).toBeFalsy();
   });
 });
