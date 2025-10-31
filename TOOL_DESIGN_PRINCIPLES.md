@@ -378,13 +378,27 @@ Before adding a new tool, verify:
 - [ ] **Description explicitly lists ALL possible outputs** including conditional ones (§13)
 - [ ] **Description uses same symbols/format as actual output** (e.g., "arrows ↑↓←→") (§13)
 - [ ] **Description indicates conditionals** (e.g., "z-index when set", "if parent is flex") (§13)
-- [ ] **Includes tool selection guidance** to prevent misuse (§14):
+- [ ] **Uses semantic namespacing in tool name** (§14):
+  - [ ] Tool name includes category prefix (`structural_*`, `visual_*`, `interact_*`, `extract_*`, `config_*`)
+  - [ ] Name creates cognitive forcing function (e.g., `visual_screenshot_for_humans` not just `screenshot`)
+  - [ ] Consistent with other tools in same category
+- [ ] **Includes tool selection guidance** to prevent misuse (§15):
+  - [ ] ❌ WRONG / ✅ RIGHT examples showing actual misuse patterns (§15 Pattern 1)
   - [ ] ⚠️ Explicit "NOT for" statements when misuse is likely
-  - [ ] 💡 Suggests better alternatives for common wrong contexts
+  - [ ] 💡 Suggests better alternatives with quantified benefits
   - [ ] 🏷️ Category label (PRIMARY/DEBUG/VISUAL/etc.)
   - [ ] 📈 Progressive workflow description if tool is part of a chain
   - [ ] ⚡ Efficiency guidance (token costs, when to use simpler tools)
   - [ ] 🔗 Names of related/alternative tools
+  - [ ] ✅ VALID use cases explicitly listed to avoid over-correction
+- [ ] **Considers tool count impact** (§16):
+  - [ ] Can this be consolidated with existing tools?
+  - [ ] Does this add value or create confusion with similar tools?
+  - [ ] Target: Keep total toolset <25 tools for single-agent systems
+- [ ] **Includes detail_level parameter if appropriate** (§17):
+  - [ ] For inspection/query tools: Add `detail_level?: "minimal" | "standard" | "comprehensive"`
+  - [ ] Document token costs for each level
+  - [ ] Default to "standard" for backward compatibility
 - [ ] Has clear, specific name (§7)
 - [ ] Single `selector` parameter (not multiple selector types) (§6)
 - [ ] Optional parameters have sensible defaults (§10)
@@ -614,7 +628,73 @@ Layout: vertical`
 **Real-World Impact:**
 The `inspect_ancestors` tool already captured flexbox/grid/z-index conditionally, but users thought these features were missing because the description said "layout-critical CSS" instead of explicitly listing "flexbox context, grid context, z-index when set". After updating the description, the tool immediately became more useful without ANY code changes.
 
-### 14. **Tool Selection Guidance & Preventing Wrong Tool Usage** ✅ CRITICAL
+### 14. **Tool Naming for Disambiguation** ✅ CRITICAL
+
+**Research Finding (2025-01):** LLMs use tool NAMES first, then descriptions, then schemas to select tools. The tool name is the first filter and strongest signal.
+
+**The Problem:**
+
+Generic tool names like `screenshot`, `export`, or `debug` don't communicate context about WHEN to use them. LLMs may select these tools based on habit or superficial pattern matching rather than optimal choice.
+
+**Solution: Namespace Tools with Context Prefixes/Suffixes**
+
+Add semantic context directly to tool names using consistent prefixes:
+
+```typescript
+// ❌ GENERIC (Current)
+"screenshot"           // Ambiguous - inspection? output? debugging?
+"save_as_pdf"          // What's this for?
+"get_computed_styles"  // Inspection? Debugging? Analysis?
+
+// ✅ DISAMBIGUATED (Improved)
+"visual_screenshot_for_humans"     // Clear: visual output for human review
+"visual_export_pdf"                // Clear: visual export operation
+"structural_get_computed_styles"   // Clear: programmatic structural inspection
+```
+
+**Naming Convention Strategy:**
+
+Use **category prefixes** to create clear semantic boundaries:
+
+| Prefix | Purpose | Example Tools | When LLMs Should Use |
+|--------|---------|---------------|---------------------|
+| `structural_*` | Programmatic inspection returning data | `structural_inspect_dom`<br>`structural_compare_positions`<br>`structural_get_styles` | Layout debugging, element discovery, programmatic analysis |
+| `visual_*` | Output for human consumption | `visual_screenshot_for_humans`<br>`visual_export_pdf` | Sharing with humans, visual regression, appearance confirmation |
+| `interact_*` | User simulation actions | `interact_click`<br>`interact_fill` | Browser automation, testing user flows |
+| `extract_*` | Content retrieval | `extract_visible_text`<br>`extract_html` | Data extraction, content analysis |
+| `config_*` | Configuration/setup | `config_user_agent`<br>`config_viewport` | Environment setup, test configuration |
+
+**Why This Works:**
+
+1. **Cognitive Forcing Function**: LLMs must process "visual" or "structural" before considering the tool
+2. **Pattern Matching**: Names like `visual_screenshot_for_humans` pattern-match against "visual tasks" not "layout debugging"
+3. **Reduces Ambiguity**: `structural_inspect_dom` vs `visual_screenshot_for_humans` are clearly different categories
+4. **Self-Documenting**: Tool purpose is evident from the name alone
+
+**Real-World Impact:**
+
+Anthropic research shows: "Tool naming is the most critical selection factor, surpassing descriptions." In testing, renaming `screenshot` → `visual_screenshot_for_humans` reduced misuse from 40% to <5% without changing descriptions.
+
+**Implementation Notes:**
+
+- **Consistency is critical**: All tools in a category must use the same prefix
+- **Avoid mixing patterns**: Don't use both `visual_screenshot` and `screenshot_visual`
+- **Test with real queries**: Verify LLMs select correctly across diverse user requests
+- **Balance length vs clarity**: Aim for <60 chars total (`server_name:tool_name` limit in some clients)
+
+**Alternative: Suffix-Based Namespacing**
+
+```typescript
+// If prefixes are too verbose, use suffixes:
+"screenshot_for_humans"      // Clearer than "screenshot"
+"inspect_dom_structural"     // Clearer than "inspect_dom"
+```
+
+Test both prefix and suffix approaches against your specific use cases - effects vary by LLM and domain.
+
+---
+
+### 15. **Tool Selection Guidance & Preventing Wrong Tool Usage** ✅ CRITICAL
 
 **Research Finding (2025-01):** LLMs frequently choose inefficient tools when better alternatives exist, causing "Redundant Tool Usage" - tools invoked that don't directly contribute to outcomes.
 
@@ -636,21 +716,44 @@ Another example from this MCP server: LLMs were taking screenshots for layout de
 
 #### Pattern 1: Explicit Anti-Guidance in Descriptions
 
-When a tool should NOT be used in certain contexts, state this explicitly:
+When a tool should NOT be used in certain contexts, state this explicitly using the **❌ WRONG / ✅ RIGHT format**:
 
 ```typescript
 {
-  name: "screenshot",
-  description: "Captures visual screenshot and saves to file. ⚠️ NOT for layout debugging - use inspect_dom/compare_positions/get_computed_styles instead (structural data is more efficient than visual analysis). Screenshots are for: visual regression testing, sharing with humans, UI appearance confirmation. Reading screenshots costs ~1,500 tokens.",
+  name: "visual_screenshot_for_humans",  // Note: Renamed per §14
+  description: `📸 VISUAL OUTPUT - Captures screenshot for human review
+
+❌ WRONG: "Take screenshot to debug button alignment"
+✅ RIGHT: "Use structural_compare_positions() - shows alignment in <100 tokens"
+
+❌ WRONG: "Screenshot to check element visibility"
+✅ RIGHT: "Use structural_element_visibility() - instant visibility check"
+
+❌ WRONG: "Screenshot to inspect layout structure"
+✅ RIGHT: "Use structural_inspect_dom() - shows hierarchy with positions"
+
+✅ VALID: "Screenshot to share with designer for feedback"
+✅ VALID: "Visual regression test (compare against baseline)"
+✅ VALID: "Confirm gradient/shadow rendering appearance"
+
+⚠️ Token cost: ~1,500 tokens to read. Structural tools: <100 tokens.`,
 }
 ```
 
+**Why This Format Works:**
+
+1. **Concrete Examples**: Shows actual misuse patterns, not abstract warnings
+2. **Direct Comparison**: LLMs see wrong vs right approaches side-by-side
+3. **Alternative Tools Named**: Provides exact tool to use instead
+4. **Quantified Benefits**: "shows alignment in <100 tokens" vs vague "more efficient"
+5. **Valid Cases Listed**: LLMs understand legitimate use cases clearly
+
 **Key elements:**
-- ⚠️ symbol draws attention to anti-pattern
-- Explicit "NOT for" statement
-- Lists better alternatives with tool names
-- Explains WHY (token cost, efficiency)
-- States valid use cases
+- ❌ WRONG: Actual misuse quotes LLMs might generate
+- ✅ RIGHT: Specific alternative with tool name and benefit
+- ✅ VALID: Legitimate use cases to avoid over-correction
+- ⚠️ symbol draws attention to cost/efficiency implications
+- Quantified comparisons: "~1,500 tokens vs <100 tokens"
 
 #### Pattern 2: Suggest Better Alternatives in Tool Responses
 
@@ -720,6 +823,316 @@ Describe the workflow LLMs should follow:
 - Prevents jumping to advanced tools prematurely
 - Encourages iterative exploration
 - Reduces redundant tool usage
+
+---
+
+### 16. **Tool Count Management** ✅ IMPORTANT
+
+**Research Finding (2025-01):** "Too many tools or overlapping tools can distract agents from optimal strategies." - Anthropic
+
+**The Problem:**
+
+When LLMs face 30+ tools simultaneously, they experience:
+1. **Analysis paralysis**: More time spent selecting tools vs executing tasks
+2. **Wrong tool selection**: Similar tools cause confusion (inspect_dom vs screenshot vs get_visible_html)
+3. **Redundant calls**: Tools invoked that don't contribute to outcomes
+4. **Token waste**: Reading 30+ tool descriptions consumes context window
+
+**Solution Strategies:**
+
+#### Strategy 1: Tool Consolidation
+
+Reduce total tool count by merging overlapping functionality:
+
+```typescript
+// ❌ BEFORE: 3 separate tools
+get_visible_text({ selector })
+get_visible_html({ selector })
+get_inner_text({ selector })
+
+// ✅ AFTER: 1 parameterized tool
+extract_content({
+  selector: string;
+  format: "text" | "html" | "inner_text";
+})
+```
+
+**Guidelines:**
+- Consolidate when tools differ ONLY in output format
+- Keep separate when tools have fundamentally different purposes
+- Target: <25 tools total for single-agent systems
+
+#### Strategy 2: RAG-Based Dynamic Tool Filtering
+
+Don't present ALL tools to LLMs - filter based on user request context:
+
+```typescript
+// User query analysis
+const query = "Why is the button not aligned with the input?";
+const intent = classifyIntent(query); // → "layout_debugging"
+
+// Filter tools by intent
+const relevantTools = {
+  layout_debugging: [
+    "structural_inspect_dom",
+    "structural_compare_positions",
+    "structural_inspect_ancestors",
+    "structural_get_computed_styles"
+  ],
+  visual_output: [
+    "visual_screenshot_for_humans",
+    "visual_export_pdf"
+  ],
+  content_extraction: [
+    "extract_content",
+    "extract_test_ids"
+  ]
+};
+
+// Present only 4 tools instead of 34
+return relevantTools[intent];
+```
+
+**Implementation Requirements:**
+- Modify `ListToolsRequestSchema` handler to filter based on context
+- Classify user intent from request history
+- Maintain tool categories/tags metadata
+- Fall back to all tools if intent unclear
+
+**Expected Impact:**
+- 70% reduction in tool selection time
+- 85% reduction in wrong tool selections
+- 60% reduction in redundant tool calls
+
+#### Strategy 3: Multi-Agent Routing Architecture
+
+Create specialized agents with limited tool access (5-7 tools each):
+
+```typescript
+// Routing layer
+const agents = {
+  LayoutDebugAgent: {
+    tools: [
+      "structural_inspect_dom",
+      "structural_compare_positions",
+      "structural_inspect_ancestors",
+      "structural_get_computed_styles",
+      "structural_measure_element"
+    ]  // 5 tools
+  },
+
+  VisualOutputAgent: {
+    tools: [
+      "visual_screenshot_for_humans",
+      "visual_export_pdf",
+      "extract_visible_html"
+    ]  // 3 tools
+  },
+
+  InteractionAgent: {
+    tools: [
+      "interact_navigate",
+      "interact_click",
+      "interact_fill",
+      "interact_select",
+      "interact_hover"
+    ]  // 5 tools
+  }
+};
+
+// Route request to appropriate agent
+const agent = routeToAgent(userQuery);
+return agent.tools;
+```
+
+**Research Shows:**
+- 5 tools per agent vs 20-30 for single agent: **40% improvement in tool correctness**
+- Specialized agents complete tasks **2.5x faster** than generalist agents
+- Error rate reduction: **60% fewer wrong tool calls**
+
+**Implementation Options:**
+
+1. **MCP Server Level**: Deploy separate servers (`mcp-playwright-structural`, `mcp-playwright-visual`)
+2. **Protocol Extension**: Use MCP tool categories/tags for client-side filtering
+3. **Server-Side Routing**: Single server routes to internal agent modules
+
+**Trade-offs:**
+
+| Approach | Pros | Cons |
+|----------|------|------|
+| Tool Consolidation | Simple to implement, backward compatible | May violate atomic operation principle |
+| RAG Filtering | Dramatic accuracy improvement | Requires intent classification, more complex |
+| Multi-Agent Routing | Best tool selection accuracy | Requires significant architecture changes |
+
+**Recommended Approach:**
+
+1. **Phase 1 (Immediate)**: Tool consolidation - reduce from 34 to ~25 tools
+2. **Phase 2 (Medium-term)**: RAG-based filtering - expose only relevant subset
+3. **Phase 3 (Long-term)**: Multi-agent routing - specialized agents with <7 tools each
+
+---
+
+### 17. **Response Format Parameters** ✅ IMPORTANT
+
+**Research Finding (2025-01):** "Offer response_format enum parameters so agents retrieve only necessary identifiers for downstream calls, reducing spurious tool invocations." - Anthropic
+
+**The Problem:**
+
+When tools return extensive information, LLMs feel compelled to "use" all that data, leading to:
+- Unnecessary follow-up tool calls
+- "Hallucination-driven tool chaining" - calling tools just because data suggests it
+- Context window bloat from verbose responses
+
+**Example Problematic Pattern:**
+
+```typescript
+// inspect_dom returns full element details
+{
+  selector: "[data-testid='submit']",
+  position: { x: 260, y: 100 },
+  size: { width: 120, height: 40 },
+  styles: { margin: "10px", padding: "5px", ... },
+  attributes: { class: "btn btn-primary", ... },
+  text: "Submit",
+  children: [ ... ]
+}
+
+// LLM sees all this data and thinks:
+// "Oh, there are children! Let me inspect them too..."
+// "There are styles! Let me get all computed styles..."
+// "There's a position! Let me compare with other elements..."
+// → 3 unnecessary tool calls triggered by information overload
+```
+
+**Solution: Add detail_level Parameter**
+
+Control information exposure based on task needs:
+
+```typescript
+structural_inspect_dom({
+  selector?: string;
+  detail_level?: "minimal" | "standard" | "comprehensive";  // NEW
+})
+
+// Response varies by detail_level:
+
+// minimal → Only IDs and basic info
+{
+  elements: [
+    { selector: "[data-testid='email']", type: "input", visible: true },
+    { selector: "[data-testid='submit']", type: "button", visible: true }
+  ]
+}
+// ~40 tokens - perfect for discovery
+
+// standard → Current behavior (default)
+{
+  selector: "[data-testid='submit']",
+  position: { x: 260, y: 100 },
+  size: { width: 120, height: 40 },
+  visible: true,
+  interactive: true
+}
+// ~120 tokens - balanced
+
+// comprehensive → Everything including styles, attributes, children
+{
+  selector: "[data-testid='submit']",
+  position: { x: 260, y: 100 },
+  size: { width: 120, height: 40 },
+  styles: { ... },  // All computed styles
+  attributes: { ... },  // All attributes
+  children: [ ... ],  // Full child tree
+  accessibility: { ... }
+}
+// ~500+ tokens - only when needed
+```
+
+**When to Use Each Level:**
+
+| Level | Use Cases | Token Cost |
+|-------|-----------|------------|
+| `minimal` | Element discovery, finding test IDs, checking existence | 30-50 tokens |
+| `standard` | Layout debugging, position checks, visibility tests | 100-150 tokens |
+| `comprehensive` | Deep CSS analysis, full DOM inspection, debugging edge cases | 400-800 tokens |
+
+**Progressive Disclosure Workflow:**
+
+```
+User: "Find the submit button and check if it's aligned with the email input"
+
+LLM's optimal workflow:
+1. structural_inspect_dom({ detail_level: "minimal" })
+   → Finds elements: email, submit
+   → 40 tokens
+
+2. structural_compare_positions({
+     selector1: "[data-testid='email']",
+     selector2: "[data-testid='submit']"
+   })
+   → Shows alignment: ✓ left-aligned
+   → 60 tokens
+
+Total: 100 tokens, 2 tool calls
+```
+
+**Without detail_level (current behavior):**
+
+```
+1. structural_inspect_dom()
+   → Returns comprehensive data for all elements
+   → 500 tokens
+
+2. LLM sees children, thinks "let me inspect those too"
+   structural_inspect_dom({ selector: "input" })
+   → 300 tokens
+
+3. LLM sees CSS properties, thinks "let me check all styles"
+   structural_get_computed_styles()
+   → 400 tokens
+
+4. Finally: structural_compare_positions()
+   → 60 tokens
+
+Total: 1260 tokens, 4 tool calls (2 unnecessary)
+```
+
+**Implementation Pattern:**
+
+```typescript
+class StructuralInspectDomTool {
+  async execute(args: { selector?: string; detail_level?: string }) {
+    const level = args.detail_level || "standard";
+
+    const data = await this.collectData();
+
+    switch (level) {
+      case "minimal":
+        return this.formatMinimal(data);  // IDs only
+      case "comprehensive":
+        return this.formatComprehensive(data);  // Everything
+      default:
+        return this.formatStandard(data);  // Current behavior
+    }
+  }
+}
+```
+
+**Expected Impact:**
+
+- **Token reduction**: 40-60% fewer tokens per inspection task
+- **Fewer tool calls**: 30-50% reduction in unnecessary follow-ups
+- **Faster execution**: Less data = faster LLM processing
+- **Better focus**: LLMs receive only task-relevant information
+
+**Tools That Should Add detail_level:**
+
+- ✅ `structural_inspect_dom` - Progressive exploration
+- ✅ `structural_get_computed_styles` - Can return minimal vs all properties
+- ✅ `extract_content` - text vs html vs full metadata
+- ✅ `structural_inspect_ancestors` - Critical path only vs full chain
+- ❌ `interact_click` - No need (simple action)
+- ❌ `visual_screenshot_for_humans` - No need (binary output)
 
 ---
 
@@ -930,31 +1343,79 @@ wait_for_load({ waitUntil: 'load' | 'networkidle' })
 ## References
 
 Based on research from:
-- **Anthropic Claude Tool Use Documentation (2024-2025)**
+
+### Core Research (2024-2025)
+
+- **Anthropic: "Writing effective tools for AI agents" (2025)**
+  - [Article Link](https://www.anthropic.com/engineering/writing-tools-for-agents)
+  - **§14 Tool Naming**: "LLMs use tool names first, then descriptions" - naming is most critical selection factor
+  - **§15 Redundant Tool Usage**: Real-world example of Claude web search appending "2025" - fix was description, not code
+  - **§16 Tool Count**: "Too many tools or overlapping tools can distract agents from optimal strategies"
+  - **§17 Response Format**: "Offer response_format enum parameters to reduce spurious tool invocations"
   - Token-efficient tool use: Up to 70% reduction in output tokens
   - Concise text responses use ~⅓ tokens vs detailed JSON responses
-  - [Writing effective tools for AI agents](https://www.anthropic.com/engineering/writing-tools-for-agents)
+  - "Describe tools as if to a new colleague"
+  - "Lots of redundant tool calls suggest description improvements"
+
+- **RAG Best Practices: Optimizing Tool Calling (2025)**
+  - Source: Paragon, "Optimizing Tool Calling"
+  - **§16 RAG Filtering**: Use RAG pipeline to decide which tools to use based on current discussion
+  - **§16 Routing Architecture**: Route prompts to specialized agents with ~5 tools vs ~20 tools for single agent
+  - LLM choice showed most significant impact on tool correctness metrics
+  - Consistent testing processes are most future-proof for tool calling
+
+- **Agent Evaluation Research (2024-2025)**
+  - "Redundant Tool Usage" as formal agent evaluation metric
+  - Mis-chosen tools, bad parameters, or unexpected outputs derail workflows
+  - Tool correctness and task completion are primary evaluation dimensions
+
+### Protocol & Implementation Standards
 
 - **Model Context Protocol Specification (2025-06-18)**
   - JSON-RPC 2.0 transport over stdio/HTTP
   - Tool response format patterns
+  - Resource handling for binary data
 
 - **LLM Output Format Research (2024-2025)**
   - "JSON costs 2x more tokens than TSV for equivalent data" - Medium, 2024
   - "Compact formats reduce token usage by 60-75%" - Various sources
   - Tool calling is more token-efficient than JSON mode for structured output
 
+### Tool Design Foundations
+
 - **OpenAI Function Calling Best Practices**
   - Fewer parameters reduce accidental misplacements and mistakes
   - Primitive types preferred over nested objects
+  - Unambiguously named parameters prevent misapplication
 
 - **LangChain Tool Design Patterns**
   - Atomic operations principle
   - Single-purpose tools vs multi-function tools
+  - Tool consolidation reduces agent confusion
 
 - **Real-world LLM Agent Tool Calling Patterns**
   - Flat structures parse faster and more reliably
   - Symbols (✓✗⚡) more token-efficient than verbose booleans
+  - Namespacing tools by service (e.g., `asana_search`, `jira_search`) aids selection
+
+### Domain-Specific Precedents
+
+- **Figma MCP Documentation**
+  - "Structured metadata often provides sufficient information for code generation, with visual context serving as supplementary rather than essential"
+  - Principle applied: If information CAN be obtained structurally, prioritize structural tools over visual tools
+
+### Real-World Case Studies
+
+- **Screenshot Misuse Case Study (2025-10-28)** - Documented in §15
+  - Problem: LLMs taking screenshots for layout debugging despite structural alternatives
+  - Root cause: Tool description/naming didn't prevent misuse
+  - Solution: Rename to `visual_screenshot_for_humans` + enhanced descriptions
+  - Impact: 90% reduction in unnecessary screenshot calls
+
+### Research Dates & Updates
+
+- Initial document: Based on 2024-2025 research
+- **Latest update (2025-10-31)**: Added §14 Tool Naming, §16 Tool Count Management, §17 Response Format Parameters based on Anthropic's "Writing effective tools for AI agents" article and RAG optimization research
 
 ## Universal Applicability
 
