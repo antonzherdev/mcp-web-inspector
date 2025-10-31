@@ -23,8 +23,20 @@ export interface ToolResponse extends CallToolResult {
   isError: boolean;
 }
 
-// Tool metadata (MCP Tool definition)
-export type ToolMetadata = Tool;
+// Tool metadata (MCP Tool definition) with optional documentation helpers
+// These extra fields are ignored by MCP clients but used by our README generator.
+export interface ToolMetadata extends Tool {
+  // Human-readable output description. Can be a single string or list of lines.
+  outputs?: string | string[];
+  // Example tool calls to showcase usage in README.
+  examples?: string[];
+  // Example outputs keyed by the example call.
+  exampleOutputs?: { call: string; output: string }[];
+  // Optional grouping hint; when absent, grouping is derived from source paths.
+  category?: string;
+  // Optional ordering hint: lower = earlier in lists.
+  priority?: number;
+}
 
 // Interface that all tool implementations must follow
 export interface ToolHandler {

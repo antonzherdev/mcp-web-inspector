@@ -457,295 +457,633 @@ rm -rf ./.mcp-web-inspector/screenshots    # Clear screenshots only
 ---
 
 ## Core Tools
+### Inspection
 
-### 🔍 DOM Inspection & Discovery
+#### `inspect_dom`
+🔍 PRIMARY INSPECTION TOOL - START HERE FOR LAYOUT DEBUGGING: Progressive DOM inspection that shows parent-child relationships, centering issues, spacing gaps, and scrollable containers. Skips wrapper divs and shows only semantic elements (header, nav, main, form, button, elements with test IDs, ARIA roles, etc.).
 
-#### `inspect_dom` ⭐ **PRIMARY TOOL**
-Progressive DOM inspection with semantic filtering and automatic wrapper drilling. Returns only meaningful elements (semantic HTML, test IDs, ARIA roles, interactive elements) while automatically skipping non-semantic wrapper divs.
+WORKFLOW: Call without selector for page overview, then drill down by calling with child's selector.
 
-**Key Features:**
-- Drills through nested wrapper elements (up to 5 levels deep by default)
-- Shows spatial layout information (position, size, visibility)
-- Detects layout patterns automatically
-- Supports progressive exploration (inspect → drill down → inspect children)
+DETECTS: Scrollable containers (shows "scrollable ↕️ 36px" when scrollHeight > clientHeight), parent-relative positioning, vertical/horizontal centering, sibling spacing gaps, layout patterns.
 
-**Use Cases:**
-- Understanding page structure at a glance
-- Finding semantic landmarks (header, main, nav, footer)
-- Discovering interactive elements in complex UIs
-- Navigating deeply nested component libraries (Material-UI, Ant Design)
-
-**Example Workflow:**
+OUTPUT FORMAT:
 ```
-1. inspect_dom({})                          → See page sections
-2. inspect_dom({ selector: "main" })        → Explore main content
-3. inspect_dom({ selector: "[role=form]" }) → Inspect form fields
+[0] <button data-testid="menu">
+    @ (16,8) 40×40px                         ← Absolute viewport position (x,y) and size
+    from edges: ←16px →1144px ↑8px ↓8px      ← Distance from parent edges (↑8px = ↓8px means vertically centered)
+    "Menu"
+    ✓ visible, ⚡ interactive
+
+[1] <div data-testid="title">
+    @ (260,2) 131×28px
+    from edges: ←244px →244px ↑2px ↓42px     ← Equal left/right (244px) = horizontally centered, unequal top/bottom = NOT vertically centered
+    gap from [0]: →16px                      ← Spacing between siblings
+    "Title"
+    ✓ visible, 2 children
+```
+
+SYMBOLS: ✓=visible, ✗=hidden, ⚡=interactive, ←→=horizontal edges, ↑↓=vertical edges, ↕️=vertical scroll, ↔️=horizontal scroll
+CENTERING: Equal left/right distances = horizontally centered, equal top/bottom = vertically centered
+SCROLL DETECTION: Automatically detects scrollable containers and shows overflow amount (e.g., "scrollable ↕️ 397px" means 397px of hidden content). No need to use evaluate() to compare scrollHeight/clientHeight.
+
+RELATED TOOLS: For comparing TWO elements' alignment (not parent-child), use compare_element_alignment(). For box model (padding/margin), use measure_element().
+
+⚠️ More efficient than get_html() or evaluate() for structural analysis. Use BEFORE visual tools (screenshot) or evaluate(). Supports testid shortcuts.
+
+- Parameters:
+  - selector (string, optional): CSS selector, text selector, or testid shorthand to inspect. Omit for page overview (defaults to body). Use 'testid:login-form', '#main', etc.
+  - includeHidden (boolean, optional): Include hidden elements in results (default: false)
+  - maxChildren (number, optional): Maximum number of children to show (default: 20)
+  - maxDepth (number, optional): Maximum depth to drill through non-semantic wrapper elements when looking for semantic children (default: 5). Increase for extremely deeply nested components, decrease to 1 to see only immediate children without drilling.
+  - elementIndex (number, optional): When selector matches multiple elements, use this 1-based index to select a specific one (e.g., 2 = second element). Default: first visible element.
+
+- Output Format:
+  - Optional selection header when multiple matches (with chosen index).
+  - For each listed element:
+    - Indexed tag with best identifier (testid/ID/classes).
+    - Position line: @ (x,y) width×height px.
+    - from edges: left/right/top/bottom distances; centering hints.
+    - gap from [prev]: spacing between siblings when applicable.
+    - Text snippet in quotes (trimmed).
+    - Status: ✓ visible / ✗ hidden, ⚡ interactive, N children.
+    - Scrollable markers ↕️/↔️ with overflow amount when detected.
+
+- Examples:
+- inspect_dom({})
+- inspect_dom({ selector: 'testid:menu' })
+- inspect_dom({ selector: '#content', maxChildren: 10 })
+
+- Example Output (inspect_dom({})):
+```
+[0] <header data-testid="site-header">
+    @ (0,0) 1280×64px
+    from edges: ←0px →0px ↑0px ↓1216px
+    "My App"
+    ✓ visible, 3 children
+
+[1] <main id="content">
+    @ (0,64) 1280×640px
+    from edges: ←0px →0px ↑64px ↓512px
+    "Welcome back"
+    ✓ visible, 5 children, scrollable ↕️ 320px
+```
+- Example Output (inspect_dom({ selector: 'testid:menu' })):
+```
+[0] <button data-testid="menu">
+    @ (16,8) 40×40px
+    from edges: ←16px →1224px ↑8px ↓16px
+    "Menu"
+    ✓ visible, ⚡ interactive
+```
+
+#### `inspect_ancestors`
+DEBUG LAYOUT CONSTRAINTS: Walk up the DOM tree to find where width constraints, margins, borders, and overflow clipping come from. Shows for each ancestor: position/size, width constraints (w, max-w, min-w), margins with directional arrows (↑↓←→ format), padding, display type, borders (directional if non-uniform), overflow (🔒=hidden, ↕️=scroll), flexbox context (flex direction justify items gap), grid context (cols rows gap), position/z-index/transform when set. Automatically detects horizontal centering via auto margins and flags clipping points (🎯). Essential for debugging unexpected centering, constrained width, or clipped content. Default: 10 ancestors (reaches <body> in most React apps), max: 15. Use after inspect_dom() to understand parent layout constraints.
+
+- Parameters:
+  - selector (string, required): CSS selector or testid shorthand for the element to start from (e.g., 'testid:header', '#main')
+  - limit (number, optional): Maximum number of ancestors to traverse (default: 10, max: 15). Increase for deeply nested component frameworks.
+  - elementIndex (number, optional): When selector matches multiple elements, use this 1-based index to select a specific one (e.g., 2 = second element). Default: first visible element.
+
+- Output Format:
+  - Header showing selected element index when selector matched multiple.
+  - For each ancestor (starting from target):
+    - [i] <tag> | testid:... or classes
+    - @ (x,y) width×height px
+    - Inline summary: w, display (if not block), m/p, max-w, min-w
+    - Flexbox/Grid context when present (direction, gap, grid templates)
+    - Margin breakdown with arrows (↑↓←→) and centering diagnostics
+    - Border details when set (directional if non-uniform)
+    - Overflow state: 🔒 hidden, ↕️/↔️ scroll + overflow amount
+    - Extra: position/z-index/transform when non-default
+    - Diagnostics: 🎯 CLIPPING POINT / SCROLLABLE CONTAINER / WIDTH CONSTRAINT
+
+- Examples:
+- inspect_ancestors({ selector: 'testid:submit-button' })
+- inspect_ancestors({ selector: '#content', limit: 15 })
+
+- Example Output (inspect_ancestors({ selector: 'testid:submit-button' })):
+```
+Selected: testid:submit-button (1 of 2 matches)
+
+Ancestor Chain:
+
+[0] <button> | testid:submit-button
+    @ (860,540) 120x40px | w:120px display:inline-block
+    margin: ↑0px →0px ↓0px ←0px
+    border: 1px solid rgb(0, 122, 255)
+    ⚠ none
+
+[1] <div> | form-actions
+    @ (800,520) 240x80px | w:240px display:flex m:0px p:16px gap:8px
+    flex: row, justify:center, align:center, gap:8px
+    margin: →auto ←auto ← Horizontally centered (likely margin:0 auto)
+    border: none
+    overflow: 🔒 hidden
+    🎯 CLIPPING POINT - May clip overflowing children
+
+[2] <form> | #login-form
+    @ (640,200) 560x480px | w:560px max-w:600px
+    position:relative
+    🎯 WIDTH CONSTRAINT
+```
+
+#### `compare_element_alignment`
+COMPARE TWO ELEMENTS: Get comprehensive alignment and dimension comparison in one call. Shows edge alignment (top, left, right, bottom), center alignment (horizontal, vertical), and dimensions (width, height). Perfect for debugging 'are these headers aligned?' or 'do these panels match?'. Returns all alignment info with ✓/✗ symbols and pixel differences. For parent-child centering, use inspect_dom() instead (automatically shows if children are centered in parent). More efficient than evaluate() with manual getBoundingClientRect() calculations.
+
+- Parameters:
+  - selector1 (string, required): CSS selector, text selector, or testid shorthand for the first element (e.g., 'testid:main-header', '#header')
+  - selector2 (string, required): CSS selector, text selector, or testid shorthand for the second element (e.g., 'testid:chat-header', '#secondary-header')
+
+- Output Format:
+  - Optional warnings when a selector matched multiple elements (using first).
+  - Header: Alignment: <elem1> vs <elem2>
+  - Two lines with each element's position and size: @ (x,y) w×h px
+  - Edges block: Top/Left/Right/Bottom with ✓/✗ and diffs
+  - Centers block: Horizontal/Vertical center alignment with ✓/✗ and diffs
+  - Dimensions block: Width/Height same or different with ✓/✗ and diffs
+  - Optional hint to run inspect_ancestors(...) when large misalignment detected
+
+- Examples:
+- compare_element_alignment({ selector1: 'testid:header-title', selector2: 'testid:subtitle' })
+- compare_element_alignment({ selector1: '#left-panel', selector2: '#right-panel' })
+
+- Example Output (compare_element_alignment({ selector1: '#left-panel', selector2: '#right-panel' })):
+```
+Alignment: <div #left-panel> vs <div #right-panel>
+  #left-panel: @ (80,120) 320×600px
+  #right-panel: @ (440,120) 320×600px
+
+Edges:
+  Top:    ✓ aligned (both @ 120px)
+  Left:   ✗ not aligned (80px vs 440px, diff: 360px)
+  Right:  ✗ not aligned (400px vs 760px, diff: 360px)
+  Bottom: ✓ aligned (both @ 720px)
+
+Centers:
+  Horizontal: ✗ not aligned (240px vs 600px, diff: 360px)
+  Vertical:   ✓ aligned (both @ 420px)
+
+Dimensions:
+  Width:  ✓ same (320px)
+  Height: ✓ same (600px)
+```
+
+#### `get_computed_styles`
+INSPECT CSS PROPERTIES: Get computed CSS values for specific properties (display, position, width, etc.). Use when you need raw CSS values or specific properties not shown by measure_element(). Returns styles grouped by category (Layout, Visibility, Spacing, Typography). For box model visualization (padding/margin), use measure_element() instead.
+
+- Parameters:
+  - selector (string, required): CSS selector, text selector, or testid shorthand (e.g., 'testid:submit-button', '#main')
+  - properties (string, optional): Comma-separated list of CSS properties to retrieve (e.g., 'display,width,color'). If not specified, returns common layout properties: display, position, width, height, opacity, visibility, z-index, overflow, margin, padding, font-size, font-weight, color, background-color
+  - elementIndex (number, optional): When selector matches multiple elements, use this 1-based index to select a specific one (e.g., 2 = second element). Default: first visible element.
+
+- Output Format:
+  - Optional selection header when multiple elements matched.
+  - Header: 'Computed Styles: <tag id/class/testid>'
+  - One or more sections: Layout, Visibility, Spacing, Typography, Other
+  - Each section lists 'property: value' lines for requested properties
+
+- Examples:
+- get_computed_styles({ selector: 'testid:login-form' })
+- get_computed_styles({ selector: '#hero', properties: 'display,width,color' })
+
+- Example Output (get_computed_styles({ selector: 'testid:login-form' })):
+```
+⚠ Warning: Selector matched 2 elements, showing 1 (use elementIndex to target a specific one)
+
+Computed Styles: <form data-testid="login-form">
+
+Layout:
+  display: block
+  position: static
+  width: 560px
+  height: 480px
+
+Visibility:
+  opacity: 1
+  visibility: visible
+  z-index: auto
+  overflow: visible
+
+Spacing:
+  margin: 0px
+  padding: 24px
+
+Typography:
+  font-size: 16px
+  font-weight: 400
+  color: rgb(33, 37, 41)
+```
+
+#### `check_visibility`
+Check if an element is visible to the user. CRITICAL for debugging click/interaction failures. Returns detailed visibility information including viewport intersection, clipping by overflow:hidden, and whether element needs scrolling. Supports testid shortcuts (e.g., 'testid:submit-button').
+
+- Parameters:
+  - selector (string, required): CSS selector, text selector, or testid shorthand (e.g., 'testid:login-button', '#submit', 'text=Click here')
+  - elementIndex (number, optional): When selector matches multiple elements, use this 1-based index to select a specific one (e.g., 2 = second element). Default: first visible element.
+
+- Output Format:
+  - Header: Visibility: <tag id/class/testid>
+  - Status line: ✓ visible/✗ hidden, ✓/✗ in viewport with % visible
+  - CSS: opacity, display, visibility
+  - Optional interactability issues: disabled, readonly, aria-disabled, pointer-events:none
+  - Optional Issues block: clipped by parent overflow, covered by element (with descriptor and ~coverage%), needs scroll
+  - Optional Suggestions: scroll_to_element, modal/overlay hint, interaction state note
+  - Optional tip to run inspect_ancestors when clipping is detected
+
+- Examples:
+- check_visibility({ selector: 'testid:submit' })
+- check_visibility({ selector: '#login button', elementIndex: 2 })
+
+- Example Output (check_visibility({ selector: 'testid:submit' })):
+```
+Visibility: <button data-testid="submit">
+
+✓ visible, ✓ in viewport
+opacity: 1, display: inline-block, visibility: visible
+```
+- Example Output (check_visibility({ selector: '#hero-cta' })):
+```
+Visibility: <a #hero-cta>
+
+✗ hidden, ✗ not in viewport (45% visible)
+opacity: 1, display: block, visibility: visible
+
+Issues:
+  ✗ covered by another element (~60% covered)
+    Covering: <div .modal-backdrop> (z-index: 9999)
+  ⚠ needs scroll to bring into view
+
+→ Call scroll_to_element before clicking
+→ Element may be behind modal, overlay, or fixed header
+```
+
+#### `query_selector`
+Test a selector and return detailed information about all matched elements. Essential for selector debugging and finding the right element to interact with. Returns compact text format with element tag, position, text content, visibility status, and interaction capability. Shows why elements are hidden (display:none, opacity:0, zero size). Supports testid shortcuts (e.g., 'testid:submit-button'). Use limit parameter to control how many matches to show (default: 10). NEW: Use onlyVisible parameter to filter results (true=visible only, false=hidden only, undefined=all).
+
+- Parameters:
+  - selector (string, required): CSS selector, text selector, or testid shorthand to test (e.g., 'button.submit', 'testid:login-form', 'text=Sign In')
+  - limit (number, optional): Maximum number of elements to return detailed info for (default: 10, recommended max: 50)
+  - onlyVisible (boolean, optional): Filter results by visibility: true = show only visible elements, false = show only hidden elements, undefined/not specified = show all elements (default: undefined)
+  - showAttributes (string, optional): Comma-separated list of HTML attributes to display for each element (e.g., 'id,name,aria-label,href,type'). If not specified, attributes are not shown.
+
+- Output Format:
+  - Header showing total matches (and filtered visible/hidden counts if requested).
+  - For each match (up to limit):
+    - Index with element tag and identifier (testid/id/class).
+    - Position line: @ (x,y) widthxheight px.
+    - Optional trimmed text content in quotes.
+    - Optional listed attributes if requested.
+    - Status line: ✓ visible or ✗ hidden with reason (display:none, opacity:0, zero size); ⚡ interactive when applicable.
+  - Footer with how many are shown vs omitted and a tip to increase limit.
+
+- Examples:
+- query_selector({ selector: 'a', limit: 3 })
+- query_selector({ selector: 'testid:submit', onlyVisible: true, showAttributes: 'href,aria-label' })
+
+- Example Output (query_selector({ selector: 'a', limit: 2 })):
+```
+Found 5 elements matching "a":
+
+[0] <a #home-link>
+    @ (16,12) 80x20px
+    "Home"
+    href: "/"
+    ✓ visible, ⚡ interactive
+
+[1] <a class="nav-item">
+    @ (104,12) 120x20px
+    "Products"
+    ✓ visible, ⚡ interactive
+
+Showing 2 of 5 matches (3 omitted)
+Use limit parameter to show more: { selector: "a", limit: 5 }
 ```
 
 #### `get_test_ids`
-Discover all test identifiers on the page (data-testid, data-test, data-cy, etc.). Returns a compact list grouped by attribute type.
+Discover all test identifiers on the page (data-testid, data-test, data-cy, etc.). Returns a compact text list grouped by attribute type. Essential for test-driven workflows and understanding what elements can be reliably selected. Use the returned test IDs with selector shortcuts like 'testid:submit-button'.
 
-**Use Cases:**
-- Finding elements with test IDs for reliable selectors
-- Auditing test coverage
-- Understanding naming conventions used in the codebase
+- Parameters:
+  - attributes (string, optional): Comma-separated list of test ID attributes to search for (default: 'data-testid,data-test,data-cy')
+  - showAll (boolean, optional): If true, display all test IDs without truncation. If false (default), shows first 8 test IDs per attribute with a summary for longer lists.
 
-#### `query_selector`
-Test a selector and get detailed information about all matched elements. Shows tag, position, text content, visibility status, and why elements are hidden (display:none, opacity:0, zero size).
+- Output Format:
+  - 'Found N test IDs' header or 'Found 0 test IDs' with tips
+  - For each attribute group: attribute name with count and a compact comma-separated list (or truncated with '... and X more')
+  - Optional duplicate warnings: attribute:value appears N times
+  - Suggestion block with best practices and usage tip for selector shortcuts
 
-**Use Cases:**
-- Debugging why selectors match unexpected elements
-- Validating selector specificity before writing tests
-- Finding the right element among multiple matches
-- Understanding element state (visible, hidden, interactive)
+- Examples:
+- get_test_ids({})
+- get_test_ids({ showAll: true })
+- get_test_ids({ attributes: 'data-testid,data-cy' })
 
-**Parameters:**
-- `limit` - Control how many matches to show (default: 10)
-- `onlyVisible` - Filter by visibility (true/false/undefined)
-- `showAttributes` - Display specific HTML attributes
-
-### 👁️ Visibility & Position Debugging
-
-#### `check_visibility`
-Detailed visibility diagnostics showing exactly why elements are or aren't visible. Checks viewport intersection, clipping by overflow:hidden, coverage by other elements, and scroll requirements.
-
-**Use Cases:**
-- Debugging why clicks fail ("element not visible")
-- Understanding if scrolling is needed
-- Detecting elements covered by modals or overlays
-- Checking if elements are clipped by parent containers
-
-#### `compare_positions`
-Compare positions and alignment of two elements. Validates if elements are aligned (top, left, right, bottom) or have matching dimensions (width, height).
-
-**Use Cases:**
-- Visual regression testing
-- Ensuring consistent spacing across components
-- Validating grid layouts
-- Checking responsive design consistency
-
-#### `inspect_ancestors` ⭐ **DEBUG LAYOUT CONSTRAINTS**
-Walk up the DOM tree to find where width constraints, margins, borders, and overflow clipping come from. Shows position, size, and layout-critical CSS for each ancestor up to `<body>`.
-
-**Key Features:**
-- Default depth: 10 levels (reaches `<body>` in most React apps)
-- Only shows non-default values (omits `border:none`, `overflow:visible`)
-- Auto-detects overflow:hidden clipping, width constraints, auto-margin centering
-- Token-efficient compact text format with diagnostic annotations (🎯⚠️)
-
-**Use Cases:**
-- Finding where unexpected margins come from (auto-centering)
-- Discovering parent max-width constraints
-- Locating overflow:hidden containers that clip elements
-- Understanding why elements have constrained widths
-- Debugging deeply nested component library layouts (Material-UI, Chakra, Ant Design)
-
-**Example:**
+- Example Output (get_test_ids({})):
 ```
-inspect_ancestors({ selector: "testid:header" })
-→ Shows: [0] header (896px, margins: 160px)
-         [1] div (1216px, max-w constraint)
-         [2] body (1920px, overflow-x: hidden)
-   🎯 WIDTH CONSTRAINT found at parent
-   ⚠ Auto margins centering (160px each side)
+Found 5 test IDs:
+
+data-testid (3):
+  submit, email-input, password-input
+
+data-cy (2):
+  navbar, footer
+
+💡 Tip: Use these test IDs with selector shortcuts:
+   testid:submit → [data-testid="submit"]
 ```
+- Example Output (get_test_ids({ showAll: false })):
+```
+Found 14 test IDs:
 
-### 🎨 Style & Content Inspection
+data-testid (12):
+  submit, email-input, password-input, remember-me, login-form, link-register, link-forgot, header-title,
+  ... and 4 more
+  💡 Use showAll: true to see all 12 test IDs
 
-#### `get_computed_styles`
-Get computed CSS styles for an element, grouped by category (Layout, Visibility, Spacing, Typography). Request specific properties or get common layout properties.
-
-**Use Cases:**
-- Understanding why elements behave unexpectedly
-- Debugging CSS property values (flexbox, grid, positioning)
-- Investigating rendering differences across browsers
-- Finding actual rendered values (not CSS source)
+data-cy (2):
+  navbar, footer
+```
 
 #### `measure_element`
-Get box model measurements (position, size, margin, padding, border) with compact visual representation using directional arrows.
+📏 MEASUREMENT TOOL - DEBUG SPACING ISSUES: See padding, margin, border, and dimension measurements in visual box model format. Use when elements have unexpected spacing or size. Returns compact visual representation showing content → padding → border → margin with directional arrows (↑24px for top margin, etc.). Also provides raw dimensions useful for scroll detection (clientHeight vs content height). For parent-child centering issues, use inspect_dom() first (shows if child is centered in parent). For comparing alignment between two elements, use compare_element_alignment(). For quick scroll detection, use inspect_dom() instead (shows 'scrollable ↕️'). More readable than get_computed_styles() or evaluate() for box model debugging.
 
-**Use Cases:**
-- Debugging CSS spacing issues
-- Validating design system spacing tokens
-- Understanding box model layout
-- Checking margin/padding/border values
+- Parameters:
+  - selector (string, required): CSS selector or testid shorthand (e.g., 'testid:submit', '#login-button')
+  - elementIndex (number, optional): When selector matches multiple elements, use this 1-based index to select a specific one (e.g., 2 = second element). Default: first visible element.
 
-#### `get_text`
-Extract visible text content from the current page or specific element.
+- Output Format:
+  - Header: Element: <tag id/class/testid>
+  - Position/size line: @ (x,y) widthxheight px
+  - Box Model section: Content size, Padding (with directional arrows), Border (with arrows or shorthand), Margin (with arrows)
+  - Total Space line: totalWidthxtotalHeight px (with margin)
+  - Optional suggestion to run inspect_ancestors when unusual spacing detected
 
-**Use Cases:**
-- Content validation
-- Scraping visible text
-- Verifying page loaded correctly
+- Examples:
+- measure_element({ selector: 'testid:card' })
+- measure_element({ selector: '#hero' })
 
-#### `get_html`
-Get HTML content with options to remove scripts, comments, styles, and meta tags. Supports minification and max length limits.
+- Example Output (measure_element({ selector: 'testid:card' })):
+```
+Element: <div data-testid="card">
+@ (240,320) 360x240px
 
-**Use Cases:**
-- Analyzing page structure
-- Extracting clean HTML for processing
-- Debugging server-rendered content
+Box Model:
+  Content: 328x208px
+  Padding: ↑16px ↓16px ←8px →8px
+  Border:  none
+  Margin:  ↑0px ↓24px ←0px →0px
 
-#### `get_console_logs`
-Retrieve browser console logs with filtering by type (error, warning, log, info, debug) and text search.
-
-**Use Cases:**
-- Debugging JavaScript errors
-- Monitoring network issues
-- Finding specific log messages
-- Tracking console warnings
-
-### 🔎 Element Finding & Validation
-
-#### `find_by_text`
-Find elements by text content with exact/partial matching, case sensitivity options, and regex support.
-
-**Use Cases:**
-- Finding buttons without test IDs ("Click here", "Submit")
-- Locating elements in pages with poor markup
-- Searching for dynamic content
-- Testing internationalized content
-
-**Regex Examples:**
-- `/sign.*in/i` - Case-insensitive "sign in" variations
-- `/\d+ items?/` - Numbers followed by "item" or "items"
-
-#### `element_exists`
-Ultra-lightweight existence check. Returns simple ✓ exists or ✗ not found status.
-
-**Use Cases:**
-- Quick pre-interaction validation
-- Polling for element appearance
-- Conditional logic based on element presence
-
-### 🌐 Navigation & Control
-
-#### `navigate`
-Navigate to a URL with full browser configuration options.
-
-**Parameters:**
-- `browserType` - chromium, firefox, or webkit (default: chromium)
-- `width`, `height` - Viewport dimensions (default: auto-detected screen size)
-- `headless` - Run in headless mode (default: **false** - browser window visible)
-- `timeout` - Navigation timeout in ms (default: 30000)
-- `waitUntil` - Navigation wait condition (default: "load")
-
-**Default Behavior:**
-- Browser window is **visible by default** for interactive debugging
-- Use `headless: true` for automation, CI/CD, or when you don't need visual feedback
-- Use `headless: false` (or omit) when debugging interactively
-
-#### `go_back`
-Navigate back in browser history. Essential for testing navigation flows and multi-step forms.
-
-**Use Cases:**
-- Testing back button behavior
-- Debugging navigation state
-- Verifying history management
-- Testing multi-page workflows
-
-#### `go_forward`
-Navigate forward in browser history.
-
-**Use Cases:**
-- Testing forward navigation
-- Verifying browser history state
-- Debugging navigation flows
-
-#### `screenshot`
-Capture screenshots of the entire page or specific elements. Save as PNG file or return as base64.
-
-**Options:**
-- Full page screenshots
-- Element-specific screenshots
-- Custom viewport sizes
-- Save to custom directory
-
-#### `close`
-Close the browser and release all resources.
-
-### 🎯 Essential Interactions (for Debugging Workflows)
-
-#### `click`
-Click an element on the page. Essential for debugging user workflows and testing interactive elements.
-
-**Use Cases:**
-- Testing button functionality
-- Triggering dropdown menus
-- Debugging click event handlers
-- Simulating user interactions during inspection
-
-#### `fill`
-Fill out an input field with text. Critical for debugging form interactions.
-
-**Use Cases:**
-- Testing form validation
-- Debugging input field behavior
-- Simulating user data entry
-- Testing autocomplete and search features
-
-#### `hover`
-Hover over an element to trigger hover states and tooltips.
-
-**Use Cases:**
-- Debugging CSS :hover states
-- Triggering tooltip displays
-- Testing dropdown menu visibility
-- Inspecting hover-dependent UI elements
-
-#### `select`
-Select an option from a `<select>` dropdown element.
-
-**Use Cases:**
-- Testing dropdown functionality
-- Debugging option selection
-- Simulating user form completion
-- Testing dependent field updates
-
-#### `upload_file`
-Upload a file to an `input[type='file']` element.
-
-**Use Cases:**
-- Testing file upload functionality
-- Debugging file input behavior
-- Simulating document/image uploads
-- Testing upload validation
-
-#### `drag`
-Drag an element from source to target location.
-
-**Use Cases:**
-- Testing drag-and-drop interfaces
-- Debugging sortable lists
-- Testing reorderable components
-- Validating drag interactions
-
-#### `press_key`
-Press a keyboard key, optionally focusing on a specific element first.
-
-**Use Cases:**
-- Testing keyboard shortcuts
-- Debugging keyboard navigation
-- Testing Enter/Escape key handlers
-- Simulating Tab key navigation
-
-### ⚙️ Advanced Tools
-
-#### `evaluate`
-Execute JavaScript code in the browser console and return the result.
-
-**Use Cases:**
-- Running custom JavaScript for debugging
-- Extracting complex data not available via other tools
-- Testing JavaScript functions on the page
-- Manipulating page state for testing
-
-**Example:**
-```javascript
-evaluate({ script: "return document.title" })
-evaluate({ script: "return Array.from(document.querySelectorAll('a')).length" })
+Total Space: 360x264px (with margin)
 ```
 
+#### `find_by_text`
+Find elements by their text content. Essential for finding elements without good selectors, especially in poorly structured DOM. Returns elements with position, visibility, and interaction state. Supports exact match, case-sensitive search, and NEW: regex pattern matching for advanced text searching (e.g., '/\d+ items?/' to find elements with numbers).
+
+- Parameters:
+  - text (string, required): Text to search for in elements. If regex=true, this can be a regex pattern in /pattern/flags format (e.g., '/\d+/i' for case-insensitive numbers) or a raw pattern string.
+  - exact (boolean, optional): Whether to match text exactly (default: false, allows partial matches). Ignored if regex=true.
+  - caseSensitive (boolean, optional): Whether search should be case-sensitive (default: false). Ignored if regex=true (use regex flags instead).
+  - regex (boolean, optional): Whether to treat 'text' as a regex pattern (default: false). If true, supports /pattern/flags format or raw pattern. Examples: '/sign.*/i' (case-insensitive), '/\d+ items?/' (numbers + optional 's').
+  - limit (number, optional): Maximum number of elements to return (default: 10)
+
+- Output Format:
+  - Header showing 'No elements found ...' or 'Found N elements ...'
+  - Up to limit results, each with:
+    - <tag id/class/testid ...> line with key attributes
+    - Position line: @ (x,y) widthxheight px
+    - Trimmed text content (if any)
+    - Visibility and interactability status
+  - Footer shows how many are displayed vs omitted and how to increase limit
+
+- Examples:
+- find_by_text({ text: 'Sign in' })
+- find_by_text({ text: '/^Next \d+$/', regex: true })
+- find_by_text({ text: 'Delete', exact: true, caseSensitive: true })
+
+- Example Output (find_by_text({ text: 'Sign in' })):
+```
+Found 3 elements containing "Sign in":
+
+[0] <button data-testid="primary-cta">
+    @ (640,420) 120x40px
+    "Sign in"
+    ✓ visible
+
+[1] <a class="link" href="/signin">
+    @ (600,480) 68x20px
+    "Sign in"
+    ✓ visible, ⚡ interactive
+
+[2] <div class="menu-item">
+    @ (40,360) 200x24px
+    "Sign in"
+    ✗ hidden
+
+Showing all 3 matches
+```
+
+#### `element_exists`
+Quick check if an element exists on the page. Ultra-lightweight alternative to query_selector_all when you only need existence confirmation. Returns simple exists/not found status. Most common check before attempting interaction. Supports testid shortcuts.
+
+- Parameters:
+  - selector (string, required): CSS selector, text selector, or testid shorthand (e.g., 'testid:submit-button', '#main')
+
+- Output Format:
+  - Returns one line:
+    - ✓ exists: <tag id/class> (N matches) when found (N optional)
+    - ✗ not found: <original selector> when none
+
+- Examples:
+- element_exists({ selector: 'testid:submit' })
+- element_exists({ selector: '#does-not-exist' })
+
+- Example Output (element_exists({ selector: 'testid:submit' })):
+```
+✓ exists: <button data-testid="submit">
+```
+- Example Output (element_exists({ selector: '.card' })):
+```
+✓ exists: <div .card> (3 matches)
+```
+- Example Output (element_exists({ selector: '#does-not-exist' })):
+```
+✗ not found: #does-not-exist
+```
+
+### Navigation
+
+#### `go_back`
+Navigate back in browser history
+
+#### `go_forward`
+Navigate forward in browser history
+
+#### `navigate`
+Navigate to a URL. Browser sessions (cookies, localStorage, sessionStorage) are automatically saved in ./.mcp-web-inspector/user-data directory and persist across restarts. To clear saved sessions, delete the directory.
+
+- Parameters:
+  - url (string, required): URL to navigate to the website specified
+  - browserType (string, optional): Browser type to use (chromium, firefox, webkit). Defaults to chromium
+  - device (string, optional): Device preset to emulate. Uses device configurations for viewport, user agent, and device scale factor. When specified, overrides width/height parameters. Mobile: iphone-se, iphone-14, iphone-14-pro, pixel-5, ipad, samsung-s21. Desktop: desktop-1080p (1920x1080), desktop-2k (2560x1440), laptop-hd (1366x768).
+  - width (number, optional): Viewport width in pixels. If not specified, automatically matches screen width. Ignored if device is specified.
+  - height (number, optional): Viewport height in pixels. If not specified, automatically matches screen height. Ignored if device is specified.
+  - timeout (number, optional): Navigation timeout in milliseconds
+  - waitUntil (string, optional): Navigation wait condition
+  - headless (boolean, optional): Run browser in headless mode (default: false - browser window visible)
+
+#### `scroll_by`
+Scroll a container (or page) by a specific number of pixels. Auto-detects scroll direction when only one is available. Essential for: testing sticky headers/footers, triggering infinite scroll, carousel navigation, precise scroll position testing. Use 'html' or 'body' for page scrolling. Positive pixels = down/right, negative = up/left. Outputs: ✓ success summary with axis position and percent of max scroll; ⚠️ boundary notice when movement is limited; ⚠️ ambiguous-direction guidance when both axes scroll; ⚠️ not-scrollable report with ancestor suggestions; 💡 follow-up tips matching the detected scenario.
+
+- Parameters:
+  - selector (string, required): CSS selector of scrollable container (use 'html' or 'body' for page scroll, e.g., 'testid:chat-container', '.scrollable-list', 'html')
+  - pixels (number, required): Number of pixels to scroll. Positive = down/right, negative = up/left. Example: 500, -200
+  - direction (string, optional): Scroll direction: 'vertical' (default), 'horizontal', or 'auto' (detects available direction). Use 'auto' for smart detection.
+
+#### `scroll_to_element`
+Scroll an element into view. Automatically handles scrolling within the nearest scrollable ancestor (page or scrollable container). Essential for: making elements visible before interaction, triggering lazy-loaded content, testing scroll behavior. Position: start (top of viewport), center (middle), end (bottom). Default: start.
+
+- Parameters:
+  - selector (string, required): CSS selector, text selector, or test ID (e.g., 'testid:submit-btn', '#login-button', 'text=Load More')
+  - position (string, optional): Where to align element in viewport: 'start' (top), 'center' (middle), 'end' (bottom). Default: 'start'
+
+### Interaction
+
+#### `click`
+Click an element on the page
+
+- Parameters:
+  - selector (string, required): CSS selector for the element to click
+
+#### `drag`
+Drag an element to a target location
+
+- Parameters:
+  - sourceSelector (string, required): CSS selector for the element to drag
+  - targetSelector (string, required): CSS selector for the target location
+
+#### `fill`
+fill out an input field
+
+- Parameters:
+  - selector (string, required): CSS selector for input field
+  - value (string, required): Value to fill
+
+#### `hover`
+Hover an element on the page
+
+- Parameters:
+  - selector (string, required): CSS selector for element to hover
+
+#### `press_key`
+Press a keyboard key
+
+- Parameters:
+  - key (string, required): Key to press (e.g. 'Enter', 'ArrowDown', 'a')
+  - selector (string, optional): Optional CSS selector to focus before pressing key
+
+#### `select`
+Select an element on the page with Select tag
+
+- Parameters:
+  - selector (string, required): CSS selector for element to select
+  - value (string, required): Value to select
+
+#### `upload_file`
+Upload a file to an input[type='file'] element on the page
+
+- Parameters:
+  - selector (string, required): CSS selector for the file input element
+  - filePath (string, required): Absolute path to the file to upload
+
+### Content
+
+#### `get_html`
+⚠️ RARELY NEEDED: Get raw HTML markup from the page (no rendering, just source code). Most tasks need structured inspection instead. ONLY use get_html for: (1) checking specific HTML attributes or element nesting, (2) analyzing markup structure, (3) debugging SSR/HTML issues. For structured tasks, use: inspect_dom() to understand page structure with positions, query_selector() to find and inspect elements, get_computed_styles() for CSS values. Auto-returns HTML if <2000 chars (small elements), shows preview with token-based confirmation if larger. Scripts removed by default for security/size. Supports testid shortcuts.
+
+- Parameters:
+  - selector (string, optional): CSS selector, text selector, or testid shorthand to limit HTML extraction to a specific container. Omit to get entire page HTML. Example: 'testid:main-content' or '#app'
+  - elementIndex (number, optional): When selector matches multiple elements, use this 1-based index to select a specific one (e.g., 2 = second element). Default: first visible element.
+  - clean (boolean, optional): Remove noise from HTML: false (default) = remove scripts only, true = remove scripts + styles + comments + meta tags for minimal markup
+  - maxLength (number, optional): Maximum number of characters to return (default: 20000)
+  - confirmToken (string, optional): Confirmation token from preview response (required to retrieve large HTML). Get this token by calling without confirmToken first - the preview will include the token to use.
+
+#### `get_text`
+⚠️ RARELY NEEDED: Get ALL visible text content from the entire page (no structure, just raw text). Most tasks need structured inspection instead. ONLY use get_text for: (1) extracting text for content analysis (word count, language detection), (2) searching for text when location is completely unknown, (3) text-only snapshots for comparison. For structured tasks, use: inspect_dom() to understand page structure, find_by_text() to locate specific text with context, query_selector() to find elements. Returns plain text up to 20000 chars (truncated if longer). Supports testid shortcuts.
+
+- Parameters:
+  - selector (string, optional): CSS selector, text selector, or testid shorthand to limit text extraction to a specific container. Omit to get text from entire page. Example: 'testid:article-body' or '#main-content'
+  - elementIndex (number, optional): When selector matches multiple elements, use this 1-based index to select a specific one (e.g., 2 = second element). Default: first visible element.
+  - maxLength (number, optional): Maximum number of characters to return (default: 20000)
+
+#### `screenshot`
+📸 VISUAL OUTPUT TOOL - Captures page/element appearance and saves to file. Essential for: visual regression testing, sharing with humans, confirming UI appearance (colors/fonts/images). ⚠️ NOT for layout debugging (positions/sizes/alignment/margins) - use inspect_dom/compare_positions/inspect_ancestors/get_computed_styles instead (structural data is token-efficient, screenshots require ~1,500 tokens to read). Screenshots saved to ./.mcp-web-inspector/screenshots. Example: { name: "login-page", fullPage: true } or { name: "submit-btn", selector: "testid:submit" }
+
+- Parameters:
+  - name (string, required): Name for the screenshot file (without extension). Example: 'login-page' or 'error-state'
+  - selector (string, optional): CSS selector or testid shorthand for element to screenshot. Example: '#submit-button' or 'testid:login-form'. Omit to capture full viewport.
+  - fullPage (boolean, optional): Capture entire scrollable page instead of just viewport (default: false)
+  - downloadsDir (string, optional): Custom directory for saving screenshot (default: ./.mcp-web-inspector/screenshots). Example: './my-screenshots'
+
+### Console
+
+#### `get_console_logs`
+Retrieve console logs from the browser with filtering options
+
+- Parameters:
+  - type (string, optional): Type of logs to retrieve (all, error, warning, log, info, debug, exception)
+  - search (string, optional): Text to search for in logs (handles text with square brackets)
+  - limit (number, optional): Maximum number of logs to return
+  - since (string, optional): Filter logs since a specific event: 'last-call' (since last get_console_logs call), 'last-navigation' (since last page navigation), or 'last-interaction' (since last user interaction like click, fill, etc.)
+  - clear (boolean, optional): Whether to clear logs after retrieval (default: false)
+
+### Evaluation
+
+#### `evaluate`
+⚙️ CUSTOM JAVASCRIPT EXECUTION - Execute arbitrary JavaScript in the browser console and return the result (JSON-stringified). ⚠️ NOT for: scroll detection (inspect_dom shows 'scrollable ↕️'), element dimensions (use measure_element), DOM inspection (use inspect_dom), CSS properties (use get_computed_styles), position comparison (use compare_positions). Use ONLY when specialized tools cannot accomplish the task. Essential for: custom page interactions, complex calculations not covered by other tools. Automatically detects common patterns and suggests better alternatives. High flexibility but less efficient than specialized tools.
+
+- Parameters:
+  - script (string, required): JavaScript code to execute
+
+### Network
+
+#### `get_request_details`
+Get detailed information about a specific network request by index (from list_network_requests). Returns request/response headers, body (truncated at 500 chars), timing, and size. Request bodies with passwords are automatically masked. Essential for debugging API responses and investigating failed requests.
+
+- Parameters:
+  - index (number, required): Index of the request from list_network_requests output (e.g., [0], [1], etc.)
+
+#### `list_network_requests`
+List recent network requests captured by the browser. Returns compact text format with method, URL, status, resource type, timing, and size. Essential for debugging API calls and performance issues. Use get_request_details() to inspect full headers and body for specific requests.
+
+- Parameters:
+  - type (string, optional): Filter by resource type: 'xhr', 'fetch', 'script', 'stylesheet', 'image', 'font', 'document', etc. Omit to show all types.
+  - limit (number, optional): Maximum number of requests to return, most recent first (default: 50)
+
+### Waiting
+
+#### `wait_for_element`
+Wait for an element to reach a specific state (visible, hidden, attached, detached). Better than sleep() for waiting on dynamic content. Returns duration and current element status. Supports testid shortcuts (e.g., 'testid:submit-button').
+
+- Parameters:
+  - selector (string, required): CSS selector, text selector, or testid shorthand (e.g., 'testid:submit-button', '#loading-spinner')
+  - state (string, optional): State to wait for: 'visible' (default), 'hidden', 'attached', 'detached'
+  - timeout (number, optional): Maximum time to wait in milliseconds (default: 10000)
+
+#### `wait_for_network_idle`
+Wait for network activity to settle. Waits until there are no network connections for at least 500ms. Better than fixed delays when waiting for AJAX calls or dynamic content loading. Returns actual wait duration and confirmation of idle state.
+
+- Parameters:
+  - timeout (number, optional): Maximum time to wait in milliseconds (default: 10000)
+
+### Lifecycle
+
+#### `close`
+Close the browser and release all resources
+
+#### `set_color_scheme`
+Set the browser color scheme that controls CSS prefers-color-scheme. Defaults to system appearance. Use before inspecting colors or taking screenshots. Options: system (clear override to follow OS/browser setting), dark, light, no-preference (simulate agents with no declared preference). Returns confirmation of the active scheme.
+
+- Parameters:
+  - scheme (string, required): Color scheme to emulate: 'system', 'dark', 'light', or 'no-preference'. Example: { scheme: 'dark' }
 ## Selector Shortcuts ⭐ Time-Saver
 
 All browser tools support **convenient test ID shortcuts** that save typing and improve readability:

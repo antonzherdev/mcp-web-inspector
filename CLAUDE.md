@@ -101,42 +101,36 @@ node run-tests.cjs     # Alternative way to run tests with coverage
 ```
 
 ## Available Tools
-
 **See `src/tools/common/registry.ts` for complete tool definitions and up-to-date descriptions.**
 
 ### Tool Categories
 
-**Navigation & Interaction** (13 tools):
-- `navigate`, `click`, `iframe_click`, `fill`, `iframe_fill`, `select`, `hover`, `upload_file`, `go_back`, `go_forward`, `drag`, `press_key`, `click_and_switch_tab`
+**Inspection** (10 tools):
+- `inspect_dom`, `inspect_ancestors`, `compare_element_alignment`, `get_computed_styles`, `check_visibility`, `query_selector`, `get_test_ids`, `measure_element`, `find_by_text`, `element_exists`
 
-**Element Inspection & Debugging** (10 tools):
-- `inspect_dom` - **PRIMARY** - Progressive DOM inspection with semantic filtering
-- `inspect_ancestors` - **DEBUG** - Find layout constraints (margins, width, overflow, flexbox/grid)
-- `get_test_ids`, `query_selector_all`, `element_visibility`, `find_by_text`, `get_computed_styles`, `measure_element`, `element_exists`, `compare_positions`
+**Navigation** (5 tools):
+- `go_back`, `go_forward`, `navigate`, `scroll_by`, `scroll_to_element`
 
-**Content Extraction** (4 tools):
-- `screenshot`, `get_visible_text`, `get_visible_html`, `save_as_pdf`
+**Interaction** (7 tools):
+- `click`, `drag`, `fill`, `hover`, `press_key`, `select`, `upload_file`
 
-**JavaScript & Console** (2 tools):
-- `evaluate`, `console_logs`
+**Content** (3 tools):
+- `get_html`, `get_text`, `screenshot`
 
-**Network & Responses** (2 tools):
-- `expect_response`, `assert_response`
+**Console** (1 tools):
+- `get_console_logs`
 
-**Configuration** (3 tools):
-- `custom_user_agent`, `set_color_scheme`, `close`
+**Evaluation** (1 tools):
+- `evaluate`
 
-**HTTP Requests** (5 tools):
-- `get`, `post`, `put`, `patch`, `delete`
+**Network** (2 tools):
+- `get_request_details`, `list_network_requests`
 
-### Selector Shortcuts
+**Waiting** (2 tools):
+- `wait_for_element`, `wait_for_network_idle`
 
-All browser tools support test ID shortcuts via `normalizeSelector()`:
-- `testid:submit-button` → `[data-testid="submit-button"]`
-- `data-test:login-form` → `[data-test="login-form"]`
-- `data-cy:username` → `[data-cy="username"]`
-- Regular CSS selectors pass through unchanged
-
+**Lifecycle** (2 tools):
+- `close`, `set_color_scheme`
 ## Architecture
 
 ### Server Structure (MCP Protocol)

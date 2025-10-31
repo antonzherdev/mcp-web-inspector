@@ -27,6 +27,27 @@ export class QuerySelectorTool extends BrowserToolBase {
     return {
       name: "query_selector",
       description: "Test a selector and return detailed information about all matched elements. Essential for selector debugging and finding the right element to interact with. Returns compact text format with element tag, position, text content, visibility status, and interaction capability. Shows why elements are hidden (display:none, opacity:0, zero size). Supports testid shortcuts (e.g., 'testid:submit-button'). Use limit parameter to control how many matches to show (default: 10). NEW: Use onlyVisible parameter to filter results (true=visible only, false=hidden only, undefined=all).",
+      outputs: [
+        "Header showing total matches (and filtered visible/hidden counts if requested).",
+        "For each match (up to limit):",
+        "- Index with element tag and identifier (testid/id/class).",
+        "- Position line: @ (x,y) widthxheight px.",
+        "- Optional trimmed text content in quotes.",
+        "- Optional listed attributes if requested.",
+        "- Status line: ✓ visible or ✗ hidden with reason (display:none, opacity:0, zero size); ⚡ interactive when applicable.",
+        "Footer with how many are shown vs omitted and a tip to increase limit.",
+      ],
+      examples: [
+        "query_selector({ selector: 'a', limit: 3 })",
+        "query_selector({ selector: 'testid:submit', onlyVisible: true, showAttributes: 'href,aria-label' })",
+      ],
+      priority: 5,
+      exampleOutputs: [
+        {
+          call: "query_selector({ selector: 'a', limit: 2 })",
+          output: `Found 5 elements matching \"a\":\n\n[0] <a #home-link>\n    @ (16,12) 80x20px\n    \"Home\"\n    href: \"/\"\n    ✓ visible, ⚡ interactive\n\n[1] <a class=\"nav-item\">\n    @ (104,12) 120x20px\n    \"Products\"\n    ✓ visible, ⚡ interactive\n\nShowing 2 of 5 matches (3 omitted)\nUse limit parameter to show more: { selector: \"a\", limit: 5 }`
+        }
+      ],
       inputSchema: {
         type: "object",
         properties: {

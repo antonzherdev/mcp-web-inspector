@@ -11,6 +11,20 @@ export class ElementExistsTool extends BrowserToolBase implements ToolHandler {
     return {
       name: "element_exists",
       description: "Quick check if an element exists on the page. Ultra-lightweight alternative to query_selector_all when you only need existence confirmation. Returns simple exists/not found status. Most common check before attempting interaction. Supports testid shortcuts.",
+      outputs: [
+        "Returns one line:",
+        "- ✓ exists: <tag id/class> (N matches) when found (N optional)",
+        "- ✗ not found: <original selector> when none",
+      ],
+      examples: [
+        "element_exists({ selector: 'testid:submit' })",
+        "element_exists({ selector: '#does-not-exist' })",
+      ],
+      exampleOutputs: [
+        { call: "element_exists({ selector: 'testid:submit' })", output: `✓ exists: <button data-testid=\"submit\">` },
+        { call: "element_exists({ selector: '.card' })", output: `✓ exists: <div .card> (3 matches)` },
+        { call: "element_exists({ selector: '#does-not-exist' })", output: `✗ not found: #does-not-exist` },
+      ],
       inputSchema: {
         type: "object",
         properties: {

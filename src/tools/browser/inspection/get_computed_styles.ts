@@ -13,6 +13,23 @@ export class GetComputedStylesTool extends BrowserToolBase implements ToolHandle
     return {
       name: "get_computed_styles",
       description: "INSPECT CSS PROPERTIES: Get computed CSS values for specific properties (display, position, width, etc.). Use when you need raw CSS values or specific properties not shown by measure_element(). Returns styles grouped by category (Layout, Visibility, Spacing, Typography). For box model visualization (padding/margin), use measure_element() instead.",
+      outputs: [
+        "Optional selection header when multiple elements matched.",
+        "Header: 'Computed Styles: <tag id/class/testid>'",
+        "One or more sections: Layout, Visibility, Spacing, Typography, Other",
+        "Each section lists 'property: value' lines for requested properties",
+      ],
+      examples: [
+        "get_computed_styles({ selector: 'testid:login-form' })",
+        "get_computed_styles({ selector: '#hero', properties: 'display,width,color' })",
+      ],
+      priority: 3,
+      exampleOutputs: [
+        {
+          call: "get_computed_styles({ selector: 'testid:login-form' })",
+          output: `⚠ Warning: Selector matched 2 elements, showing 1 (use elementIndex to target a specific one)\n\nComputed Styles: <form data-testid=\"login-form\">\n\nLayout:\n  display: block\n  position: static\n  width: 560px\n  height: 480px\n\nVisibility:\n  opacity: 1\n  visibility: visible\n  z-index: auto\n  overflow: visible\n\nSpacing:\n  margin: 0px\n  padding: 24px\n\nTypography:\n  font-size: 16px\n  font-weight: 400\n  color: rgb(33, 37, 41)`
+        }
+      ],
       inputSchema: {
         type: "object",
         properties: {

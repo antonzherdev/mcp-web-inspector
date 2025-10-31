@@ -37,6 +37,7 @@ WORKFLOW: Call without selector for page overview, then drill down by calling wi
 DETECTS: Scrollable containers (shows "scrollable ↕️ 36px" when scrollHeight > clientHeight), parent-relative positioning, vertical/horizontal centering, sibling spacing gaps, layout patterns.
 
 OUTPUT FORMAT:
+\`\`\`
 [0] <button data-testid="menu">
     @ (16,8) 40×40px                         ← Absolute viewport position (x,y) and size
     from edges: ←16px →1144px ↑8px ↓8px      ← Distance from parent edges (↑8px = ↓8px means vertically centered)
@@ -49,6 +50,7 @@ OUTPUT FORMAT:
     gap from [0]: →16px                      ← Spacing between siblings
     "Title"
     ✓ visible, 2 children
+\`\`\`
 
 SYMBOLS: ✓=visible, ✗=hidden, ⚡=interactive, ←→=horizontal edges, ↑↓=vertical edges, ↕️=vertical scroll, ↔️=horizontal scroll
 CENTERING: Equal left/right distances = horizontally centered, equal top/bottom = vertically centered
@@ -57,6 +59,34 @@ SCROLL DETECTION: Automatically detects scrollable containers and shows overflow
 RELATED TOOLS: For comparing TWO elements' alignment (not parent-child), use compare_element_alignment(). For box model (padding/margin), use measure_element().
 
 ⚠️ More efficient than get_html() or evaluate() for structural analysis. Use BEFORE visual tools (screenshot) or evaluate(). Supports testid shortcuts.`,
+      category: 'Inspection',
+      outputs: [
+        "Optional selection header when multiple matches (with chosen index).",
+        "For each listed element:",
+        "- Indexed tag with best identifier (testid/ID/classes).",
+        "- Position line: @ (x,y) width×height px.",
+        "- from edges: left/right/top/bottom distances; centering hints.",
+        "- gap from [prev]: spacing between siblings when applicable.",
+        "- Text snippet in quotes (trimmed).",
+        "- Status: ✓ visible / ✗ hidden, ⚡ interactive, N children.",
+        "- Scrollable markers ↕️/↔️ with overflow amount when detected.",
+      ],
+      examples: [
+        "inspect_dom({})",
+        "inspect_dom({ selector: 'testid:menu' })",
+        "inspect_dom({ selector: '#content', maxChildren: 10 })",
+      ],
+      priority: 0,
+      exampleOutputs: [
+        {
+          call: "inspect_dom({})",
+          output: `[0] <header data-testid="site-header">\n    @ (0,0) 1280×64px\n    from edges: ←0px →0px ↑0px ↓1216px\n    "My App"\n    ✓ visible, 3 children\n\n[1] <main id=\"content\">\n    @ (0,64) 1280×640px\n    from edges: ←0px →0px ↑64px ↓512px\n    \"Welcome back\"\n    ✓ visible, 5 children, scrollable ↕️ 320px`
+        },
+        {
+          call: "inspect_dom({ selector: 'testid:menu' })",
+          output: `[0] <button data-testid=\"menu\">\n    @ (16,8) 40×40px\n    from edges: ←16px →1224px ↑8px ↓16px\n    \"Menu\"\n    ✓ visible, ⚡ interactive`
+        }
+      ],
       inputSchema: {
         type: "object",
         properties: {

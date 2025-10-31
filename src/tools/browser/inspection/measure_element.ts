@@ -12,6 +12,24 @@ export class MeasureElementTool extends BrowserToolBase implements ToolHandler {
     return {
       name: "measure_element",
       description: "📏 MEASUREMENT TOOL - DEBUG SPACING ISSUES: See padding, margin, border, and dimension measurements in visual box model format. Use when elements have unexpected spacing or size. Returns compact visual representation showing content → padding → border → margin with directional arrows (↑24px for top margin, etc.). Also provides raw dimensions useful for scroll detection (clientHeight vs content height). For parent-child centering issues, use inspect_dom() first (shows if child is centered in parent). For comparing alignment between two elements, use compare_element_alignment(). For quick scroll detection, use inspect_dom() instead (shows 'scrollable ↕️'). More readable than get_computed_styles() or evaluate() for box model debugging.",
+      priority: 7,
+      outputs: [
+        "Header: Element: <tag id/class/testid>",
+        "Position/size line: @ (x,y) widthxheight px",
+        "Box Model section: Content size, Padding (with directional arrows), Border (with arrows or shorthand), Margin (with arrows)",
+        "Total Space line: totalWidthxtotalHeight px (with margin)",
+        "Optional suggestion to run inspect_ancestors when unusual spacing detected",
+      ],
+      examples: [
+        "measure_element({ selector: 'testid:card' })",
+        "measure_element({ selector: '#hero' })",
+      ],
+      exampleOutputs: [
+        {
+          call: "measure_element({ selector: 'testid:card' })",
+          output: `Element: <div data-testid=\"card\">\n@ (240,320) 360x240px\n\nBox Model:\n  Content: 328x208px\n  Padding: ↑16px ↓16px ←8px →8px\n  Border:  none\n  Margin:  ↑0px ↓24px ←0px →0px\n\nTotal Space: 360x264px (with margin)`
+        }
+      ],
       inputSchema: {
         type: "object",
         properties: {

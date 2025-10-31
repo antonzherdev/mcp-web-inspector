@@ -9,6 +9,26 @@ export class CompareElementAlignmentTool extends BrowserToolBase {
     return {
       name: "compare_element_alignment",
       description: "COMPARE TWO ELEMENTS: Get comprehensive alignment and dimension comparison in one call. Shows edge alignment (top, left, right, bottom), center alignment (horizontal, vertical), and dimensions (width, height). Perfect for debugging 'are these headers aligned?' or 'do these panels match?'. Returns all alignment info with ✓/✗ symbols and pixel differences. For parent-child centering, use inspect_dom() instead (automatically shows if children are centered in parent). More efficient than evaluate() with manual getBoundingClientRect() calculations.",
+      outputs: [
+        "Optional warnings when a selector matched multiple elements (using first).",
+        "Header: Alignment: <elem1> vs <elem2>",
+        "Two lines with each element's position and size: @ (x,y) w×h px",
+        "Edges block: Top/Left/Right/Bottom with ✓/✗ and diffs",
+        "Centers block: Horizontal/Vertical center alignment with ✓/✗ and diffs",
+        "Dimensions block: Width/Height same or different with ✓/✗ and diffs",
+        "Optional hint to run inspect_ancestors(...) when large misalignment detected",
+      ],
+      examples: [
+        "compare_element_alignment({ selector1: 'testid:header-title', selector2: 'testid:subtitle' })",
+        "compare_element_alignment({ selector1: '#left-panel', selector2: '#right-panel' })",
+      ],
+      priority: 2,
+      exampleOutputs: [
+        {
+          call: "compare_element_alignment({ selector1: '#left-panel', selector2: '#right-panel' })",
+          output: `Alignment: <div #left-panel> vs <div #right-panel>\n  #left-panel: @ (80,120) 320×600px\n  #right-panel: @ (440,120) 320×600px\n\nEdges:\n  Top:    ✓ aligned (both @ 120px)\n  Left:   ✗ not aligned (80px vs 440px, diff: 360px)\n  Right:  ✗ not aligned (400px vs 760px, diff: 360px)\n  Bottom: ✓ aligned (both @ 720px)\n\nCenters:\n  Horizontal: ✗ not aligned (240px vs 600px, diff: 360px)\n  Vertical:   ✓ aligned (both @ 420px)\n\nDimensions:\n  Width:  ✓ same (320px)\n  Height: ✓ same (600px)`
+        }
+      ],
       inputSchema: {
         type: "object",
         properties: {

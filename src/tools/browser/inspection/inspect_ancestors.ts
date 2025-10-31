@@ -48,6 +48,30 @@ export class InspectAncestorsTool extends BrowserToolBase {
     return {
       name: "inspect_ancestors",
       description: "DEBUG LAYOUT CONSTRAINTS: Walk up the DOM tree to find where width constraints, margins, borders, and overflow clipping come from. Shows for each ancestor: position/size, width constraints (w, max-w, min-w), margins with directional arrows (↑↓←→ format), padding, display type, borders (directional if non-uniform), overflow (🔒=hidden, ↕️=scroll), flexbox context (flex direction justify items gap), grid context (cols rows gap), position/z-index/transform when set. Automatically detects horizontal centering via auto margins and flags clipping points (🎯). Essential for debugging unexpected centering, constrained width, or clipped content. Default: 10 ancestors (reaches <body> in most React apps), max: 15. Use after inspect_dom() to understand parent layout constraints.",
+      outputs: [
+        "Header showing selected element index when selector matched multiple.",
+        "For each ancestor (starting from target):",
+        "- [i] <tag> | testid:... or classes",
+        "- @ (x,y) width×height px",
+        "- Inline summary: w, display (if not block), m/p, max-w, min-w",
+        "- Flexbox/Grid context when present (direction, gap, grid templates)",
+        "- Margin breakdown with arrows (↑↓←→) and centering diagnostics",
+        "- Border details when set (directional if non-uniform)",
+        "- Overflow state: 🔒 hidden, ↕️/↔️ scroll + overflow amount",
+        "- Extra: position/z-index/transform when non-default",
+        "- Diagnostics: 🎯 CLIPPING POINT / SCROLLABLE CONTAINER / WIDTH CONSTRAINT",
+      ],
+      examples: [
+        "inspect_ancestors({ selector: 'testid:submit-button' })",
+        "inspect_ancestors({ selector: '#content', limit: 15 })",
+      ],
+      priority: 1,
+      exampleOutputs: [
+        {
+          call: "inspect_ancestors({ selector: 'testid:submit-button' })",
+          output: `Selected: testid:submit-button (1 of 2 matches)\n\nAncestor Chain:\n\n[0] <button> | testid:submit-button\n    @ (860,540) 120x40px | w:120px display:inline-block\n    margin: ↑0px →0px ↓0px ←0px\n    border: 1px solid rgb(0, 122, 255)\n    ⚠ none\n\n[1] <div> | form-actions\n    @ (800,520) 240x80px | w:240px display:flex m:0px p:16px gap:8px\n    flex: row, justify:center, align:center, gap:8px\n    margin: →auto ←auto ← Horizontally centered (likely margin:0 auto)\n    border: none\n    overflow: 🔒 hidden\n    🎯 CLIPPING POINT - May clip overflowing children\n\n[2] <form> | #login-form\n    @ (640,200) 560x480px | w:560px max-w:600px\n    position:relative\n    🎯 WIDTH CONSTRAINT`
+        }
+      ],
       inputSchema: {
         type: "object",
         properties: {

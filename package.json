@@ -19,7 +19,9 @@
     "prepare": "npm run build",
     "watch": "tsc --watch",
     "test": "jest",
-    "test:custom": "node run-tests.cjs"
+    "test:custom": "node run-tests.cjs",
+    "generate:readme": "node scripts/generate-readme.mjs",
+    "prepublishOnly": "npm run generate:readme && git diff --quiet || (echo 'README.md is out of date. Run npm run generate:readme and commit the changes.' && exit 1)"
   },
   "repository": {
     "type": "git",

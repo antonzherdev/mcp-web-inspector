@@ -15,6 +15,27 @@ export class FindByTextTool extends BrowserToolBase implements ToolHandler {
     return {
       name: "find_by_text",
       description: "Find elements by their text content. Essential for finding elements without good selectors, especially in poorly structured DOM. Returns elements with position, visibility, and interaction state. Supports exact match, case-sensitive search, and NEW: regex pattern matching for advanced text searching (e.g., '/\\d+ items?/' to find elements with numbers).",
+      priority: 8,
+      outputs: [
+        "Header showing 'No elements found ...' or 'Found N elements ...'",
+        "Up to limit results, each with:",
+        "- <tag id/class/testid ...> line with key attributes",
+        "- Position line: @ (x,y) widthxheight px",
+        "- Trimmed text content (if any)",
+        "- Visibility and interactability status",
+        "Footer shows how many are displayed vs omitted and how to increase limit",
+      ],
+      examples: [
+        "find_by_text({ text: 'Sign in' })",
+        "find_by_text({ text: '/^Next \\d+$/', regex: true })",
+        "find_by_text({ text: 'Delete', exact: true, caseSensitive: true })",
+      ],
+      exampleOutputs: [
+        {
+          call: "find_by_text({ text: 'Sign in' })",
+          output: `Found 3 elements containing "Sign in":\n\n[0] <button data-testid=\"primary-cta\">\n    @ (640,420) 120x40px\n    "Sign in"\n    ✓ visible\n\n[1] <a class=\"link\" href=\"/signin\">\n    @ (600,480) 68x20px\n    "Sign in"\n    ✓ visible, ⚡ interactive\n\n[2] <div class=\"menu-item\">\n    @ (40,360) 200x24px\n    "Sign in"\n    ✗ hidden\n\nShowing all 3 matches`
+        }
+      ],
       inputSchema: {
         type: "object",
         properties: {

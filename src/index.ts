@@ -3,6 +3,7 @@
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createToolDefinitions } from "./tools/common/registry.js";
+import type { ToolMetadata } from "./tools/common/types.js";
 import { setupRequestHandlers } from "./requestHandler.js";
 import { parseArgs } from "node:util";
 import { setSessionConfig } from "./toolHandler.js";
@@ -32,6 +33,14 @@ const { values } = parseArgs({
       type: 'boolean',
       default: false,
     },
+    'print-tools-json': {
+      type: 'boolean',
+      default: false,
+    },
+    'print-tools-md': {
+      type: 'boolean',
+      default: false,
+    },
   },
   strict: false,
 });
@@ -47,6 +56,21 @@ const sessionConfig = {
 setSessionConfig(sessionConfig);
 
 async function runServer() {
+  // Create tool definitions with session config
+  const TOOLS = createToolDefinitions(sessionConfig);
+
+  // CLI utilities: print tools metadata (JSON/Markdown) and exit
+  if (values['print-tools-json']) {
+    process.stdout.write(JSON.stringify(TOOLS, null, 2));
+    return;
+  }
+
+  if (values['print-tools-md']) {
+    const md = formatToolsMarkdown(TOOLS);
+    process.stdout.write(md + "\n");
+    return;
+  }
+
   console.error(`Starting mcp-web-inspector v${VERSION}`);
 
   const server = new Server(
@@ -61,9 +85,6 @@ async function runServer() {
       },
     }
   );
-
-  // Create tool definitions with session config
-  const TOOLS = createToolDefinitions(sessionConfig);
 
   // Setup request handlers
   setupRequestHandlers(server, TOOLS);
@@ -90,3 +111,62 @@ runServer().catch((error) => {
   console.error("Fatal error in main():", error);
   process.exit(1);
 });
+
+// Render a simple Markdown for tools (flat list)
+function formatToolsMarkdown(tools: ToolMetadata[]): string {
+  const lines: string[] = [];
+  for (const t of tools) {
+    lines.push(`#### \`${t.name}\``);
+    if (t.description) lines.push(String(t.description));
+
+    // Parameters
+    const schema: any = (t as any).inputSchema;
+    if (schema && schema.properties) {
+      lines.push('');
+      lines.push('- Parameters:');
+      const req = new Set(Array.isArray(schema.required) ? schema.required : []);
+      for (const key of Object.keys(schema.properties)) {
+        const p = schema.properties[key] || {};
+        const type = p.type || 'any';
+        const desc = p.description || '';
+        const required = req.has(key) ? 'required' : 'optional';
+        lines.push(`  - ${key} (${type}, ${required}): ${desc}`);
+      }
+    }
+
+    // Output bullets
+    const outputs = (t as any).outputs as string | string[] | undefined;
+    if (outputs) {
+      const list = Array.isArray(outputs) ? outputs : [outputs];
+      lines.push('');
+      lines.push('- Output:');
+      for (const item of list) {
+        const s = String(item);
+        lines.push(/^\s*[-*]/.test(s) ? `  ${s}` : `  - ${s}`);
+      }
+    }
+
+    // Examples
+    const examples = (t as any).examples as string[] | undefined;
+    if (examples && examples.length) {
+      lines.push('');
+      lines.push('- Examples:');
+      for (const ex of examples) lines.push(`- ${ex}`);
+    }
+
+    // Example outputs
+    const exampleOutputs = (t as any).exampleOutputs as { call: string; output: string }[] | undefined;
+    if (exampleOutputs && exampleOutputs.length) {
+      for (const eo of exampleOutputs) {
+        lines.push('');
+        lines.push(`- Example Output (${eo.call}):`);
+        lines.push('```');
+        lines.push(eo.output);
+        lines.push('```');
+      }
+    }
+
+    lines.push('');
+  }
+  return lines.join('\n');
+}

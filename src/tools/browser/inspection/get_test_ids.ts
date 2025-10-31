@@ -25,6 +25,28 @@ export class GetTestIdsTool extends BrowserToolBase {
     return {
       name: "get_test_ids",
       description: "Discover all test identifiers on the page (data-testid, data-test, data-cy, etc.). Returns a compact text list grouped by attribute type. Essential for test-driven workflows and understanding what elements can be reliably selected. Use the returned test IDs with selector shortcuts like 'testid:submit-button'.",
+      priority: 6,
+      outputs: [
+        "'Found N test IDs' header or 'Found 0 test IDs' with tips",
+        "For each attribute group: attribute name with count and a compact comma-separated list (or truncated with '... and X more')",
+        "Optional duplicate warnings: attribute:value appears N times",
+        "Suggestion block with best practices and usage tip for selector shortcuts",
+      ],
+      examples: [
+        "get_test_ids({})",
+        "get_test_ids({ showAll: true })",
+        "get_test_ids({ attributes: 'data-testid,data-cy' })",
+      ],
+      exampleOutputs: [
+        {
+          call: "get_test_ids({})",
+          output: `Found 5 test IDs:\n\ndata-testid (3):\n  submit, email-input, password-input\n\ndata-cy (2):\n  navbar, footer\n\n💡 Tip: Use these test IDs with selector shortcuts:\n   testid:submit → [data-testid=\"submit\"]`
+        },
+        {
+          call: "get_test_ids({ showAll: false })",
+          output: `Found 14 test IDs:\n\ndata-testid (12):\n  submit, email-input, password-input, remember-me, login-form, link-register, link-forgot, header-title,\n  ... and 4 more\n  💡 Use showAll: true to see all 12 test IDs\n\ndata-cy (2):\n  navbar, footer`
+        }
+      ],
       inputSchema: {
         type: "object",
         properties: {

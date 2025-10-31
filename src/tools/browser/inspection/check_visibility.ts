@@ -10,6 +10,30 @@ export class CheckVisibilityTool extends BrowserToolBase {
     return {
       name: "check_visibility",
       description: "Check if an element is visible to the user. CRITICAL for debugging click/interaction failures. Returns detailed visibility information including viewport intersection, clipping by overflow:hidden, and whether element needs scrolling. Supports testid shortcuts (e.g., 'testid:submit-button').",
+      priority: 4,
+      outputs: [
+        "Header: Visibility: <tag id/class/testid>",
+        "Status line: ✓ visible/✗ hidden, ✓/✗ in viewport with % visible",
+        "CSS: opacity, display, visibility",
+        "Optional interactability issues: disabled, readonly, aria-disabled, pointer-events:none",
+        "Optional Issues block: clipped by parent overflow, covered by element (with descriptor and ~coverage%), needs scroll",
+        "Optional Suggestions: scroll_to_element, modal/overlay hint, interaction state note",
+        "Optional tip to run inspect_ancestors when clipping is detected",
+      ],
+      examples: [
+        "check_visibility({ selector: 'testid:submit' })",
+        "check_visibility({ selector: '#login button', elementIndex: 2 })",
+      ],
+      exampleOutputs: [
+        {
+          call: "check_visibility({ selector: 'testid:submit' })",
+          output: `Visibility: <button data-testid=\"submit\">\n\n✓ visible, ✓ in viewport\nopacity: 1, display: inline-block, visibility: visible`
+        },
+        {
+          call: "check_visibility({ selector: '#hero-cta' })",
+          output: `Visibility: <a #hero-cta>\n\n✗ hidden, ✗ not in viewport (45% visible)\nopacity: 1, display: block, visibility: visible\n\nIssues:\n  ✗ covered by another element (~60% covered)\n    Covering: <div .modal-backdrop> (z-index: 9999)\n  ⚠ needs scroll to bring into view\n\n→ Call scroll_to_element before clicking\n→ Element may be behind modal, overlay, or fixed header`
+        }
+      ],
       inputSchema: {
         type: "object",
         properties: {
