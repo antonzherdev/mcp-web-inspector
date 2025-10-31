@@ -1,6 +1,5 @@
 import fs from 'node:fs';
 import * as path from 'node:path';
-import * as os from 'node:os';
 import type { Page } from 'playwright';
 import { BrowserToolBase } from '../base.js';
 import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, createSuccessResponse } from '../../common/types.js';
@@ -14,28 +13,32 @@ export class ScreenshotTool extends BrowserToolBase {
   static getMetadata(sessionConfig?: SessionConfig): ToolMetadata {
     const screenshotsDir = sessionConfig?.screenshotsDir || './.mcp-web-inspector/screenshots';
 
+    const description = [
+      '📸 VISUAL OUTPUT TOOL - Captures page/element appearance and saves to file. Essential for: visual regression testing, sharing with humans, confirming UI appearance (colors/fonts/images).',
+      '',
+      '❌ WRONG: "Take screenshot to debug button alignment"',
+      '✅ RIGHT: "Use compare_element_alignment() - alignment in <100 tokens"',
+      '',
+      '❌ WRONG: "Screenshot to check element visibility"',
+      '✅ RIGHT: "Use check_visibility() - instant visibility + diagnostics"',
+      '',
+      '❌ WRONG: "Screenshot to inspect layout structure"',
+      '✅ RIGHT: "Use inspect_dom() - hierarchy with positions and visibility"',
+      '',
+      '✅ VALID: "Share with designer for feedback"',
+      '✅ VALID: "Visual regression check"',
+      '✅ VALID: "Confirm gradient/shadow rendering"',
+      '',
+      '⚠️ Token cost: ~1,500 tokens to read. Structural tools: <100 tokens.',
+      '',
+      'Admin control (optional): set env MCP_SCREENSHOT_GUARD=strict to block execution (prevents misuse by default). Unset to allow visuals for human review.',
+      '',
+      `Screenshots saved to ${screenshotsDir}. Example: { name: "login-page", fullPage: true } or { name: "submit-btn", selector: "testid:submit" }`
+    ].join('\n');
+
     return {
       name: "visual_screenshot_for_humans",
-      description: `📸 VISUAL OUTPUT TOOL - Captures page/element appearance and saves to file. Essential for: visual regression testing, sharing with humans, confirming UI appearance (colors/fonts/images).
-
-❌ WRONG: "Take screenshot to debug button alignment"
-✅ RIGHT: "Use compare_element_alignment() - alignment in <100 tokens"
-
-❌ WRONG: "Screenshot to check element visibility"
-✅ RIGHT: "Use check_visibility() - instant visibility + diagnostics"
-
-❌ WRONG: "Screenshot to inspect layout structure"
-✅ RIGHT: "Use inspect_dom() - hierarchy with positions and visibility"
-
-✅ VALID: "Share with designer for feedback"
-✅ VALID: "Visual regression check"
-✅ VALID: "Confirm gradient/shadow rendering"
-
-⚠️ Token cost: ~1,500 tokens to read. Structural tools: <100 tokens.
-
-Admin control (optional): set env MCP_SCREENSHOT_GUARD=strict to block execution (prevents misuse by default). Unset to allow visuals for human review.
-
-Screenshots saved to ${screenshotsDir}. Example: { name: "login-page", fullPage: true } or { name: "submit-btn", selector: "testid:submit" }`,
+      description,
       inputSchema: {
         type: "object",
         properties: {
@@ -55,10 +58,10 @@ Screenshots saved to ${screenshotsDir}. Example: { name: "login-page", fullPage:
             type: "string",
             description: `Custom directory for saving screenshot (default: ${screenshotsDir}). Example: './my-screenshots'`
           },
-          },
-        },
-        required: ["name"],
-      },
+          }
+        ,
+        required: ["name"]
+      }
     };
   }
 

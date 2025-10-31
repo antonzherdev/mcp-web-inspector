@@ -100,7 +100,7 @@ describe('Tool Definitions', () => {
   test('browser tool list should only contain web inspection tools', () => {
     const browserTools = getBrowserToolNames();
     const expectedTools = [
-      'navigate', 'go_back', 'go_forward', 'scroll_to_element', 'scroll_by', 'screenshot', 'close',
+      'navigate', 'go_back', 'go_forward', 'scroll_to_element', 'scroll_by', 'visual_screenshot_for_humans', 'close',
       'inspect_dom', 'inspect_ancestors', 'get_test_ids', 'query_selector', 'find_by_text',
       'check_visibility', 'compare_element_alignment', 'element_exists',
       'get_computed_styles', 'measure_element', 'get_text', 'get_html', 'get_console_logs',
