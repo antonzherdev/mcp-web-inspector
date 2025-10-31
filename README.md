@@ -488,7 +488,7 @@ SCROLL DETECTION: Automatically detects scrollable containers and shows overflow
 
 RELATED TOOLS: For comparing TWO elements' alignment (not parent-child), use compare_element_alignment(). For box model (padding/margin), use measure_element().
 
-⚠️ More efficient than get_html() or evaluate() for structural analysis. Use BEFORE visual tools (screenshot) or evaluate(). Supports testid shortcuts.
+⚠️ More efficient than get_html() or evaluate() for structural analysis. Use BEFORE visual output tools (e.g., visual_screenshot_for_humans) or evaluate(). Supports testid shortcuts.
 
 - Parameters:
   - selector (string, optional): CSS selector, text selector, or testid shorthand to inspect. Omit for page overview (defaults to body). Use 'testid:login-form', '#main', etc.
@@ -1014,7 +1014,7 @@ Upload a file to an input[type='file'] element on the page
   - elementIndex (number, optional): When selector matches multiple elements, use this 1-based index to select a specific one (e.g., 2 = second element). Default: first visible element.
   - maxLength (number, optional): Maximum number of characters to return (default: 20000)
 
-#### `screenshot`
+#### `visual_screenshot_for_humans`
 📸 VISUAL OUTPUT TOOL - Captures page/element appearance and saves to file. Essential for: visual regression testing, sharing with humans, confirming UI appearance (colors/fonts/images). ⚠️ NOT for layout debugging (positions/sizes/alignment/margins) - use inspect_dom/compare_positions/inspect_ancestors/get_computed_styles instead (structural data is token-efficient, screenshots require ~1,500 tokens to read). Screenshots saved to ./.mcp-web-inspector/screenshots. Example: { name: "login-page", fullPage: true } or { name: "submit-btn", selector: "testid:submit" }
 
 - Parameters:
@@ -1180,14 +1180,14 @@ These step-by-step recipes show how to chain tools together for common testing a
 
 ```
 1. navigate({ url: "https://app.example.com/login" })
-2. screenshot({ name: "login-page" })
+2. visual_screenshot_for_humans({ name: "login-page" })
 3. fill({ selector: "testid:email-input", value: "user@example.com" })
 4. fill({ selector: "testid:password-input", value: "password123" })
 5. click({ selector: "testid:login-button" })
 6. wait_for_network_idle()
 7. get_console_logs({ type: "error" })
    → Verify no JavaScript errors occurred
-8. screenshot({ name: "after-login" })
+8. visual_screenshot_for_humans({ name: "after-login" })
 9. get_text()
    → Verify success message or dashboard content
 ```
@@ -1215,7 +1215,7 @@ These step-by-step recipes show how to chain tools together for common testing a
      properties: "margin,padding,display,flex-direction"
    })
    → Shows: display: flex, flex-direction: column, padding: 20px
-7. screenshot({ name: "layout-debug" })
+7. visual_screenshot_for_humans({ name: "layout-debug" })
 ```
 
 **Why this works**: Progressive inspection + precise measurements reveal layout problems.
@@ -1309,7 +1309,7 @@ These step-by-step recipes show how to chain tools together for common testing a
 
 ```
 1. navigate({ url: "https://dashboard.example.com" })
-2. screenshot({ name: "baseline", fullPage: true })
+2. visual_screenshot_for_humans({ name: "baseline", fullPage: true })
 3. compare_positions({
      selector1: "testid:header",
      selector2: "testid:footer",
@@ -1342,7 +1342,7 @@ These step-by-step recipes show how to chain tools together for common testing a
    → Found 2 elements: .error-message spans
 7. get_text({ selector: ".error-message" })
    → "Please enter a valid email address"
-8. screenshot({ name: "validation-errors" })
+8. visual_screenshot_for_humans({ name: "validation-errors" })
 ```
 
 **Why this works**: Wait for element ensures validation messages appear before checking.
@@ -1356,7 +1356,7 @@ These step-by-step recipes show how to chain tools together for common testing a
      height: 667
    })
    → iPhone SE viewport
-2. screenshot({ name: "mobile-view", fullPage: true })
+2. visual_screenshot_for_humans({ name: "mobile-view", fullPage: true })
 3. inspect_dom({ selector: "nav" })
    → Check if mobile menu is used
 4. element_exists({ selector: "testid:hamburger-menu" })
@@ -1365,7 +1365,7 @@ These step-by-step recipes show how to chain tools together for common testing a
    → ✗ not found (desktop menu hidden on mobile)
 6. click({ selector: "testid:hamburger-menu" })
 7. wait_for_element({ selector: "testid:mobile-nav", state: "visible" })
-8. screenshot({ name: "mobile-menu-open" })
+8. visual_screenshot_for_humans({ name: "mobile-menu-open" })
 ```
 
 **Why this works**: Viewport configuration in navigate enables mobile testing.
@@ -1385,7 +1385,7 @@ These step-by-step recipes show how to chain tools together for common testing a
      properties: "display,opacity,visibility,z-index"
    })
    → display: block, opacity: 1, visibility: visible, z-index: 1000
-7. screenshot({ name: "tooltip-visible" })
+7. visual_screenshot_for_humans({ name: "tooltip-visible" })
 ```
 
 **Why this works**: Hover tool + visibility checks validate tooltip behavior.

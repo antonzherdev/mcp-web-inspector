@@ -852,7 +852,7 @@ export function getConsoleLogs(): string[] {
  * Get screenshots
  */
 export function getScreenshots(): Map<string, string> {
-  const screenshotTool = getToolInstance("screenshot", null) as ScreenshotTool;
+  const screenshotTool = getToolInstance("visual_screenshot_for_humans", null) as ScreenshotTool;
   return screenshotTool?.getScreenshots() ?? new Map();
 }
 

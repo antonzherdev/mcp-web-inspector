@@ -130,11 +130,11 @@ When users paste images into Claude Code, the client converts them to efficient 
 **Correct Approach for Screenshots:**
 ```typescript
 // ✅ GOOD - Return file path
-screenshot({ name: "login" })
+visual_screenshot_for_humans({ name: "login" })
 → "✓ Screenshot saved: .mcp-web-inspector/screenshots/login-2025-01-20.png"
 
 // ❌ BAD - Don't return base64
-screenshot({ name: "login", returnBase64: true })
+visual_screenshot_for_humans({ name: "login", returnBase64: true })
 → { type: "image", data: "iVBORw0KG..." }  // FAILS: exceeds 25k tokens
 ```
 
