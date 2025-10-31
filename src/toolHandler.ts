@@ -849,6 +849,15 @@ export function getConsoleLogs(): string[] {
 }
 
 /**
+ * Get console logs captured after the last navigation
+ */
+export function getConsoleLogsSinceLastNavigation(): string[] {
+  const consoleLogsTool = getToolInstance("get_console_logs", null) as GetConsoleLogsTool;
+  if (!consoleLogsTool) return [];
+  return consoleLogsTool.getLogsSinceLastNavigation();
+}
+
+/**
  * Get screenshots
  */
 export function getScreenshots(): Map<string, string> {

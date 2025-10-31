@@ -6,6 +6,11 @@ async function resetState() {
   resetBrowserState();
 }
 
+async function getLogsSinceLastNav(): Promise<string[]> {
+  const { getConsoleLogsSinceLastNavigation } = await import('../../../toolHandler.js');
+  return getConsoleLogsSinceLastNavigation();
+}
+
 /**
  * Tool for navigating to URLs
  */
@@ -66,11 +71,57 @@ export class NavigateTool extends BrowserToolBase {
 
     this.recordNavigation();
     return this.safeExecute(context, async (page) => {
+      const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
+
       try {
         await page.goto(args.url, {
           timeout: args.timeout || 30000,
           waitUntil: args.waitUntil || "load"
         });
+
+        // Detect common Next.js dev boot error and auto-reload up to N times
+        // Example logs:
+        //   "Uncaught SyntaxError: Invalid or unexpected token (at layout.js:62:29)"
+        //   "main-app.js:... Download the React DevTools ..."
+        //   "error-boundary-callbacks.js:83"
+        try {
+          const maxRetries = 2; // keep parameters minimal
+          const delay = 800; // ms
+
+          let attempts = 0;
+          // Give the console a brief moment to emit init errors
+          if (delay) await sleep(delay);
+
+          while (attempts <= maxRetries) {
+            const logs = await getLogsSinceLastNav();
+            const hasInvalidToken = logs.some(l => l.toLowerCase().includes('invalid or unexpected token'));
+            const hasNextMarkers = logs.some(l =>
+              l.includes('main-app.js') ||
+              l.includes('error-boundary-callbacks.js') ||
+              l.toLowerCase().includes('download the react devtools')
+            );
+
+            if (hasInvalidToken && hasNextMarkers && attempts < maxRetries) {
+              attempts++;
+              this.recordNavigation();
+              await page.reload({ timeout: args.timeout || 30000, waitUntil: args.waitUntil || 'load' });
+              if (delay) await sleep(delay);
+              continue;
+            }
+
+            // Either no error pattern or we exhausted retries
+            if (attempts > 0 && hasInvalidToken && hasNextMarkers) {
+              return createSuccessResponse(`Navigated to ${args.url} (attempted ${attempts} auto-reload(s); init error persisted)`);
+            }
+            if (attempts > 0) {
+              return createSuccessResponse(`Navigated to ${args.url} (auto-reloaded ${attempts} time(s) after detecting Next.js init error)`);
+            }
+            // No error detected on first attempt
+            break;
+          }
+        } catch {
+          // Best-effort detection; ignore and proceed
+        }
 
         return createSuccessResponse(`Navigated to ${args.url}`);
       } catch (error) {

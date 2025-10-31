@@ -149,4 +149,14 @@ export class GetConsoleLogsTool extends BrowserToolBase {
   clearConsoleLogs(): void {
     this.consoleLogs = [];
   }
+
+  /**
+   * Return messages for logs captured after the last recorded navigation
+   */
+  getLogsSinceLastNavigation(): string[] {
+    const since = this.lastNavigationTimestamp;
+    return this.consoleLogs
+      .filter(log => log.timestamp > since)
+      .map(log => log.message);
+  }
 }
