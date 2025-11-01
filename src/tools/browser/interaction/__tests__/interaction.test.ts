@@ -267,7 +267,11 @@ describe('Browser Interaction Tools', () => {
 
       const result = await evaluateTool.execute(args, mockContext);
 
-      expect(mockEvaluate).toHaveBeenCalledWith('return document.title');
+      // evaluate() wraps script inside a function passed to page.evaluate
+      expect(mockEvaluate).toHaveBeenCalled();
+      const argsPassed = mockEvaluate.mock.calls[0];
+      expect(typeof argsPassed[0]).toBe('function');
+      expect(argsPassed[1]).toBe('return document.title');
       expect(result.isError).toBe(false);
       expect(result.content[0].text).toContain('JavaScript execution result');
     });
@@ -285,7 +289,7 @@ describe('Browser Interaction Tools', () => {
       expect(fullResponse).toContain('inspect_dom');
     });
 
-    test('should suggest get_visible_text for textContent usage', async () => {
+    test('should suggest get_text for textContent usage', async () => {
       const args = {
         script: 'document.body.textContent'
       };
@@ -295,7 +299,7 @@ describe('Browser Interaction Tools', () => {
 
       expect(result.isError).toBe(false);
       expect(fullResponse).toContain('💡 Consider using specialized tools instead');
-      expect(fullResponse).toContain('get_visible_text');
+      expect(fullResponse).toContain('get_text');
     });
 
     test('should suggest measure_element for getBoundingClientRect usage', async () => {
@@ -311,7 +315,7 @@ describe('Browser Interaction Tools', () => {
       expect(fullResponse).toContain('measure_element');
     });
 
-    test('should suggest element_visibility for visibility checks', async () => {
+    test('should suggest check_visibility for visibility checks', async () => {
       const args = {
         script: 'window.getComputedStyle(document.querySelector("#el")).visibility'
       };
@@ -321,7 +325,7 @@ describe('Browser Interaction Tools', () => {
 
       expect(result.isError).toBe(false);
       expect(fullResponse).toContain('💡 Consider using specialized tools instead');
-      expect(fullResponse).toContain('element_visibility');
+      expect(fullResponse).toContain('check_visibility');
     });
 
     test('should suggest get_computed_styles for getComputedStyle usage', async () => {
@@ -363,7 +367,7 @@ describe('Browser Interaction Tools', () => {
       expect(fullResponse).toContain('get_test_ids');
     });
 
-    test('should suggest compare_positions for position comparison', async () => {
+    test('should suggest compare_element_alignment for position comparison', async () => {
       const args = {
         script: 'document.querySelector("#a").getBoundingClientRect().top === document.querySelector("#b").getBoundingClientRect().top'
       };
@@ -373,7 +377,7 @@ describe('Browser Interaction Tools', () => {
 
       expect(result.isError).toBe(false);
       expect(fullResponse).toContain('💡 Consider using specialized tools instead');
-      expect(fullResponse).toContain('compare_positions');
+      expect(fullResponse).toContain('compare_element_alignment');
     });
 
     test('should suggest scroll tools for scrolling operations', async () => {

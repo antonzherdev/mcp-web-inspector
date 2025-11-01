@@ -92,9 +92,9 @@ describe('Tool Definitions', () => {
     expect(browserTools.length).toBe(34);
   });
 
-  test('should have all tool definitions available (34 total - browser tools only)', () => {
-    // Removed HTTP API, codegen, iframe, and other unused tools
-    expect(toolDefinitions.length).toBe(34);
+  test('should have all tool definitions available (35 total incl. confirm tool)', () => {
+    // Removed HTTP API, codegen, iframe, and other unused tools; includes confirm_output
+    expect(toolDefinitions.length).toBe(35);
   });
 
   test('browser tool list should only contain web inspection tools', () => {

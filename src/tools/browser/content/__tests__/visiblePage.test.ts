@@ -513,10 +513,10 @@ describe('GetHtmlTool', () => {
     expect(result.content[0].text).toContain('⚠️ Full HTML not returned to save tokens');
     expect(result.content[0].text).toContain('💡 RECOMMENDED: Use token-efficient alternatives');
     expect(result.content[0].text).toContain('inspect_dom()');
-    expect(result.content[0].text).toMatch(/confirmToken: "[\w\d]{8}"/);
+    expect(result.content[0].text).toMatch(/confirm_output\(\{ token: \"[\w\d]+\" \}\)/);
   });
 
-  test('should return full HTML with valid confirmToken', async () => {
+  test('should return full HTML with valid token via confirm_output', async () => {
     const args = {};
 
     // Large HTML
@@ -527,35 +527,25 @@ describe('GetHtmlTool', () => {
     const previewResult = await visibleHtmlTool.execute(args, mockContext);
     expect(previewResult.isError).toBe(false);
 
-    // Extract token from preview
-    const tokenMatch = (previewResult.content[0].text as string).match(/confirmToken: "([\w\d]{8})"/);
+    // Extract token from preview and confirm using confirm_output tool
+    const tokenMatch = (previewResult.content[0].text as string).match(/confirm_output\(\{ token: \"([\w\d]+)\" \}\)/);
     expect(tokenMatch).toBeTruthy();
     const token = tokenMatch![1];
 
-    // Second call - with token
-    const fullResult = await visibleHtmlTool.execute({ confirmToken: token }, mockContext);
+    const { ConfirmOutputTool } = await import('../../../common/confirm_output.js');
+    const confirmTool = new ConfirmOutputTool({});
+    const fullResult = await confirmTool.execute({ token }, {} as any);
 
     expect(fullResult.isError).toBe(false);
     expect(fullResult.content[0].text).toContain(largeHtml);
-    expect(fullResult.content[0].text).not.toContain('Preview (first 500 chars)');
-    expect(fullResult.content[0].text).toContain('💡 TIP: If you need structured inspection');
   });
 
-  test('should generate new token for invalid confirmToken', async () => {
-    const args = { confirmToken: 'invalid123' };
-
-    // Large HTML
-    const largeHtml = '<div>' + 'Z'.repeat(3000) + '</div>';
-    mockEvaluate.mockImplementationOnce(() => Promise.resolve(largeHtml));
-
-    const result = await visibleHtmlTool.execute(args, mockContext);
-
-    expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('HTML size:');
-    expect(result.content[0].text).toContain('Preview (first 500 chars)');
-    expect(result.content[0].text).toMatch(/confirmToken: "[\w\d]{8}"/);
-    // Should not return full HTML
-    expect(result.content[0].text).not.toContain('Z'.repeat(3000));
+  test('confirm_output should error on invalid token', async () => {
+    const { ConfirmOutputTool } = await import('../../../common/confirm_output.js');
+    const confirmTool = new ConfirmOutputTool({});
+    const res = await confirmTool.execute({ token: 'invalid123' }, {} as any);
+    expect(res.isError).toBe(true);
+    expect(res.content[0].text).toContain('Invalid or expired token');
   });
 
   test('should return small HTML directly without token requirement', async () => {
@@ -583,25 +573,24 @@ describe('GetHtmlTool', () => {
 
     // First call - get token
     const previewResult = await visibleHtmlTool.execute(args, mockContext);
-    const tokenMatch = (previewResult.content[0].text as string).match(/confirmToken: "([\w\d]{8})"/);
+    const tokenMatch = (previewResult.content[0].text as string).match(/confirm_output\(\{ token: \"([\w\d]+)\" \}\)/);
     const token = tokenMatch![1];
 
+    const { ConfirmOutputTool } = await import('../../../common/confirm_output.js');
+    const confirmTool = new ConfirmOutputTool({});
+
     // Second call - use token (should work)
-    const fullResult = await visibleHtmlTool.execute({ confirmToken: token }, mockContext);
+    const fullResult = await confirmTool.execute({ token }, {} as any);
     expect(fullResult.isError).toBe(false);
     expect(fullResult.content[0].text).toContain(largeHtml);
 
-    // Third call - try to reuse same token (should fail, get new preview)
-    const retryResult = await visibleHtmlTool.execute({ confirmToken: token }, mockContext);
-    expect(retryResult.isError).toBe(false);
-    expect(retryResult.content[0].text).toContain('Preview (first 500 chars)');
-    expect(retryResult.content[0].text).toMatch(/confirmToken: "[\w\d]{8}"/);
-    // Should have different token
-    const newTokenMatch = (retryResult.content[0].text as string).match(/confirmToken: "([\w\d]{8})"/);
-    expect(newTokenMatch![1]).not.toBe(token);
+    // Third call - try to reuse same token (should fail)
+    const retryResult = await confirmTool.execute({ token }, {} as any);
+    expect(retryResult.isError).toBe(true);
+    expect(retryResult.content[0].text).toContain('Invalid or expired token');
   });
 
-  test('should handle large HTML with selector and confirmToken', async () => {
+  test('should handle large HTML with selector and confirm_output', async () => {
     const largeHtml = '<section>' + 'S'.repeat(3000) + '</section>';
     const args = { selector: 'testid:large-section' };
 
@@ -618,11 +607,13 @@ describe('GetHtmlTool', () => {
     // First call - get preview
     const previewResult = await visibleHtmlTool.execute(args, mockContext);
     expect(previewResult.content[0].text).toContain('(from "testid:large-section")');
-    const tokenMatch = (previewResult.content[0].text as string).match(/confirmToken: "([\w\d]{8})"/);
+    const tokenMatch = (previewResult.content[0].text as string).match(/confirm_output\(\{ token: \"([\w\d]+)\" \}\)/);
     const token = tokenMatch![1];
 
-    // Second call - with token
-    const fullResult = await visibleHtmlTool.execute({ selector: 'testid:large-section', confirmToken: token }, mockContext);
+    // Second call - with token via confirm tool
+    const { ConfirmOutputTool } = await import('../../../common/confirm_output.js');
+    const confirmTool = new ConfirmOutputTool({});
+    const fullResult = await confirmTool.execute({ token }, {} as any);
     expect(fullResult.isError).toBe(false);
     expect(fullResult.content[0].text).toContain(largeHtml);
 

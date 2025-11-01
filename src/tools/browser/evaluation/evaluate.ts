@@ -167,7 +167,7 @@ export class EvaluateTool extends BrowserToolBase {
 
       // Execute the script and produce a compact textual summary entirely in the page context
       // to safely handle DOM nodes and browser-specific objects.
-      const { ok, text, error: execError } = await page.evaluate(async (userScript: string) => {
+      const evalReturn = await page.evaluate(async (userScript: string) => {
         const toInt = (n: number) => Math.max(0, Math.round(n || 0));
 
         // Summarize a DOM element
@@ -296,11 +296,22 @@ export class EvaluateTool extends BrowserToolBase {
         }
       }, args.script);
 
-      if (!ok) {
-        return createErrorResponse(`JavaScript execution failed: ${execError}`);
+      // Backward compatibility: if the page evaluation returns a raw value (string/any)
+      // instead of the { ok, text } envelope, treat it as the final result string.
+      let resultStr: string;
+      if (evalReturn && typeof evalReturn === 'object' && 'ok' in evalReturn) {
+        const { ok, text, error: execError } = evalReturn as any;
+        if (!ok) {
+          return createErrorResponse(`JavaScript execution failed: ${execError}`);
+        }
+        resultStr = text || '';
+      } else {
+        try {
+          resultStr = typeof evalReturn === 'string' ? evalReturn : JSON.stringify(evalReturn, null, 2);
+        } catch {
+          resultStr = String(evalReturn);
+        }
       }
-
-      const resultStr = text || '';
 
       // Guard for large outputs: preview + confirm
       const totalLength = resultStr.length;
