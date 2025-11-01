@@ -45,7 +45,7 @@ export abstract class BrowserToolBase implements ToolHandler {
     }
 
     // Clean up common escaping mistakes that LLMs make in CSS selectors
-    // These characters don't need to be escaped in CSS selectors: [ ] :
+    // These characters don't need to be escaped in many selector contexts: [ ] :
     let cleaned = selector;
 
     // Remove backslash escapes before brackets and colons
@@ -55,6 +55,32 @@ export abstract class BrowserToolBase implements ToolHandler {
     cleaned = cleaned.replace(/\\+:/g, ':');
 
     return cleaned;
+  }
+
+  /**
+   * Sanitize verbose Playwright selector engine messages by removing stack traces and
+   * keeping only the essential syntax error information.
+   */
+  private sanitizeSelectorEngineMessage(msg: string): string {
+    if (!msg) return '';
+
+    // Prefer to cut at the common phrase used by the browser
+    const cutoffPhrases = [
+      "is not a valid selector.",
+      "is not a valid selector",
+    ];
+
+    for (const phrase of cutoffPhrases) {
+      const idx = msg.indexOf(phrase);
+      if (idx !== -1) {
+        return msg.slice(0, idx + phrase.length).trim();
+      }
+    }
+
+    // Otherwise remove stack-like lines (e.g., " at query (…)")
+    const lines = msg.split(/\r?\n/);
+    const filtered = lines.filter(l => !/^\s*at\b/.test(l) && !/<anonymous>:\d+:\d+/.test(l));
+    return filtered.join('\n').trim();
   }
 
   /**
@@ -204,21 +230,25 @@ export abstract class BrowserToolBase implements ToolHandler {
           errorMsg.includes('Invalid selector') ||
           errorMsg.includes('SyntaxError') ||
           errorMsg.includes('selector')) {
+        const conciseMsg = this.sanitizeSelectorEngineMessage(errorMsg);
+        // Helpful, accurate guidance with Tailwind-style examples
+        const tips = [
+          '💡 Tips:',
+          '  • Tailwind arbitrary values need escaping in class selectors: .min-w-\\[300px\\]',
+          '  • Colons in class names must be escaped: .dark\\:bg-gray-700',
+          '  • Prefer robust selectors: use testid:name or [data-testid="..."]',
+          '  • Attribute selectors avoid escaping issues: [class*="min-w-[300px]"]',
+          '',
+          'Examples:',
+          '  ✓ .min-w-\\[300px\\] .flex-1',
+          '  ✓ testid:submit-button',
+          '  ✓ #login-form'
+        ].join('\n');
+
         throw new Error(
           `Invalid CSS selector: "${selector}"\n\n` +
-          `Selector syntax error: ${errorMsg}\n\n` +
-          `💡 Tips:\n` +
-          `  • CSS selectors don't need backslash escapes for [ ] or :\n` +
-          `  • Use .class-name or #id without escaping\n` +
-          `  • For data attributes, use [data-attr="value"]\n` +
-          `  • For testid shortcuts, use testid:name\n\n` +
-          `Examples:\n` +
-          `  ✓ .dark:bg-gray-700\n` +
-          `  ✓ .top-[36px]\n` +
-          `  ✓ testid:submit-button\n` +
-          `  ✓ #login-form\n` +
-          `  ✗ .dark\\:bg-gray-700 (unnecessary escape)\n` +
-          `  ✗ .top-\\[36px\\] (unnecessary escape)`
+          (conciseMsg ? `Selector syntax error: ${conciseMsg}\n\n` : '') +
+          tips
         );
       }
 

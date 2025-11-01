@@ -432,4 +432,35 @@ describe('MeasureElementTool', () => {
     expect(text).toContain('Margin:');
     expect(text).toMatch(/↑15px|↓15px|←15px|→15px/); // Should show margin with arrows
   });
+
+  it('returns clean error for invalid CSS selector without stack trace', async () => {
+    await page.setContent(`
+      <html>
+        <body>
+          <div class="flex min-w-[300px] flex-1">Hello</div>
+        </body>
+      </html>
+    `);
+
+    // Intentionally pass an invalid selector (missing escapes for [ ])
+    const result = await tool.execute(
+      { selector: '.flex.min-w-[300px].flex-1' },
+      { page, browser } as any
+    );
+
+    expect(result.isError).toBe(true);
+    const text = result.content[0].text;
+
+    // Should present a concise, user-friendly error without stack traces
+    expect(text).toContain('Invalid CSS selector:');
+    expect(text).toContain('Selector syntax error:');
+    expect(text).toContain('not a valid selector');
+    // No internal stack frames from the selector engine
+    expect(text).not.toMatch(/\n\s*at\b/);
+    expect(text).not.toContain('<anonymous>:');
+
+    // Provide helpful guidance for Tailwind-style class names
+    expect(text).toContain('Tailwind arbitrary values need escaping');
+    expect(text).toContain('.min-w-\\[300px\\]');
+  });
 });
