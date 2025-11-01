@@ -8,7 +8,7 @@ export class EvaluateTool extends BrowserToolBase {
   static getMetadata(sessionConfig?: SessionConfig): ToolMetadata {
     return {
       name: "evaluate",
-      description: "⚙️ CUSTOM JAVASCRIPT EXECUTION - Execute arbitrary JavaScript in the browser console and return the result (JSON-stringified). ⚠️ NOT for: scroll detection (inspect_dom shows 'scrollable ↕️'), element dimensions (use measure_element), DOM inspection (use inspect_dom), CSS properties (use get_computed_styles), position comparison (use compare_positions). Use ONLY when specialized tools cannot accomplish the task. Essential for: custom page interactions, complex calculations not covered by other tools. Automatically detects common patterns and suggests better alternatives. High flexibility but less efficient than specialized tools.",
+      description: "⚙️ CUSTOM JAVASCRIPT EXECUTION - Execute arbitrary JavaScript in the browser console and return the result (JSON-stringified). ⚠️ NOT for: scroll detection (inspect_dom shows 'scrollable ↕️'), element dimensions (use measure_element), DOM inspection (use inspect_dom), CSS properties (use get_computed_styles), position comparison (use compare_element_alignment). Use ONLY when specialized tools cannot accomplish the task. Essential for: custom page interactions, complex calculations not covered by other tools. Automatically detects common patterns and suggests better alternatives. High flexibility but less efficient than specialized tools.",
       inputSchema: {
         type: "object",
         properties: {
@@ -39,7 +39,7 @@ export class EvaluateTool extends BrowserToolBase {
     if (scriptLower.match(/textcontent|innertext/)) {
       suggestions.push(
         '📝 Text Content\n' +
-        '   • get_visible_text() - Extract all visible text\n' +
+        '   • get_text - Extract all visible text\n' +
         '   • find_by_text({ text: "..." }) - Locate elements by content'
       );
     }
@@ -79,7 +79,7 @@ export class EvaluateTool extends BrowserToolBase {
     // Pattern: Checking visibility
     if (scriptLower.match(/offsetparent|visibility|display.*none|opacity/)) {
       suggestions.push(
-        '👁️  Visibility Check - Use element_visibility({ selector: "..." })\n' +
+        '👁️  Visibility Check - Use check_visibility({ selector: "..." })\n' +
         '   Returns: isVisible, inViewport, opacity, display, visibility properties\n' +
         '   More reliable: Handles edge cases (opacity:0, visibility:hidden, etc.)'
       );
@@ -116,7 +116,7 @@ export class EvaluateTool extends BrowserToolBase {
     if (scriptLower.match(/getboundingclientrect.*getboundingclientrect/) ||
         (scriptLower.match(/\.left|\.top|\.right|\.bottom/) && scriptLower.match(/===|==|!==|!=/))) {
       suggestions.push(
-        '⚖️  Position Comparison - Use compare_positions({ selector1: "...", selector2: "..." })\n' +
+        '⚖️  Position Comparison - Use compare_element_alignment({ selector1: "...", selector2: "..." })\n' +
         '   Returns: Alignment status (left/right/top/bottom/center), pixel gaps\n' +
         '   Perfect for: Checking if elements are aligned or overlapping'
       );
