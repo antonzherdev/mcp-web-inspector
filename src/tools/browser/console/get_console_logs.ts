@@ -1,5 +1,6 @@
 import { BrowserToolBase } from '../base.js';
 import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, createSuccessResponse, createErrorResponse } from '../../common/types.js';
+import { makeConfirmPreview } from '../../common/confirmHelpers.js';
 
 interface ConsoleLogEntry {
   timestamp: number;
@@ -15,7 +16,6 @@ export class GetConsoleLogsTool extends BrowserToolBase {
   private lastCallTimestamp: number = 0;
   private lastNavigationTimestamp: number = 0;
   private lastInteractionTimestamp: number = 0;
-  private confirmTokens = new Map<string, string>();
 
   // Track latest instance for sibling tool access (module-level singleton pattern)
   static latestInstance: GetConsoleLogsTool | null = null;
@@ -28,7 +28,7 @@ export class GetConsoleLogsTool extends BrowserToolBase {
   static getMetadata(sessionConfig?: SessionConfig): ToolMetadata {
     return {
       name: "get_console_logs",
-      description: "Retrieve console logs with filtering and token‑efficient output. Defaults: since='last-interaction', limit=20, format='grouped'. Grouped output deduplicates identical lines and shows counts. Use format='raw' for chronological, ungrouped lines. Large outputs return a preview and require confirmToken to fetch the full payload.",
+      description: "Retrieve console logs with filtering and token‑efficient output. Defaults: since='last-interaction', limit=20, format='grouped'. Grouped output deduplicates identical lines and shows counts. Use format='raw' for chronological, ungrouped lines. Large outputs return a preview and a one-time token to fetch the full payload.",
       inputSchema: {
         type: "object",
         properties: {
@@ -55,10 +55,6 @@ export class GetConsoleLogsTool extends BrowserToolBase {
             description: "Output format: 'grouped' (default, deduped with counts) or 'raw' (chronological, ungrouped)",
             enum: ["grouped", "raw"]
           },
-          confirmToken: {
-            type: "string",
-            description: "One-time token to return large outputs. Obtain it by calling without confirmToken to receive a preview."
-          }
         },
         required: [],
       },
@@ -144,27 +140,17 @@ export class GetConsoleLogsTool extends BrowserToolBase {
       // Guard large outputs by character size
       const header = `Retrieved ${messages.length} console log(s):`;
       const textPayload = [header, ...messages].join('\n');
-      const tokenKey = `raw:${sinceArg}:${args.type || 'all'}:${args.search || ''}:${limit}:${messages.length}`;
-
       if (textPayload.length >= PREVIEW_THRESHOLD) {
-        const expected = this.confirmTokens.get(tokenKey);
-        const provided = args.confirmToken as string | undefined;
-        if (!provided || !expected || provided !== expected) {
-          const newToken = Math.random().toString(36).slice(2, 10);
-          this.confirmTokens.set(tokenKey, newToken);
-          const previewLines = messages.slice(0, Math.min(messages.length, 10));
-          const preview = [
-            `Matched ${logs.length} log(s). Showing ${previewLines.length} line(s) preview.`,
-            ...previewLines,
-            '',
-            `Output is large (~${Math.round(textPayload.length / 3)} tokens). To fetch full content, call again with confirmToken: "${newToken}"`,
-            'Tip: refine with search/type/since/limit or prefer grouped format.'
-          ].join('\n');
-          return createSuccessResponse(preview);
-        } else {
-          // One-time token — consume and proceed
-          this.confirmTokens.delete(tokenKey);
-        }
+        const previewLines = [
+          `Matched ${logs.length} log(s). Showing ${Math.min(messages.length, 10)} line(s) preview.`,
+          ...messages.slice(0, Math.min(messages.length, 10)),
+        ];
+        const preview = makeConfirmPreview(textPayload, {
+          counts: { totalLength: textPayload.length, shownLength: previewLines.join('\n').length, totalMatched: logs.length, shownCount: Math.min(messages.length, 10), truncated: true },
+          previewLines,
+          extraTips: ['Tip: refine with search/type/since/limit or prefer grouped format.'],
+        });
+        return createSuccessResponse(preview.lines.join('\n'));
       }
 
       return createSuccessResponse([header, ...messages]);
@@ -199,24 +185,17 @@ export class GetConsoleLogsTool extends BrowserToolBase {
 
     // Guard large grouped outputs
     const textPayload = lines.join('\n');
-    const tokenKey = `grouped:${sinceArg}:${args.type || 'all'}:${args.search || ''}:${limit}:${groups.size}`;
     if (textPayload.length >= PREVIEW_THRESHOLD) {
-      const expected = this.confirmTokens.get(tokenKey);
-      const provided = args.confirmToken as string | undefined;
-      if (!provided || !expected || provided !== expected) {
-        const newToken = Math.random().toString(36).slice(2, 10);
-        this.confirmTokens.set(tokenKey, newToken);
-        const previewBody = [
-          `Matched ${groups.size} group(s). Showing ${limitedGroups.length}.`,
-          ...lines.slice(0, Math.min(lines.length, 12)),
-          '',
-          `Output is large (~${Math.round(textPayload.length / 3)} tokens). To fetch full content, call again with confirmToken: "${newToken}"`,
-          'Tip: refine with search/type/since/limit.'
-        ].join('\n');
-        return createSuccessResponse(previewBody);
-      } else {
-        this.confirmTokens.delete(tokenKey);
-      }
+      const previewLines = [
+        `Matched ${groups.size} group(s). Showing ${limitedGroups.length}.`,
+        ...lines.slice(0, Math.min(lines.length, 12)),
+      ];
+      const preview = makeConfirmPreview(textPayload, {
+        counts: { totalLength: textPayload.length, shownLength: previewLines.join('\n').length, totalMatched: groups.size, shownCount: limitedGroups.length, truncated: true },
+        previewLines,
+        extraTips: ['Tip: refine with search/type/since/limit.'],
+      });
+      return createSuccessResponse(preview.lines.join('\n'));
     }
 
     return createSuccessResponse(lines);

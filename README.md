@@ -997,14 +997,13 @@ Upload a file to an input[type='file'] element on the page
 ### Content
 
 #### `get_html`
-⚠️ RARELY NEEDED: Get raw HTML markup from the page (no rendering, just source code). Most tasks need structured inspection instead. ONLY use get_html for: (1) checking specific HTML attributes or element nesting, (2) analyzing markup structure, (3) debugging SSR/HTML issues. For structured tasks, use: inspect_dom() to understand page structure with positions, query_selector() to find and inspect elements, get_computed_styles() for CSS values. Auto-returns HTML if <2000 chars (small elements), shows preview with token-based confirmation if larger. Scripts removed by default for security/size. Supports testid shortcuts.
+⚠️ RARELY NEEDED: Get raw HTML markup from the page (no rendering, just source code). Most tasks need structured inspection instead. ONLY use get_html for: (1) checking specific HTML attributes or element nesting, (2) analyzing markup structure, (3) debugging SSR/HTML issues. For structured tasks, use: inspect_dom() to understand page structure with positions, query_selector() to find and inspect elements, get_computed_styles() for CSS values. Auto-returns HTML if <2000 chars (small elements); if larger, returns a preview and a one-time token to fetch the full output. Scripts removed by default for security/size. Supports testid shortcuts.
 
 - Parameters:
   - selector (string, optional): CSS selector, text selector, or testid shorthand to limit HTML extraction to a specific container. Omit to get entire page HTML. Example: 'testid:main-content' or '#app'
   - elementIndex (number, optional): When selector matches multiple elements, use this 1-based index to select a specific one (e.g., 2 = second element). Default: first visible element.
   - clean (boolean, optional): Remove noise from HTML: false (default) = remove scripts only, true = remove scripts + styles + comments + meta tags for minimal markup
   - maxLength (number, optional): Maximum number of characters to return (default: 20000)
-  - confirmToken (string, optional): Confirmation token from preview response (required to retrieve large HTML). Get this token by calling without confirmToken first - the preview will include the token to use.
 
 #### `get_text`
 ⚠️ RARELY NEEDED: Get ALL visible text content from the entire page (no structure, just raw text). Most tasks need structured inspection instead. ONLY use get_text for: (1) extracting text for content analysis (word count, language detection), (2) searching for text when location is completely unknown, (3) text-only snapshots for comparison. For structured tasks, use: inspect_dom() to understand page structure, find_by_text() to locate specific text with context, query_selector() to find elements. Returns plain text up to 20000 chars (truncated if longer). Supports testid shortcuts.
@@ -1048,7 +1047,7 @@ Screenshots saved to ./.mcp-web-inspector/screenshots. Example: { name: "login-p
 Clears captured console logs and returns the number of entries cleared.
 
 #### `get_console_logs`
-Retrieve console logs with filtering and token‑efficient output. Defaults: since='last-interaction', limit=20, format='grouped'. Grouped output deduplicates identical lines and shows counts. Use format='raw' for chronological, ungrouped lines. Large outputs return a preview and require confirmToken to fetch the full payload.
+Retrieve console logs with filtering and token‑efficient output. Defaults: since='last-interaction', limit=20, format='grouped'. Grouped output deduplicates identical lines and shows counts. Use format='raw' for chronological, ungrouped lines. Large outputs return a preview and a one-time token to fetch the full payload.
 
 - Parameters:
   - type (string, optional): Type of logs to retrieve (all, error, warning, log, info, debug, exception)
@@ -1056,15 +1055,27 @@ Retrieve console logs with filtering and token‑efficient output. Defaults: sin
   - limit (number, optional): Maximum entries to return (groups when grouped, lines when raw). Default: 20
   - since (string, optional): Filter logs since a specific event: 'last-call' (since last get_console_logs call), 'last-navigation' (since last page navigation), or 'last-interaction' (since last user interaction like click, fill, etc.). Default: 'last-interaction'
   - format (string, optional): Output format: 'grouped' (default, deduped with counts) or 'raw' (chronological, ungrouped)
-  - confirmToken (string, optional): One-time token to return large outputs. Obtain it by calling without confirmToken to receive a preview.
 
 ### Evaluation
 
 #### `evaluate`
-⚙️ CUSTOM JAVASCRIPT EXECUTION - Execute arbitrary JavaScript in the browser console and return the result (JSON-stringified). ⚠️ NOT for: scroll detection (inspect_dom shows 'scrollable ↕️'), element dimensions (use measure_element), DOM inspection (use inspect_dom), CSS properties (use get_computed_styles), position comparison (use compare_positions). Use ONLY when specialized tools cannot accomplish the task. Essential for: custom page interactions, complex calculations not covered by other tools. Automatically detects common patterns and suggests better alternatives. High flexibility but less efficient than specialized tools.
+⚙️ CUSTOM JAVASCRIPT EXECUTION - Execute arbitrary JavaScript in the browser console and return a compact, token-efficient summary of the result. Includes a large-output preview guard with a one-time token. ⚠️ NOT for: scroll detection (inspect_dom shows 'scrollable ↕️'), element dimensions (use measure_element), DOM inspection (use inspect_dom), CSS properties (use get_computed_styles), position comparison (use compare_element_alignment). Use ONLY when specialized tools cannot accomplish the task. Automatically detects common patterns and suggests better alternatives.
 
 - Parameters:
   - script (string, required): JavaScript code to execute
+
+- Output Format:
+  - Header: '✓ JavaScript execution result:'
+  - Default result: compact summary string (arrays/objects/dom nodes summarized)
+  - Array summary: 'Array(n) [first, second, third…]' (shows first 3 items)
+  - Object summary (large): 'Object(n keys): key1, key2, key3…' (top-level keys only)
+  - DOM node summary: '<tag id=#id class=.a.b> @ (x,y) WxH' (rounded ints)
+  - NodeList/HTMLCollection summary: 'NodeList(n) [<div…>, <span…>, <a…>…]'
+  - Preview guard when result is large (≥ ~2000 chars):
+    - 'Preview (first 500 chars):' followed by excerpt
+    - Counts: 'totalLength: N, shownLength: M, truncated: true'
+    - One-time token string to fetch full output
+  - Suggestions block (conditional): compact tips for specialized tools based on script patterns
 
 ### Network
 
@@ -1107,6 +1118,18 @@ Set the browser color scheme that controls CSS prefers-color-scheme. Defaults to
 
 - Parameters:
   - scheme (string, required): Color scheme to emulate: 'system', 'dark', 'light', or 'no-preference'. Example: { scheme: 'dark' }
+
+### Other
+
+#### `confirm_output`
+Return full output for a previously previewed large result using a one-time token. Use when a tool responded with a preview + token. Safer than resending original parameters.
+
+- Parameters:
+  - token (string, required): One-time token obtained from a tool's preview response
+
+- Output Format:
+  - Full original payload if token is valid (one-time)
+  - Error: 'Invalid or expired token'
 ## Selector Shortcuts ⭐ Time-Saver
 
 All browser tools support **convenient test ID shortcuts** that save typing and improve readability:

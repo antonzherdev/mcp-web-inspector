@@ -139,6 +139,9 @@ npm run generate:readme  # Regenerate README tool docs from code metadata
 
 **Lifecycle** (2 tools):
 - `close`, `set_color_scheme`
+
+**Other** (1 tools):
+- `confirm_output`
 ## Architecture
 
 ### Server Structure (MCP Protocol)

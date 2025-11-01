@@ -1,14 +1,36 @@
 import { BrowserToolBase } from '../base.js';
-import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, createSuccessResponse } from '../../common/types.js';
+import {
+  ToolContext,
+  ToolResponse,
+  ToolMetadata,
+  SessionConfig,
+  createSuccessResponse,
+  createErrorResponse,
+} from '../../common/types.js';
+import { makeConfirmPreview } from '../../common/confirmHelpers.js';
 
 /**
  * Tool for executing JavaScript in the browser
  */
 export class EvaluateTool extends BrowserToolBase {
+
   static getMetadata(sessionConfig?: SessionConfig): ToolMetadata {
     return {
       name: "evaluate",
-      description: "⚙️ CUSTOM JAVASCRIPT EXECUTION - Execute arbitrary JavaScript in the browser console and return the result (JSON-stringified). ⚠️ NOT for: scroll detection (inspect_dom shows 'scrollable ↕️'), element dimensions (use measure_element), DOM inspection (use inspect_dom), CSS properties (use get_computed_styles), position comparison (use compare_element_alignment). Use ONLY when specialized tools cannot accomplish the task. Essential for: custom page interactions, complex calculations not covered by other tools. Automatically detects common patterns and suggests better alternatives. High flexibility but less efficient than specialized tools.",
+      description: "⚙️ CUSTOM JAVASCRIPT EXECUTION - Execute arbitrary JavaScript in the browser console and return a compact, token-efficient summary of the result. Includes a large-output preview guard with a one-time token. ⚠️ NOT for: scroll detection (inspect_dom shows 'scrollable ↕️'), element dimensions (use measure_element), DOM inspection (use inspect_dom), CSS properties (use get_computed_styles), position comparison (use compare_element_alignment). Use ONLY when specialized tools cannot accomplish the task. Automatically detects common patterns and suggests better alternatives.",
+      outputs: [
+        "Header: '✓ JavaScript execution result:'",
+        "Default result: compact summary string (arrays/objects/dom nodes summarized)",
+        "Array summary: 'Array(n) [first, second, third…]' (shows first 3 items)",
+        "Object summary (large): 'Object(n keys): key1, key2, key3…' (top-level keys only)",
+        "DOM node summary: '<tag id=#id class=.a.b> @ (x,y) WxH' (rounded ints)",
+        "NodeList/HTMLCollection summary: 'NodeList(n) [<div…>, <span…>, <a…>…]'",
+        "Preview guard when result is large (≥ ~2000 chars):",
+        "  - 'Preview (first 500 chars):' followed by excerpt",
+        "  - Counts: 'totalLength: N, shownLength: M, truncated: true'",
+        "  - One-time token string to fetch full output",
+        "Suggestions block (conditional): compact tips for specialized tools based on script patterns",
+      ],
       inputSchema: {
         type: "object",
         properties: {
@@ -141,23 +163,179 @@ export class EvaluateTool extends BrowserToolBase {
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
     this.recordInteraction();
     return this.safeExecute(context, async (page) => {
-      const result = await page.evaluate(args.script);
+      const PREVIEW_THRESHOLD = 2000; // chars
 
-      // Convert result to string for display
-      let resultStr: string;
-      try {
-        resultStr = JSON.stringify(result, null, 2);
-      } catch (error) {
-        resultStr = String(result);
+      // Execute the script and produce a compact textual summary entirely in the page context
+      // to safely handle DOM nodes and browser-specific objects.
+      const { ok, text, error: execError } = await page.evaluate(async (userScript: string) => {
+        const toInt = (n: number) => Math.max(0, Math.round(n || 0));
+
+        // Summarize a DOM element
+        const summarizeElement = (el: Element): string => {
+          try {
+            const tag = (el.tagName || '').toLowerCase();
+            const id = (el as HTMLElement).id ? ` #${(el as HTMLElement).id}` : '';
+            const cls = (el as HTMLElement).classList?.length
+              ? ' ' + Array.from((el as HTMLElement).classList)
+                  .map(c => `.${c}`)
+                  .join('')
+              : '';
+            const rect = (el as HTMLElement).getBoundingClientRect?.() as DOMRect;
+            const x = toInt(rect?.left ?? 0);
+            const y = toInt(rect?.top ?? 0);
+            const w = toInt(rect?.width ?? 0);
+            const h = toInt(rect?.height ?? 0);
+            return `<${tag}${id}${cls}> @ (${x},${y}) ${w}x${h}`;
+          } catch {
+            const tag = (el.tagName || '').toLowerCase();
+            return `<${tag}>`;
+          }
+        };
+
+        // Render values compactly
+        const render = (val: any, depth: number, seen: WeakSet<object>): string => {
+          const MAX_DEPTH = 3;
+          const ARRAY_PREVIEW = 3;
+          const LARGE_ARRAY_THRESHOLD = 10;
+          const LARGE_OBJECT_THRESHOLD = 15;
+
+          const t = Object.prototype.toString.call(val);
+          if (val === null) return 'null';
+          if (val === undefined) return 'undefined';
+          if (typeof val === 'string') return JSON.stringify(val);
+          if (typeof val === 'number' || typeof val === 'boolean') return String(val);
+          if (typeof val === 'bigint') return `${String(val)}n`;
+          if (typeof val === 'function') return `[Function ${val.name || 'anonymous'}]`;
+          if (t === '[object Date]') return `Date(${(val as Date).toISOString?.() || String(val)})`;
+          if (t === '[object RegExp]') return String(val);
+          if (t === '[object Error]') return `${val.name || 'Error'}: ${val.message || String(val)}`;
+
+          // DOM element
+          if (typeof Element !== 'undefined' && val instanceof Element) {
+            return summarizeElement(val);
+          }
+          // NodeList / HTMLCollection
+          if (
+            (typeof NodeList !== 'undefined' && val instanceof NodeList) ||
+            (typeof HTMLCollection !== 'undefined' && val instanceof HTMLCollection)
+          ) {
+            const arr = Array.from(val as any);
+            const head = arr.slice(0, ARRAY_PREVIEW).map((e) =>
+              typeof Element !== 'undefined' && e instanceof Element ? summarizeElement(e) : render(e, depth + 1, seen)
+            );
+            const more = arr.length > ARRAY_PREVIEW ? '…' : '';
+            return `NodeList(${arr.length}) [${head.join(', ')}${more}]`;
+          }
+
+          if (depth >= MAX_DEPTH) {
+            if (Array.isArray(val)) return `Array(${val.length}) […]`;
+            if (val && typeof val === 'object') return `Object(${Object.keys(val).length} keys) …`;
+            return String(val);
+          }
+
+          // Avoid circular structures
+          if (val && typeof val === 'object') {
+            if (seen.has(val)) return '[Circular]';
+            seen.add(val);
+          }
+
+          if (Array.isArray(val)) {
+            if (val.length > LARGE_ARRAY_THRESHOLD) {
+              const head = val.slice(0, ARRAY_PREVIEW).map((v) => render(v, depth + 1, seen));
+              const more = val.length > ARRAY_PREVIEW ? '…' : '';
+              return `Array(${val.length}) [${head.join(', ')}${more}]`;
+            }
+            return `[${val.map((v) => render(v, depth + 1, seen)).join(', ')}]`;
+          }
+
+          // Map / Set
+          if (t === '[object Map]') {
+            const m = val as Map<any, any>;
+            const entries = Array.from(m.entries()).slice(0, ARRAY_PREVIEW).map(([k, v]) => `${render(k, depth + 1, seen)} => ${render(v, depth + 1, seen)}`);
+            const more = m.size > ARRAY_PREVIEW ? '…' : '';
+            return `Map(${m.size}) {${entries.join(', ')}${more}}`;
+          }
+          if (t === '[object Set]') {
+            const s = val as Set<any>;
+            const entries = Array.from(s.values()).slice(0, ARRAY_PREVIEW).map((v) => render(v, depth + 1, seen));
+            const more = s.size > ARRAY_PREVIEW ? '…' : '';
+            return `Set(${s.size}) {${entries.join(', ')}${more}}`;
+          }
+
+          if (val && typeof val === 'object') {
+            const keys = Object.keys(val);
+            if (keys.length > LARGE_OBJECT_THRESHOLD) {
+              const head = keys.slice(0, ARRAY_PREVIEW).join(', ');
+              const more = keys.length > ARRAY_PREVIEW ? '…' : '';
+              return `Object(${keys.length} keys): ${head}${more}`;
+            }
+            // Render small object inline key: value
+            const parts: string[] = [];
+            for (const k of keys) {
+              try {
+                parts.push(`${k}: ${render((val as any)[k], depth + 1, seen)}`);
+              } catch (e) {
+                parts.push(`${k}: [Unserializable]`);
+              }
+            }
+            return `{ ${parts.join(', ')} }`;
+          }
+
+          return String(val);
+        };
+
+        try {
+          // Build an async function so both sync and async scripts are supported
+          const AsyncFunction = Object.getPrototypeOf(async function () {/**/}).constructor as any;
+          const fn = new AsyncFunction(userScript);
+          const result = await fn();
+          const text = render(result, 0, new WeakSet());
+          return { ok: true, text } as const;
+        } catch (e: any) {
+          return { ok: false, error: e?.message || String(e) } as const;
+        }
+      }, args.script);
+
+      if (!ok) {
+        return createErrorResponse(`JavaScript execution failed: ${execError}`);
       }
 
-      const messages = [
-        `✓ JavaScript execution result:`,
-        `${resultStr}`
-      ];
+      const resultStr = text || '';
+
+      // Guard for large outputs: preview + confirm
+      const totalLength = resultStr.length;
+
+      const lines: string[] = [];
+      const suggestions = this.detectBetterToolSuggestions(args.script);
+
+      if (totalLength >= PREVIEW_THRESHOLD) {
+        const previewLen = Math.min(500, totalLength);
+        const preview = resultStr.slice(0, previewLen);
+        const previewBlock = makeConfirmPreview(resultStr, {
+          headerLine: '✓ JavaScript execution result (preview):',
+          counts: { totalLength, shownLength: previewLen, truncated: true },
+          previewLines: [
+            'Preview (first 500 chars):',
+            preview,
+            ...(totalLength > previewLen ? ['...'] : []),
+          ],
+          extraTips: ['Tip: Prefer specialized tools or narrow the script when possible.'],
+        });
+
+        lines.push(...previewBlock.lines);
+
+        if (suggestions.length > 0) {
+          lines.push('');
+          lines.push('💡 Consider specialized tools:');
+          suggestions.forEach(s => lines.push(`   ${s}`));
+        }
+
+        return createSuccessResponse(lines);
+      }
+
+      const messages = [`✓ JavaScript execution result:`, resultStr];
 
       // Detect if specialized tools would be better
-      const suggestions = this.detectBetterToolSuggestions(args.script);
       if (suggestions.length > 0) {
         messages.push('');
         messages.push('💡 Consider using specialized tools instead:');

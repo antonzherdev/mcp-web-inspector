@@ -2,6 +2,7 @@ import type { ToolClass, ToolMetadata, SessionConfig, ToolHandler } from './type
 import { createErrorResponse } from './types.js';
 import { BrowserToolBase } from '../browser/base.js';
 import { BROWSER_TOOL_CLASSES } from '../browser/register.js';
+import { ConfirmOutputTool } from './confirm_output.js';
 
 const toolClasses = new Map<string, ToolClass>();
 const toolInstances = new Map<string, ToolHandler>();
@@ -62,3 +63,4 @@ export function clearToolInstances(): void {
 }
 
 registerTools(BROWSER_TOOL_CLASSES);
+registerTools([ConfirmOutputTool]);

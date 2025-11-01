@@ -23,8 +23,8 @@ This note proposes targeted changes to reduce overuse of `evaluate`, improve LLM
   - Tips in preview: suggest refining via specialized tools or narrowing the script.
   - Update metadata to enumerate conditional outputs (preview counts, truncation flags, token, exact line formats).
 - Summarize bulky structures by default:
-  - Arrays: `Array(n) [first 3 items…]`
-  - Objects: list top‑level keys only
+  - Large Arrays: `Array(n) [first 3 items…]`
+  - Large Objects: list top‑level keys only
   - DOM nodes: compact tag/id/class with one‑line position: `"<tag id=#id class=.a.b> @ (x,y) WxH"`
 
 ## Function Registry (Define Once, Call Many)

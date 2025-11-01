@@ -7,17 +7,17 @@ import {
   createSuccessResponse,
   createErrorResponse,
 } from '../../common/types.js';
+import { makeConfirmPreview } from '../../common/confirmHelpers.js';
 
 /**
  * Tool for getting HTML from the page
  */
 export class GetHtmlTool extends BrowserToolBase {
-  private confirmTokens = new Map<string, string>(); // Stores tokens for two-step confirmation
 
   static getMetadata(sessionConfig?: SessionConfig): ToolMetadata {
     return {
       name: "get_html",
-      description: "⚠️ RARELY NEEDED: Get raw HTML markup from the page (no rendering, just source code). Most tasks need structured inspection instead. ONLY use get_html for: (1) checking specific HTML attributes or element nesting, (2) analyzing markup structure, (3) debugging SSR/HTML issues. For structured tasks, use: inspect_dom() to understand page structure with positions, query_selector() to find and inspect elements, get_computed_styles() for CSS values. Auto-returns HTML if <2000 chars (small elements), shows preview with token-based confirmation if larger. Scripts removed by default for security/size. Supports testid shortcuts.",
+      description: "⚠️ RARELY NEEDED: Get raw HTML markup from the page (no rendering, just source code). Most tasks need structured inspection instead. ONLY use get_html for: (1) checking specific HTML attributes or element nesting, (2) analyzing markup structure, (3) debugging SSR/HTML issues. For structured tasks, use: inspect_dom() to understand page structure with positions, query_selector() to find and inspect elements, get_computed_styles() for CSS values. Auto-returns HTML if <2000 chars (small elements); if larger, returns a preview and a one-time token to fetch the full output. Scripts removed by default for security/size. Supports testid shortcuts.",
       inputSchema: {
         type: "object",
         properties: {
@@ -36,10 +36,6 @@ export class GetHtmlTool extends BrowserToolBase {
           maxLength: {
             type: "number",
             description: "Maximum number of characters to return (default: 20000)"
-          },
-          confirmToken: {
-            type: "string",
-            description: "Confirmation token from preview response (required to retrieve large HTML). Get this token by calling without confirmToken first - the preview will include the token to use."
           }
         },
         required: [],
@@ -53,7 +49,6 @@ export class GetHtmlTool extends BrowserToolBase {
         ? Math.floor(args.maxLength)
         : 20000;
     const clean = args.clean ?? false;
-    const confirmToken = args.confirmToken;
     const PREVIEW_THRESHOLD = 2000;
 
     if (!context.page) {
@@ -146,40 +141,28 @@ export class GetHtmlTool extends BrowserToolBase {
         const originalLength = processedHtml.length;
 
         // Generate key for this HTML request
-        const tokenKey = `${args.selector || 'page'}:${originalLength}`;
-
-        // Check if HTML is too large
+        // Check if HTML is too large => return preview + token for confirm_output
         if (originalLength >= PREVIEW_THRESHOLD) {
-          // Verify if confirmToken matches
-          const expectedToken = this.confirmTokens.get(tokenKey);
+          const preview = makeConfirmPreview(processedHtml, {
+            counts: { totalLength: originalLength, shownLength: Math.min(500, originalLength), truncated: true },
+            previewLines: [
+              'Preview (first 500 chars):',
+              processedHtml.slice(0, 500),
+              ...(originalLength > 500 ? ['...'] : []),
+              '',
+              '⚠️ Full HTML not returned to save tokens',
+              '',
+              '💡 RECOMMENDED: Use token-efficient alternatives:',
+              '   • inspect_dom() - structured view with positions and layout',
+              '   • query_selector_all() - find specific elements',
+              '   • get_computed_styles() - CSS values for debugging',
+            ],
+          });
 
-          if (confirmToken && expectedToken && confirmToken === expectedToken) {
-            // Valid token - delete it (one-time use) and proceed to return HTML
-            this.confirmTokens.delete(tokenKey);
-          } else {
-            // No token or invalid token - show preview and generate new token
-            const newToken = Math.random().toString(36).substring(2, 10);
-            this.confirmTokens.set(tokenKey, newToken);
-
-            lines.push(`HTML size: ${originalLength.toLocaleString()} characters (exceeds ${PREVIEW_THRESHOLD} char threshold)`);
-            lines.push('');
-            lines.push('Preview (first 500 chars):');
-            lines.push(processedHtml.slice(0, 500));
-            if (originalLength > 500) {
-              lines.push('...');
-            }
-            lines.push('');
-            lines.push('⚠️ Full HTML not returned to save tokens (~' + Math.round(originalLength / 3) + ' tokens)');
-            lines.push('');
-            lines.push('💡 RECOMMENDED: Use token-efficient alternatives:');
-            lines.push('   • inspect_dom() - structured view with positions and layout');
-            lines.push('   • query_selector_all() - find specific elements');
-            lines.push('   • get_computed_styles() - CSS values for debugging');
-            lines.push('');
-            lines.push(`To get full HTML anyway, call again with: confirmToken: "${newToken}"`);
-
-            return createSuccessResponse(lines.join('\n'));
-          }
+          lines.push(`HTML size: ${originalLength.toLocaleString()} characters (exceeds ${PREVIEW_THRESHOLD} char threshold)`);
+          lines.push('');
+          lines.push(...preview.lines);
+          return createSuccessResponse(lines.join('\n'));
         }
 
         // Return full HTML (either small or explicitly requested)
