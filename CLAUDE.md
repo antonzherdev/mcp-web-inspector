@@ -125,9 +125,6 @@ npm run generate:readme  # Regenerate README tool docs from code metadata
 **Content** (3 tools):
 - `get_html`, `get_text`, `visual_screenshot_for_humans`
 
-**Console** (1 tools):
-- `get_console_logs`
-
 **Evaluation** (1 tools):
 - `evaluate`
 
@@ -139,6 +136,9 @@ npm run generate:readme  # Regenerate README tool docs from code metadata
 
 **Lifecycle** (2 tools):
 - `close`, `set_color_scheme`
+
+**Other** (2 tools):
+- `clear_console_logs`, `get_console_logs`
 ## Architecture
 
 ### Server Structure (MCP Protocol)
@@ -252,6 +252,46 @@ src/
 
 5. **Console Logging**: Page console messages, exceptions, and unhandled promise rejections are captured via `registerConsoleMessage()` and stored in `ConsoleLogsTool`.
 
+### Parameter Discipline (Important)
+
+- Prefer sensible defaults and internal heuristics over adding new tool parameters.
+- Keep inputs minimal (aim 1–3). Avoid schema churn; parameter changes impact clients and tests.
+- Only add parameters when strictly necessary; justify in the PR and keep them primitive types.
+- If added, update `getMetadata()` descriptions precisely and regenerate README via `generate:readme`.
+- Consider session flags or server config for global behavior instead of per-call params.
+
+## Console Logs Tool — Planned Changes (Token Efficiency)
+
+Backward compatibility is not required now; optimize for simplicity and token-efficiency.
+
+- Separate clearer tool
+  - Add `clear_console_logs` (atomic, no params). Returns the number of entries cleared.
+  - Remove the `clear` parameter from `get_console_logs`.
+
+- Safer defaults
+  - Default `limit = 20`.
+  - Default `since = 'last-interaction'`.
+
+- Output format
+  - `format: 'grouped'` (default): deduplicate identical logs by `(type + text + source when available)`. One line per group with count, e.g., `[log] Message (× 47)`.
+  - `format: 'raw'`: chronological, no grouping — for order/race-condition debugging.
+
+- Grouping semantics
+  - Group globally across the filtered result set (not consecutive-only). Sort groups by first occurrence time for stable ordering.
+
+- Large-output guard (aligned with `get_html`)
+  - If output exceeds a preview threshold (e.g., ~2,000 chars) — especially in `format: 'raw'` — return preview + counts and a one-time `confirmToken`. Call again with the token to fetch the full payload.
+  - Always include: `totalMatched`, `shownCount`/`groupsShown`, `truncated` flag, and refinement tips (`search`, `type`, `since`, `limit`).
+
+- Explicit metadata
+  - Update `getMetadata()` to enumerate all fields and conditional outputs (counts, truncation flags, confirmToken presence, and exact line formats for grouped).
+
+Implementation checklist (future PR):
+- Update `src/tools/browser/console/get_console_logs.ts` to support `format`, guard, new defaults, and drop `clear`.
+- Add `src/tools/browser/console/clear_console_logs.ts` (or co-locate class) and register it.
+- Extend tests in `src/tools/browser/console/__tests__/` for grouped/raw, defaults, and guard.
+- Regenerate README via `npm run generate:readme`.
+
 ## Environment Variables
 
 - `CHROME_EXECUTABLE_PATH`: Custom path to Chrome/Chromium executable (optional)
@@ -268,6 +308,8 @@ When adding new tools:
 ### Tool Design Principles (Summary)
 
 **See `TOOL_DESIGN_PRINCIPLES.md` for comprehensive guidelines.**
+
+** Backward compatability is not important at this stage **
 
 Key principles:
 - **Atomic operations** - One tool does ONE thing

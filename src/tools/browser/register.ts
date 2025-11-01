@@ -41,7 +41,7 @@ import { GetComputedStylesTool } from './inspection/get_computed_styles.js';
 import { EvaluateTool } from './evaluation/evaluate.js';
 
 // Console
-import { GetConsoleLogsTool } from './console/get_console_logs.js';
+import { GetConsoleLogsTool, ClearConsoleLogsTool } from './console/get_console_logs.js';
 
 // Network
 import { ListNetworkRequestsTool } from './network/list_network_requests.js';
@@ -92,8 +92,9 @@ export const BROWSER_TOOL_CLASSES: ToolClass[] = [
   // Evaluation (1)
   EvaluateTool,
 
-  // Console (1)
+  // Console (2)
   GetConsoleLogsTool,
+  ClearConsoleLogsTool,
 
   // Network (2)
   ListNetworkRequestsTool,

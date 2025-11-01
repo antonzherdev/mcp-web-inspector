@@ -564,6 +564,72 @@ Layout: vertical`
 }
 ```
 
+## MCP Sampling (Reverse Calls to Client LLM)
+
+MCP Sampling allows the server to request the client’s model to summarize or transform data. Use this sparingly to reduce tokens and provide higher-level insight when local grouping isn’t enough.
+
+- When To Use
+  - Oversized results: console logs, network traces, long HTML/DOM.
+  - High-level triage: rank errors/warnings first, cluster noisy logs, surface anomalies.
+  - Targeted extraction: pull compact, structured fields (e.g., components, URLs, error categories).
+
+- Consent & Transparency
+  - Clearly state when sampling is being offered/used: “Summarize via MCP Sampling (uses client LLM).”
+  - Use a two-step opt-in for large payloads: first call returns preview + `summarizeToken`; second call with that token performs the LLM summary. Prevents accidental spend.
+  - Show estimated token size and suggest filters first (`search`, `since`, `type`, `limit`).
+
+- Capability Detection & Fallbacks
+  - Detect client support for `sampling` at initialize/handshake time. If unavailable, do not offer LLM-based summaries; return grouped/preview output only.
+  - On error/timeout, fall back to grouped preview and actionable next steps.
+
+- Budget & Safety
+  - Defaults: small `maxTokens` (≈300–800), low temperature for deterministic output, timeout ≈8–12s.
+  - Redact/normalize sensitive strings before sampling; prefer grouped keys + brief examples over raw lines.
+  - Never send base64/binary; only compact text.
+
+- Prompt Pattern (Console Logs)
+  - System: token-efficient, compact text only; prioritize errors/warnings; include counts and top sources; output 1-line bullets; give next-step filters.
+  - Input: grouped keys with counts, totalMatched, truncated flag, time window, up to N short examples/group (N≤3).
+  - Output shape:
+    - `totalMatched=…, groups=…, truncated=true|false`
+    - `Top Groups:` 3–8 lines like `[error] [Component] Message (× 47)`
+    - `Anomalies:` brief notes (bursts, unusual types)
+    - `Next Steps:` concrete filters/tools to narrow focus
+
+- Integration Pattern
+  - Add a helper (e.g., `summarizeWithClientLLM`) to invoke sampling with redaction, budgets, and timeout.
+  - Expose atomic tools like `summarize_console_logs({ since?, type?, search?, maxGroups? })`, or offer summarization as an option when guards trigger in `get_console_logs`.
+
+- Minimal Parameters
+  - Mirror existing filters (1–3 params). Do not expose model/temperature per call; use env/server config for that (e.g., `MCP_SUMMARY_MAX_TOKENS`).
+
+- Error UX
+  - If summarization fails: “Summarization unavailable (timeout/budget). Showing grouped preview instead.” Include counts and refinement tips.
+
+### Sampling-Enabled Tools: Applicability Beyond Logs
+
+Use the same MCP Sampling “subagent” pattern for other high-volume tools when compact, higher-level answers are preferable to raw output:
+
+- Candidates
+  - `get_html` / `get_text`: summarize sections, extract key entities/links, flag anomalous markup.
+  - Network traces: summarize failed requests, top failing endpoints, latency outliers.
+  - DOM inspection diffs: explain significant layout changes, highlight accessibility issues.
+  - Visual outputs: describe screenshot regions (never send base64; use file path + textual summary).
+
+- Tool Shape (examples)
+  - `summarize_html({ selector?, maxSections? })`
+  - `summarize_network({ since?, type?, search?, maxGroups? })`
+  - `answer_dom_question({ question, selector? })`
+
+- Design Checklist
+  - Atomic: keep summarization separate from raw retrieval tools.
+  - Minimal params: mirror existing filters; avoid model/temperature per-call.
+  - Opt-in guard: preview first; require `summarizeToken` for large inputs.
+  - Capability-aware: detect client sampling support; provide graceful fallback.
+  - Token discipline: send grouped keys + counts + a few examples, not raw payloads.
+  - Privacy: redact tokens, emails, IDs; avoid PII; never transmit binary/base64.
+  - Explicit outputs: document counts, truncation, and the exact compact output shape.
+
 ### Error Result
 ```typescript
 {

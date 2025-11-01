@@ -1,1 +1,1 @@
-export { GetConsoleLogsTool } from './get_console_logs.js';
+export { GetConsoleLogsTool, ClearConsoleLogsTool } from './get_console_logs.js';

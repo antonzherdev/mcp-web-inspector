@@ -1,4 +1,4 @@
-import { GetConsoleLogsTool } from '../get_console_logs.js';
+import { GetConsoleLogsTool, ClearConsoleLogsTool } from '../get_console_logs.js';
 import { ToolContext } from '../../../common/types.js';
 import { jest } from '@jest/globals';
 
@@ -88,20 +88,17 @@ describe('GetConsoleLogsTool', () => {
     expect(logText).toContain('Test log message');
   });
 
-  test('should clear console logs when requested', async () => {
+  test('should clear console logs using clear_console_logs tool', async () => {
     consoleLogsTool.registerConsoleMessage('log', 'Test log message');
     consoleLogsTool.registerConsoleMessage('error', 'Test error message');
-    
-    const args = {
-      clear: true
-    };
 
-    const result = await consoleLogsTool.execute(args, mockContext);
+    const clearer = new ClearConsoleLogsTool(mockServer);
+    const result = await clearer.execute({}, mockContext);
 
     expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('Retrieved 2 console log(s)');
-    
-    // Logs should be cleared after retrieval
+    expect(result.content[0].text).toContain('Cleared 2 console log(s)');
+
+    // Logs should be cleared
     const logs = consoleLogsTool.getConsoleLogs();
     expect(logs.length).toBe(0);
   });

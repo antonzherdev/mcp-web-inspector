@@ -1042,18 +1042,6 @@ Screenshots saved to ./.mcp-web-inspector/screenshots. Example: { name: "login-p
   - fullPage (boolean, optional): Capture entire scrollable page instead of just viewport (default: false)
   - downloadsDir (string, optional): Custom directory for saving screenshot (default: ./.mcp-web-inspector/screenshots). Example: './my-screenshots'
 
-### Console
-
-#### `get_console_logs`
-Retrieve console logs from the browser with filtering options
-
-- Parameters:
-  - type (string, optional): Type of logs to retrieve (all, error, warning, log, info, debug, exception)
-  - search (string, optional): Text to search for in logs (handles text with square brackets)
-  - limit (number, optional): Maximum number of logs to return
-  - since (string, optional): Filter logs since a specific event: 'last-call' (since last get_console_logs call), 'last-navigation' (since last page navigation), or 'last-interaction' (since last user interaction like click, fill, etc.)
-  - clear (boolean, optional): Whether to clear logs after retrieval (default: false)
-
 ### Evaluation
 
 #### `evaluate`
@@ -1103,6 +1091,22 @@ Set the browser color scheme that controls CSS prefers-color-scheme. Defaults to
 
 - Parameters:
   - scheme (string, required): Color scheme to emulate: 'system', 'dark', 'light', or 'no-preference'. Example: { scheme: 'dark' }
+
+### Other
+
+#### `clear_console_logs`
+Clears captured console logs and returns the number of entries cleared.
+
+#### `get_console_logs`
+Retrieve console logs with filtering and token‑efficient output. Defaults: since='last-interaction', limit=20, format='grouped'. Grouped output deduplicates identical lines and shows counts. Use format='raw' for chronological, ungrouped lines. Large outputs return a preview and require confirmToken to fetch the full payload.
+
+- Parameters:
+  - type (string, optional): Type of logs to retrieve (all, error, warning, log, info, debug, exception)
+  - search (string, optional): Text to search for in logs (handles text with square brackets)
+  - limit (number, optional): Maximum entries to return (groups when grouped, lines when raw). Default: 20
+  - since (string, optional): Filter logs since a specific event: 'last-call' (since last get_console_logs call), 'last-navigation' (since last page navigation), or 'last-interaction' (since last user interaction like click, fill, etc.). Default: 'last-interaction'
+  - format (string, optional): Output format: 'grouped' (default, deduped with counts) or 'raw' (chronological, ungrouped)
+  - confirmToken (string, optional): One-time token to return large outputs. Obtain it by calling without confirmToken to receive a preview.
 ## Selector Shortcuts ⭐ Time-Saver
 
 All browser tools support **convenient test ID shortcuts** that save typing and improve readability:
