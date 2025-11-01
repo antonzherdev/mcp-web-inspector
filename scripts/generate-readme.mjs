@@ -28,12 +28,18 @@ function parseCategoriesFromRegister() {
   const map = new Map(); // className -> Category
 
   for (const line of lines) {
-    const m = line.match(/import\s*\{\s*([A-Za-z0-9_]+)\s*\}\s*from\s*'\.\/(.+?)\/.+?';/);
+    // Support multiple named imports per line: import { A, B } from './subdir/file.js'
+    const m = line.match(/import\s*\{\s*([A-Za-z0-9_,\s]+)\s*\}\s*from\s*'\.\/(.+?)\/.+?';/);
     if (m) {
-      const className = m[1];
+      const classNames = m[1]
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
       const subdir = m[2];
       const category = titleCase(subdir);
-      map.set(className, category);
+      for (const className of classNames) {
+        map.set(className, category);
+      }
     }
   }
   return map;

@@ -125,6 +125,9 @@ npm run generate:readme  # Regenerate README tool docs from code metadata
 **Content** (3 tools):
 - `get_html`, `get_text`, `visual_screenshot_for_humans`
 
+**Console** (2 tools):
+- `clear_console_logs`, `get_console_logs`
+
 **Evaluation** (1 tools):
 - `evaluate`
 
@@ -136,9 +139,6 @@ npm run generate:readme  # Regenerate README tool docs from code metadata
 
 **Lifecycle** (2 tools):
 - `close`, `set_color_scheme`
-
-**Other** (2 tools):
-- `clear_console_logs`, `get_console_logs`
 ## Architecture
 
 ### Server Structure (MCP Protocol)
