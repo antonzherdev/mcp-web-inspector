@@ -50,11 +50,39 @@ export interface ToolClass {
 }
 
 // Helper functions for creating responses
+// Global error message sanitizer: removes stack traces and noisy engine frames
+function sanitizeErrorMessage(message: string): string {
+  if (!message) return '';
+
+  // If message already contains helpful guidance (e.g., Tips), avoid truncation.
+  const hasGuidance = /\bTips?:\b|💡/.test(message);
+
+  // Trim to concise selector phrase only when there is no guidance to preserve.
+  if (!hasGuidance) {
+    const cutoffPhrases = [
+      'is not a valid selector.',
+      'is not a valid selector',
+    ];
+    for (const phrase of cutoffPhrases) {
+      const idx = message.indexOf(phrase);
+      if (idx !== -1) {
+        return message.slice(0, idx + phrase.length).trim();
+      }
+    }
+  }
+
+  // Remove typical stack lines (e.g., " at query (...)" or " at ... (<anonymous>:x:y)")
+  const lines = message.split(/\r?\n/);
+  const filtered = lines.filter(l => !/^\s*at\b/.test(l) && !/<anonymous>:\d+:\d+/.test(l));
+  return filtered.join('\n').trim();
+}
+
 export function createErrorResponse(message: string): ToolResponse {
+  const sanitized = sanitizeErrorMessage(message);
   return {
     content: [{
       type: "text",
-      text: message
+      text: sanitized
     }],
     isError: true
   };

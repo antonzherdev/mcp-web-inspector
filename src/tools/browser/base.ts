@@ -18,14 +18,14 @@ export abstract class BrowserToolBase implements ToolHandler {
   abstract execute(args: any, context: ToolContext): Promise<ToolResponse>;
 
   /**
-   * Normalize selector shortcuts to full Playwright selectors and clean common escaping mistakes
-   * - "testid:foo" → "[data-testid='foo']"
-   * - "data-test:bar" → "[data-test='bar']"
-   * - "data-cy:baz" → "[data-cy='baz']"
-   * - Removes unnecessary backslash escapes from CSS selectors that LLMs often add
-   * - ".dark\\:bg-gray-700" → ".dark:bg-gray-700"
-   * - ".top-\\[36px\\]" → ".top-[36px]"
-   * - ".top-\\\\[36px\\\\]" → ".top-[36px]" (double-escaped)
+   * Normalize selector shortcuts and fix common escaping mistakes safely.
+   * - "testid:foo" → "[data-testid=\"foo\"]"
+   * - "data-test:bar" → "[data-test=\"bar\"]"
+   * - "data-cy:baz" → "[data-cy=\"baz\"]"
+   * - Convert simple ID-only selectors with special chars to Playwright's id engine:
+   *     "#radix-\:rc\:-content-123" → "id=radix-:rc:-content-123"
+   * - Remove unnecessary escapes for bracket characters only (\\[ and \\])
+   *   DO NOT unescape colons globally — colons in class/ID names must stay escaped in CSS.
    * @param selector The selector string
    * @returns Normalized selector
    */
@@ -44,16 +44,36 @@ export abstract class BrowserToolBase implements ToolHandler {
       }
     }
 
-    // Clean up common escaping mistakes that LLMs make in CSS selectors
-    // These characters don't need to be escaped in many selector contexts: [ ] :
-    let cleaned = selector;
+    const trimmed = selector.trim();
 
-    // Remove backslash escapes before brackets and colons
-    // Handle both single escapes (\[) and double escapes (\\[)
-    cleaned = cleaned.replace(/\\+\[/g, '[');
-    cleaned = cleaned.replace(/\\+\]/g, ']');
-    cleaned = cleaned.replace(/\\+:/g, ':');
+    // Helper: unescape simple backslash-escapes used inside IDs (e.g., \:, \[, \])
+    const unescapeCssIdentifier = (s: string): string => {
+      // Collapse multiple backslashes before a single char to the char itself
+      return s
+        .replace(/\\+:/g, ':')
+        .replace(/\\+\[/g, '[')
+        .replace(/\\+\]/g, ']');
+    };
 
+    // If this looks like a simple, standalone ID selector (no combinators or descendants),
+    // switch to Playwright's id engine. This avoids CSS escaping pitfalls with colons.
+    if (/^#[^\s>+~]+$/.test(trimmed)) {
+      const idToken = trimmed.slice(1);
+      // Only switch to id= engine if ID contains characters that commonly break CSS (#... with colons or escapes)
+      if (idToken.includes('\\') || idToken.includes(':') || idToken.includes('[') || idToken.includes(']')) {
+        const idValue = unescapeCssIdentifier(idToken);
+        return `id=${idValue}`;
+      }
+      // Otherwise, keep simple IDs as-is
+      return trimmed;
+    }
+
+    // For general CSS selectors, preserve required escapes for special chars.
+    // Collapse over-escaping (e.g., \\\\[ → \\[, but keep a single backslash before [ ] :)
+    let cleaned = trimmed;
+    cleaned = cleaned.replace(/\\{2,}(?=\[)/g, '\\');
+    cleaned = cleaned.replace(/\\{2,}(?=\])/g, '\\');
+    cleaned = cleaned.replace(/\\{2,}(?=:)/g, '\\');
     return cleaned;
   }
 
@@ -61,7 +81,7 @@ export abstract class BrowserToolBase implements ToolHandler {
    * Sanitize verbose Playwright selector engine messages by removing stack traces and
    * keeping only the essential syntax error information.
    */
-  private sanitizeSelectorEngineMessage(msg: string): string {
+  protected sanitizeSelectorEngineMessage(msg: string): string {
     if (!msg) return '';
 
     // Prefer to cut at the common phrase used by the browser

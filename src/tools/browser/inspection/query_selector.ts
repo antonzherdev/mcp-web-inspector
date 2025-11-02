@@ -298,7 +298,9 @@ export class QuerySelectorTool extends BrowserToolBase {
 
         return createSuccessResponse(lines.join('\n'));
       } catch (error) {
-        return createErrorResponse(`Failed to query selector: ${(error as Error).message}`);
+        const msg = (error as Error).message || '';
+        const concise = this.sanitizeSelectorEngineMessage(msg) || msg;
+        return createErrorResponse(`Failed to query selector: ${concise}`);
       }
     });
   }

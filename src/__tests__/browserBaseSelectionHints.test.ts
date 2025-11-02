@@ -23,6 +23,11 @@ class ExposedBrowserToolBase extends BrowserToolBase {
   public normalize(selector: string): string {
     return this.normalizeSelector(selector);
   }
+
+  public sanitize(msg: string): string {
+    // @ts-ignore accessing protected for test via wrapper
+    return this.sanitizeSelectorEngineMessage(msg);
+  }
 }
 
 describe('BrowserToolBase selection hints', () => {
@@ -69,33 +74,33 @@ describe('BrowserToolBase selector normalization', () => {
     });
   });
 
-  describe('escape character cleaning', () => {
-    test('removes single backslash before opening bracket', () => {
-      expect(tool.normalize('.top-\\[36px\\]')).toBe('.top-[36px]');
+  describe('escape character normalization', () => {
+    test('preserves single backslash before brackets', () => {
+      expect(tool.normalize('.top-\\[36px\\]')).toBe('.top-\\[36px\\]');
     });
 
-    test('removes double backslash before opening bracket', () => {
-      expect(tool.normalize('.top-\\\\[36px\\\\]')).toBe('.top-[36px]');
+    test('collapses double backslashes before brackets to single', () => {
+      expect(tool.normalize('.top-\\\\[36px\\\\]')).toBe('.top-\\[36px\\]');
     });
 
-    test('removes single backslash before colon', () => {
-      expect(tool.normalize('.dark\\:bg-gray-700')).toBe('.dark:bg-gray-700');
+    test('preserves single backslash before colon', () => {
+      expect(tool.normalize('.dark\\:bg-gray-700')).toBe('.dark\\:bg-gray-700');
     });
 
-    test('removes double backslash before colon', () => {
-      expect(tool.normalize('.flex-1.border-b.dark\\\\:border-gray-700')).toBe('.flex-1.border-b.dark:border-gray-700');
+    test('collapses multiple backslashes before colon to single', () => {
+      expect(tool.normalize('.flex-1.border-b.dark\\\\:border-gray-700')).toBe('.flex-1.border-b.dark\\:border-gray-700');
     });
 
-    test('handles complex selector with multiple escapes', () => {
-      expect(tool.normalize('.sticky.top-\\\\[36px\\\\].z-30')).toBe('.sticky.top-[36px].z-30');
+    test('collapses extra escapes and preserves required ones', () => {
+      expect(tool.normalize('.sticky.top-\\\\[36px\\\\].z-30')).toBe('.sticky.top-\\[36px\\].z-30');
     });
 
-    test('handles multiple colons and brackets', () => {
-      expect(tool.normalize('.dark\\:hover\\:bg-\\[#333\\]')).toBe('.dark:hover:bg-[#333]');
+    test('preserves escapes for multiple colons and bracket values', () => {
+      expect(tool.normalize('.dark\\:hover\\:bg-\\[#333\\]')).toBe('.dark\\:hover\\:bg-\\[#333\\]');
     });
 
-    test('handles triple or more backslashes', () => {
-      expect(tool.normalize('.class-\\\\\\[value\\\\\\]')).toBe('.class-[value]');
+    test('collapses triple or more backslashes to single', () => {
+      expect(tool.normalize('.class-\\\\\\[value\\\\\\]')).toBe('.class-\\[value\\]');
     });
   });
 
@@ -120,7 +125,7 @@ describe('BrowserToolBase selector normalization', () => {
       expect(tool.normalize('.dark:bg-gray-700.hover:bg-blue-500')).toBe('.dark:bg-gray-700.hover:bg-blue-500');
     });
 
-    test('passes through selectors with actual bracket values', () => {
+    test('passes through selectors with actual bracket values (already valid CSS)', () => {
       expect(tool.normalize('.top-[36px]')).toBe('.top-[36px]');
     });
   });
@@ -139,6 +144,37 @@ describe('BrowserToolBase selector normalization', () => {
     test('handles mixed testid shortcut with escaped characters', () => {
       // Testid shortcuts are processed first, so escapes in the value are preserved
       expect(tool.normalize('testid:my-button')).toBe('[data-testid="my-button"]');
+    });
+  });
+
+  describe('ID selector handling', () => {
+    test('keeps simple IDs unchanged', () => {
+      expect(tool.normalize('#simple-id')).toBe('#simple-id');
+    });
+
+    test('switches ID with special chars to id= engine', () => {
+      expect(tool.normalize('#radix-\\:rc\\:-content-123')).toBe('id=radix-:rc:-content-123');
+    });
+
+    test('does not switch when ID is part of a compound selector', () => {
+      expect(tool.normalize('#radix-\\:rc\\:-content-123 .child')).toBe('#radix-\\:rc\\:-content-123 .child');
+    });
+
+    test('preserves Tailwind width class bracket escapes in compound class selector', () => {
+      const input = '.flex.min-w-\\[280px\\].max-w-\\[480px\\]';
+      expect(tool.normalize(input)).toBe(input);
+    });
+  });
+
+  describe('error sanitization', () => {
+    const tool = new ExposedBrowserToolBase();
+
+    test('removes stack frames and keeps concise message', () => {
+      const raw = "locator.count: SyntaxError: Failed to execute 'querySelectorAll' on 'Document': '#bad:selector' is not a valid selector.\n    at query (<anonymous>:4989:41)\n    at <anonymous>:4999:7\n    at SelectorEvaluatorImpl._cached (<anonymous>:4776:20)";
+      const sanitized = tool.sanitize(raw);
+      expect(sanitized).toContain("is not a valid selector");
+      expect(sanitized).not.toContain("at query (");
+      expect(sanitized).not.toContain("<anonymous>:");
     });
   });
 });

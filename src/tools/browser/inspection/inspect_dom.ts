@@ -128,13 +128,8 @@ RELATED TOOLS: For comparing TWO elements' alignment (not parent-child), use com
 
       try {
         // Use consistent element selection (Playwright's visibility detection)
+        // Delegate count + selector error handling to selectPreferredLocator()
         const locator = page.locator(selector);
-        const count = await locator.count();
-
-        if (count === 0) {
-          return createErrorResponse(`Element not found: ${args.selector || 'body'}`);
-        }
-
         const { element, elementIndex, totalCount } = await this.selectPreferredLocator(locator, {
           originalSelector: args.selector || 'body',
         });
@@ -849,7 +844,14 @@ RELATED TOOLS: For comparing TWO elements' alignment (not parent-child), use com
 
         return createSuccessResponse(lines.join('\n'));
       } catch (error) {
-        return createErrorResponse(`Failed to inspect DOM: ${(error as Error).message}`);
+        const msg = (error as Error).message || '';
+        // Map common not-found message to a user-friendly line
+        if (msg === 'No elements found') {
+          return createErrorResponse(`Element not found: ${args.selector || 'body'}`);
+        }
+        // Sanitize verbose selector engine traces and return concise message
+        const concise = this.sanitizeSelectorEngineMessage(msg) || msg;
+        return createErrorResponse(`Failed to inspect DOM: ${concise}`);
       }
     });
   }
