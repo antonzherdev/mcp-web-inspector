@@ -1031,8 +1031,6 @@ Upload a file to an input[type='file'] element on the page
 
 ⚠️ Token cost: ~1,500 tokens to read. Structural tools: <100 tokens.
 
-Admin control (optional): set env MCP_SCREENSHOT_GUARD=strict to block execution (prevents misuse by default). Unset to allow visuals for human review.
-
 Screenshots saved to ./.mcp-web-inspector/screenshots. Example: { name: "login-page", fullPage: true } or { name: "submit-btn", selector: "testid:submit" }
 
 - Parameters:

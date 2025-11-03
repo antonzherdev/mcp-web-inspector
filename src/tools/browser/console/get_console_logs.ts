@@ -1,6 +1,6 @@
 import { BrowserToolBase } from '../base.js';
 import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, createSuccessResponse, createErrorResponse } from '../../common/types.js';
-import { makeConfirmPreview } from '../../common/confirmHelpers.js';
+import { makeConfirmPreview } from '../../common/confirm_output.js';
 
 interface ConsoleLogEntry {
   timestamp: number;

@@ -7,7 +7,7 @@ import {
   createSuccessResponse,
   createErrorResponse,
 } from '../../common/types.js';
-import { makeConfirmPreview } from '../../common/confirmHelpers.js';
+import { makeConfirmPreview } from '../../common/confirm_output.js';
 
 /**
  * Tool for executing JavaScript in the browser

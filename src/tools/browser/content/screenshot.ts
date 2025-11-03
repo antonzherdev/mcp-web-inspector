@@ -31,8 +31,6 @@ export class ScreenshotTool extends BrowserToolBase {
       '',
       '⚠️ Token cost: ~1,500 tokens to read. Structural tools: <100 tokens.',
       '',
-      'Admin control (optional): set env MCP_SCREENSHOT_GUARD=strict to block execution (prevents misuse by default). Unset to allow visuals for human review.',
-      '',
       `Screenshots saved to ${screenshotsDir}. Example: { name: "login-page", fullPage: true } or { name: "submit-btn", selector: "testid:submit" }`
     ].join('\n');
 
@@ -67,23 +65,7 @@ export class ScreenshotTool extends BrowserToolBase {
 
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
     return this.safeExecute(context, async (page) => {
-      // Optional guardrail to reduce unreasonable calls by LLMs.
-      // If MCP_SCREENSHOT_GUARD is set to 'strict', block execution.
-      const guard = (process.env.MCP_SCREENSHOT_GUARD || '').toLowerCase();
-      const strictGuard = guard === '1' || guard === 'true' || guard === 'strict';
-      if (strictGuard) {
-        const lines: string[] = [];
-        lines.push('🚫 Screenshot blocked by admin guard (MCP_SCREENSHOT_GUARD=strict).');
-        lines.push('');
-        lines.push('Use structural tools for programmatic debugging:');
-        lines.push('  - inspect_dom()               → hierarchy, positions, visibility');
-        lines.push('  - compare_element_alignment() → alignment and pixel diffs');
-        lines.push('  - get_computed_styles()       → CSS values');
-        lines.push('  - inspect_ancestors()         → parent constraints and overflow');
-        lines.push('');
-        lines.push('If a human needs to review visuals, ask an admin to unset MCP_SCREENSHOT_GUARD.');
-        return createSuccessResponse(lines.join('\n'));
-      }
+      // No environment guard: rely on confirm_output pattern for token efficiency
 
       const screenshotOptions: any = {
         type: args.type || "png",
@@ -152,7 +134,18 @@ export class ScreenshotTool extends BrowserToolBase {
         messages.push('   3) Compare alignment: compare_element_alignment({ selector1: "...", selector2: "..." })');
       }
 
-      return createSuccessResponse(messages);
+      // Wrap full guidance behind confirm_output preview for token efficiency
+      const { makeConfirmPreview } = await import('../../common/confirm_output.js');
+      const payload = messages.join('\n');
+      const preview = makeConfirmPreview(payload, {
+        counts: { totalLength: payload.length, shownLength: Math.min(payload.length, 800), truncated: true },
+        previewLines: [
+          // Keep key info and guidance in preview; full text available via token
+          ...messages
+        ],
+        extraTips: []
+      });
+      return createSuccessResponse(preview.lines.join('\n'));
     });
   }
 
