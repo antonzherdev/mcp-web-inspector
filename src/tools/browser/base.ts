@@ -357,13 +357,20 @@ export abstract class BrowserToolBase implements ToolHandler {
     totalCount: number,
     preferredVisible: boolean = true
   ): string {
+    const usesNth = selector.includes('>> nth=');
     if (totalCount <= 1) {
+      // Even when a single element is ultimately targeted, discourage nth usage
+      // because it is brittle across layout/content changes.
+      if (usesNth) {
+        return "💡 Tip: Selector uses '>> nth='. Prefer adding a unique data-testid for robust selection.";
+      }
       return '';
     }
 
     const duplicateWarning = this.getDuplicateTestIdWarning(selector, totalCount).trimEnd();
     const nthHint = this.buildNthSelectorHint(selector, totalCount).trimEnd();
-    const extraHints = [duplicateWarning, nthHint].filter(Boolean).join('\n');
+    const avoidNth = usesNth ? "💡 Tip: Avoid relying on '>> nth='; add a unique data-testid instead." : '';
+    const extraHints = [duplicateWarning, nthHint, avoidNth].filter(Boolean).join('\n');
 
     const baseMessage = preferredVisible
       ? `⚠ Found ${totalCount} elements matching "${selector}", using element ${elementIndex + 1} (first visible)`
@@ -392,11 +399,19 @@ export abstract class BrowserToolBase implements ToolHandler {
       selector.match(/^\[data-(testid|test|cy)=/);
 
     if (isTestIdSelector) {
-      return `💡 Tip: Test IDs should be unique. Consider making this test ID unique to avoid ambiguity.\n\n`;
+      return (
+        `💡 Tip: Test IDs should be unique. Consider making this test ID unique to avoid ambiguity.\n` +
+        `   Primary fix: assign a unique data-testid to the intended element.\n` +
+        `   Workaround: if you cannot change markup, you may use '>> nth=<index>' temporarily.\n\n`
+      );
     }
 
     // Suggest testid for non-testid selectors
-    return `💡 Tip: Consider adding a unique data-testid attribute for more reliable selection.\n\n`;
+    return (
+      `💡 Tip: Consider adding a unique data-testid attribute for more reliable selection.\n` +
+      `   Primary fix: add data-testid and target it (e.g., testid:submit).\n` +
+      `   Workaround: use '>> nth=<index>' only when you can't add test IDs.\n\n`
+    );
   }
 
   /**
@@ -415,6 +430,13 @@ export abstract class BrowserToolBase implements ToolHandler {
     const lastIndex = Math.max(totalCount - 1, 1);
     const lastExample = `${trimmed} >> nth=${lastIndex}`;
 
-    return `💡 Hint: Append ">> nth=<index>" to target a specific match.\n   Example: ${firstExample} (first match)\n   Or: ${lastExample} (last match)`;
+    return (
+      `Primary fix: add a unique data-testid to the intended element and select it directly.\n` +
+      `Workaround: Append ">> nth=<index>" to target a specific match when you cannot change markup.\n` +
+      `   Example: ${firstExample} (first match)\n` +
+      `   Or: ${lastExample} (last match)\n` +
+      `Note: nth selectors are brittle and may break with layout/content changes.\n` +
+      `Prefer unique data-testid attributes for long-term stability.`
+    );
   }
 }

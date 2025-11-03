@@ -595,7 +595,7 @@ COMPARE TWO ELEMENTS: Get comprehensive alignment and dimension comparison in on
   - selector2 (string, required): CSS selector, text selector, or testid shorthand for the second element (e.g., 'testid:chat-header', '#secondary-header')
 
 - Output Format:
-  - Optional warnings when a selector matched multiple elements (using first).
+  - Optional warnings when a selector matched multiple elements (uses first visible; suggests adding unique data-testid).
   - Header: Alignment: <elem1> vs <elem2>
   - Two lines with each element's position and size: @ (x,y) w×h px
   - Edges block: Top/Left/Right/Bottom with ✓/✗ and diffs

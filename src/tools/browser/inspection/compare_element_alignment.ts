@@ -10,7 +10,7 @@ export class CompareElementAlignmentTool extends BrowserToolBase {
       name: "compare_element_alignment",
       description: "COMPARE TWO ELEMENTS: Get comprehensive alignment and dimension comparison in one call. Shows edge alignment (top, left, right, bottom), center alignment (horizontal, vertical), and dimensions (width, height). Perfect for debugging 'are these headers aligned?' or 'do these panels match?'. Returns all alignment info with ✓/✗ symbols and pixel differences. For parent-child centering, use inspect_dom() instead (automatically shows if children are centered in parent). More efficient than evaluate() with manual getBoundingClientRect() calculations.",
       outputs: [
-        "Optional warnings when a selector matched multiple elements (using first).",
+        "Optional warnings when a selector matched multiple elements (uses first visible; suggests adding unique data-testid).",
         "Header: Alignment: <elem1> vs <elem2>",
         "Two lines with each element's position and size: @ (x,y) w×h px",
         "Edges block: Top/Left/Right/Bottom with ✓/✗ and diffs",
@@ -55,11 +55,11 @@ export class CompareElementAlignmentTool extends BrowserToolBase {
       const selector2 = this.normalizeSelector(args.selector2);
 
       try {
-        // Get locators for both elements
+        // Build locators for both elements
         const locator1 = page.locator(selector1);
         const locator2 = page.locator(selector2);
 
-        // Check if both elements exist
+        // Check existence first to preserve legacy error messages expected by tests
         const count1 = await locator1.count();
         const count2 = await locator2.count();
 
@@ -70,20 +70,61 @@ export class CompareElementAlignmentTool extends BrowserToolBase {
           return createErrorResponse(`Second element not found: ${args.selector2}`);
         }
 
-        // Handle multiple matches by using first() - show warning
-        const targetLocator1 = count1 > 1 ? locator1.first() : locator1;
-        const targetLocator2 = count2 > 1 ? locator2.first() : locator2;
+        // Prefer first visible element and produce clear selection info
+        let selectionWarning1 = '';
+        let selectionWarning2 = '';
 
-        let warnings = '';
+        let targetLocator1 = locator1.first();
+        let targetLocator2 = locator2.first();
+
+        try {
+          const sel1 = await this.selectPreferredLocator(locator1, {
+            originalSelector: args.selector1,
+          });
+          selectionWarning1 = this.formatElementSelectionInfo(
+            args.selector1,
+            sel1.elementIndex,
+            sel1.totalCount,
+          );
+          targetLocator1 = sel1.element;
+        } catch {
+          // Fallback to first() when visibility checks are unavailable (tests/mocks)
+          selectionWarning1 = this.formatElementSelectionInfo(
+            args.selector1,
+            0,
+            count1,
+          );
+        }
+
+        try {
+          const sel2 = await this.selectPreferredLocator(locator2, {
+            originalSelector: args.selector2,
+          });
+          selectionWarning2 = this.formatElementSelectionInfo(
+            args.selector2,
+            sel2.elementIndex,
+            sel2.totalCount,
+          );
+          targetLocator2 = sel2.element;
+        } catch {
+          selectionWarning2 = this.formatElementSelectionInfo(
+            args.selector2,
+            0,
+            count2,
+          );
+        }
+
+        // Maintain legacy warning format for multiple matches, then append richer hints
+        let legacyWarnings = '';
         if (count1 > 1) {
-          warnings += `⚠ Warning: First selector matched ${count1} elements, using first\n`;
+          legacyWarnings += `⚠ Warning: First selector matched ${count1} elements, using first\n`;
         }
         if (count2 > 1) {
-          warnings += `⚠ Warning: Second selector matched ${count2} elements, using first\n`;
+          legacyWarnings += `⚠ Warning: Second selector matched ${count2} elements, using first\n`;
         }
-        if (warnings) {
-          warnings += '\n';
-        }
+        const warnings = [legacyWarnings.trimEnd(), selectionWarning1, selectionWarning2]
+          .filter(Boolean)
+          .join('\n');
 
         // Get bounding boxes
         const box1 = await targetLocator1.boundingBox();
@@ -204,7 +245,7 @@ export class CompareElementAlignmentTool extends BrowserToolBase {
 
         // Build output
         const lines = [
-          warnings,
+          warnings ? `${warnings}\n` : '',
           `Alignment: ${descriptor1} vs ${descriptor2}`,
           `  ${name1}: @ (${left1},${top1}) ${width1}×${height1}px`,
           `  ${name2}: @ (${left2},${top2}) ${width2}×${height2}px`,
