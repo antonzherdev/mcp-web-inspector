@@ -1,6 +1,42 @@
 import type { ToolHandler, ToolContext, ToolResponse, ToolMetadata, SessionConfig } from './types.js';
 import { createSuccessResponse, createErrorResponse } from './types.js';
-import { consumePayload, registerPayload } from './confirmStore.js';
+
+// One-time token store for deferred payload generation (closures)
+type PayloadThunk = () => Promise<string> | string;
+
+const STORE = new Map<string, { thunk: PayloadThunk; expiresAt: number }>();
+
+function now() {
+  return Date.now();
+}
+
+function purgeExpired(): void {
+  const t = now();
+  for (const [k, v] of STORE.entries()) {
+    if (v.expiresAt <= t) STORE.delete(k);
+  }
+}
+
+function genToken(len = 12): string {
+  return Math.random().toString(36).slice(2, 2 + len);
+}
+
+export function registerPayloadThunk(thunk: PayloadThunk, ttlMs = 120000): string {
+  purgeExpired();
+  const token = genToken();
+  const expiresAt = now() + Math.max(1000, ttlMs);
+  STORE.set(token, { thunk, expiresAt });
+  return token;
+}
+
+export function consumeThunk(token: string): { ok: true; thunk: PayloadThunk } | { ok: false; error: string } {
+  purgeExpired();
+  const entry = STORE.get(token);
+  if (!entry) return { ok: false, error: 'Invalid or expired token' };
+  STORE.delete(token);
+  if (entry.expiresAt <= now()) return { ok: false, error: 'Invalid or expired token' };
+  return { ok: true, thunk: entry.thunk };
+}
 
 // Preview helpers (moved here from confirmHelpers.ts for easier discovery)
 export interface PreviewCounts {
@@ -12,7 +48,7 @@ export interface PreviewCounts {
 }
 
 export function makeConfirmPreview(
-  payload: string,
+  payloadOrThunk: string | PayloadThunk,
   options: {
     headerLine?: string;
     previewLines: string[]; // include your own 'Preview ...' label line(s)
@@ -20,7 +56,8 @@ export function makeConfirmPreview(
     extraTips?: string[];
   }
 ): { token: string; lines: string[] } {
-  const token = registerPayload(payload);
+  const thunk: PayloadThunk = typeof payloadOrThunk === 'function' ? (payloadOrThunk as PayloadThunk) : () => (payloadOrThunk as string);
+  const token = registerPayloadThunk(thunk);
   const lines: string[] = [];
 
   if (options.headerLine) {
@@ -45,7 +82,8 @@ export function makeConfirmPreview(
 
   if (options.previewLines.length) lines.push('');
 
-  const estTokens = Math.round((typeof c.totalLength === 'number' ? c.totalLength : payload.length) / 3);
+  const baseLen = typeof c.totalLength === 'number' ? c.totalLength : (typeof payloadOrThunk === 'string' ? payloadOrThunk.length : 0);
+  const estTokens = Math.round(baseLen / 3);
   lines.push(
     `Output is large (~${estTokens} tokens). To fetch full content without resending parameters, call confirm_output({ token: "${token}" }).`
   );
@@ -87,12 +125,17 @@ export class ConfirmOutputTool implements ToolHandler {
     const token = typeof args.token === 'string' ? args.token : '';
     if (!token) return createErrorResponse('Token is required');
 
-    const res = consumePayload(token);
+    const res = consumeThunk(token);
     if (!res.ok) {
       const err = (res as { ok: false; error: string }).error;
       return createErrorResponse(err);
     }
 
-    return createSuccessResponse(res.payload);
+    try {
+      const out = await res.thunk();
+      return createSuccessResponse(out);
+    } catch (e) {
+      return createErrorResponse((e as Error).message || 'Failed to produce output');
+    }
   }
 }

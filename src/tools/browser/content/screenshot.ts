@@ -3,6 +3,7 @@ import * as path from 'node:path';
 import type { Page } from 'playwright';
 import { BrowserToolBase } from '../base.js';
 import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, createSuccessResponse } from '../../common/types.js';
+import { makeConfirmPreview } from '../../common/confirm_output.js';
 
 /**
  * Tool for taking screenshots of pages or elements
@@ -65,85 +66,71 @@ export class ScreenshotTool extends BrowserToolBase {
 
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
     return this.safeExecute(context, async (page) => {
-      // No environment guard: rely on confirm_output pattern for token efficiency
+      // Defer the screenshot capture until confirmation via confirm_output
+      const thunk = async (): Promise<string> => {
+        const screenshotOptions: any = {
+          type: args.type || "png",
+          fullPage: !!args.fullPage
+        };
 
-      const screenshotOptions: any = {
-        type: args.type || "png",
-        fullPage: !!args.fullPage
+        if (args.selector) {
+          const selector = this.normalizeSelector(args.selector);
+          const element = await page.$(selector);
+          if (!element) {
+            throw new Error(`Element not found: ${selector}`);
+          }
+          screenshotOptions.element = element;
+        }
+
+        const { getScreenshotsDir } = await import('../../../toolHandler.js');
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `${args.name || 'screenshot'}-${timestamp}.png`;
+        const downloadsDir = args.downloadsDir || getScreenshotsDir();
+
+        if (!fs.existsSync(downloadsDir)) {
+          fs.mkdirSync(downloadsDir, { recursive: true });
+        }
+
+        const outputPath = path.join(downloadsDir, filename);
+        screenshotOptions.path = outputPath;
+
+        const screenshot = await page.screenshot(screenshotOptions);
+        const base64Screenshot = screenshot.toString('base64');
+
+        const messages = [`✓ Screenshot saved to: ${path.relative(process.cwd(), outputPath)}`];
+
+        if (args.storeBase64 !== false) {
+          this.screenshots.set(args.name || 'screenshot', base64Screenshot);
+          context.server.notification({ method: "notifications/resources/list_changed" });
+          messages.push(`Screenshot also stored in memory with name: '${args.name || 'screenshot'}'`);
+        }
+
+        messages.push('');
+        messages.push('📸 Open the file in your IDE to view the screenshot');
+        messages.push('⚠️ Reading the image file consumes ~1,500 tokens — use structural tools for layout debugging');
+        messages.push('');
+        messages.push('💡 To debug layout issues without reading the screenshot:');
+        if (args.selector) {
+          messages.push(`   inspect_ancestors({ selector: "${args.selector}" })`);
+          messages.push('   → See parent constraints (width, margins, overflow, borders)');
+        } else {
+          messages.push('   1) Find the element: inspect_dom({}) or get_test_ids()');
+          messages.push('   2) Check parent constraints: inspect_ancestors({ selector: "..." })');
+          messages.push('   3) Compare alignment: compare_element_alignment({ selector1: "...", selector2: "..." })');
+        }
+
+        return messages.join('\n');
       };
 
-      if (args.selector) {
-        // Normalize selector (support testid: shorthand)
-        const selector = this.normalizeSelector(args.selector);
-        const element = await page.$(selector);
-        if (!element) {
-          return {
-            content: [{
-              type: "text",
-              text: `Element not found: ${selector}`,
-            }],
-            isError: true
-          };
-        }
-        screenshotOptions.element = element;
-      }
-
-      const { getScreenshotsDir } = await import('../../../toolHandler.js');
-      // Generate output path
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const filename = `${args.name || 'screenshot'}-${timestamp}.png`;
-      // Use screenshots directory from config, fall back to downloadsDir arg, then default Downloads
-      const downloadsDir = args.downloadsDir || getScreenshotsDir();
-
-      if (!fs.existsSync(downloadsDir)) {
-        fs.mkdirSync(downloadsDir, { recursive: true });
-      }
-
-      const outputPath = path.join(downloadsDir, filename);
-      screenshotOptions.path = outputPath;
-
-      const screenshot = await page.screenshot(screenshotOptions);
-      const base64Screenshot = screenshot.toString('base64');
-
-      const messages = [`✓ Screenshot saved to: ${path.relative(process.cwd(), outputPath)}`];
-
-      // Handle base64 storage
-      if (args.storeBase64 !== false) {
-        this.screenshots.set(args.name || 'screenshot', base64Screenshot);
-        context.server.notification({
-          method: "notifications/resources/list_changed",
-        });
-
-        messages.push(`Screenshot also stored in memory with name: '${args.name || 'screenshot'}'`);
-      }
-
-      // Add token cost warning
-      messages.push('');
-      messages.push('📸 Open the file in your IDE to view the screenshot');
-      messages.push('⚠️ Reading the image file consumes ~1,500 tokens — use structural tools for layout debugging');
-
-      // Add actionable guidance based on screenshot context
-      messages.push('');
-      messages.push('💡 To debug layout issues without reading the screenshot:');
-      if (args.selector) {
-        messages.push(`   inspect_ancestors({ selector: "${args.selector}" })`);
-        messages.push('   → See parent constraints (width, margins, overflow, borders)');
-      } else {
-        messages.push('   1) Find the element: inspect_dom({}) or get_test_ids()');
-        messages.push('   2) Check parent constraints: inspect_ancestors({ selector: "..." })');
-        messages.push('   3) Compare alignment: compare_element_alignment({ selector1: "...", selector2: "..." })');
-      }
-
-      // Wrap full guidance behind confirm_output preview for token efficiency
-      const { makeConfirmPreview } = await import('../../common/confirm_output.js');
-      const payload = messages.join('\n');
-      const preview = makeConfirmPreview(payload, {
-        counts: { totalLength: payload.length, shownLength: Math.min(payload.length, 800), truncated: true },
+      // Return a minimal preview that suggests better alternatives
+      const preview = makeConfirmPreview(thunk, {
         previewLines: [
-          // Keep key info and guidance in preview; full text available via token
-          ...messages
+          'Screenshot requested. For debugging, prefer:',
+          '  • inspect_dom() - structure, positions, visibility',
+          '  • compare_element_alignment() - alignment with pixel diffs',
+          '  • get_computed_styles() - CSS values',
+          '  • inspect_ancestors() - constraints and overflow',
         ],
-        extraTips: []
       });
       return createSuccessResponse(preview.lines.join('\n'));
     });

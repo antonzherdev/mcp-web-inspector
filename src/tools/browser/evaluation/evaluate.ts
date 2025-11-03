@@ -322,7 +322,7 @@ export class EvaluateTool extends BrowserToolBase {
       if (totalLength >= PREVIEW_THRESHOLD) {
         const previewLen = Math.min(500, totalLength);
         const preview = resultStr.slice(0, previewLen);
-        const previewBlock = makeConfirmPreview(resultStr, {
+        const previewBlock = makeConfirmPreview(() => resultStr, {
           headerLine: '✓ JavaScript execution result (preview):',
           counts: { totalLength, shownLength: previewLen, truncated: true },
           previewLines: [

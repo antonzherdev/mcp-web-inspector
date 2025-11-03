@@ -143,7 +143,7 @@ export class GetHtmlTool extends BrowserToolBase {
         // Generate key for this HTML request
         // Check if HTML is too large => return preview + token for confirm_output
         if (originalLength >= PREVIEW_THRESHOLD) {
-          const preview = makeConfirmPreview(processedHtml, {
+          const preview = makeConfirmPreview(() => processedHtml, {
             counts: { totalLength: originalLength, shownLength: Math.min(500, originalLength), truncated: true },
             previewLines: [
               'Preview (first 500 chars):',

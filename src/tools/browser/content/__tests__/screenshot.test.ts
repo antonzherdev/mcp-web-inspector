@@ -72,59 +72,79 @@ describe('ScreenshotTool', () => {
     jest.restoreAllMocks();
   });
 
-  test('should take a full page screenshot', async () => {
+  test('should take a full page screenshot (via confirm_output)', async () => {
     const args = {
       name: 'test-screenshot',
       fullPage: true
     };
 
-    // Return a buffer for the screenshot
+    // First call returns preview with confirm token; no screenshot yet
+    const previewResult = await screenshotTool.execute(args, mockContext);
+    expect(previewResult.isError).toBe(false);
+    const text = previewResult.content.map(c => c.text).join('\n');
+    expect(text).toMatch(/confirm_output\(\{ token: \"[\w\d]+\" \}\)/);
+
+    // Extract token and confirm
+    const tokenMatch = text.match(/confirm_output\(\{ token: \"([\w\d]+)\" \}\)/);
+    expect(tokenMatch).not.toBeNull();
+    const token = tokenMatch![1];
+
+    const { ConfirmOutputTool } = await import('../../../common/confirm_output.js');
+    const confirmTool = new ConfirmOutputTool({});
+
     const screenshotBuffer = Buffer.from('mock-screenshot');
     mockScreenshot.mockImplementationOnce(() => Promise.resolve(screenshotBuffer));
 
-    const result = await screenshotTool.execute(args, mockContext);
-
-    // Check if screenshot was called with correct options
-    expect(mockScreenshot).toHaveBeenCalledWith(expect.objectContaining({ 
-      fullPage: true,
-      type: 'png'
-    }));
-    
-    // Check that the result contains success message
-    expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('Screenshot saved to');
+    const finalResult = await confirmTool.execute({ token }, mockContext);
+    expect(finalResult.isError).toBe(false);
+    expect(finalResult.content[0].text).toContain('Screenshot saved to');
+    expect(mockScreenshot).toHaveBeenCalledWith(expect.objectContaining({ fullPage: true, type: 'png' }));
   });
 
-  test('should handle element screenshot', async () => {
+  test('should handle element screenshot (via confirm_output)', async () => {
     const args = {
       name: 'test-element-screenshot',
       selector: '#test-element'
     };
 
-    // Return a buffer for the screenshot
+    const previewResult = await screenshotTool.execute(args, mockContext);
+    expect(previewResult.isError).toBe(false);
+    const text = previewResult.content.map(c => c.text).join('\n');
+    const tokenMatch = text.match(/confirm_output\(\{ token: \"([\w\d]+)\" \}\)/);
+    expect(tokenMatch).not.toBeNull();
+    const token = tokenMatch![1];
+
+    const { ConfirmOutputTool } = await import('../../../common/confirm_output.js');
+    const confirmTool = new ConfirmOutputTool({});
+
     const screenshotBuffer = Buffer.from('mock-element-screenshot');
     mockLocatorScreenshot.mockImplementationOnce(() => Promise.resolve(screenshotBuffer));
 
-    const result = await screenshotTool.execute(args, mockContext);
-
-    // Check that the result contains success message
-    expect(result.isError).toBe(false);
-    expect(result.content[0].text).toContain('Screenshot saved to');
+    const finalResult = await confirmTool.execute({ token }, mockContext);
+    expect(finalResult.isError).toBe(false);
+    expect(finalResult.content[0].text).toContain('Screenshot saved to');
   });
 
-  test('should handle screenshot errors', async () => {
+  test('should handle screenshot errors (on confirm)', async () => {
     const args = {
       name: 'test-screenshot'
     };
 
-    // Mock a screenshot error
+    const previewResult = await screenshotTool.execute(args, mockContext);
+    expect(previewResult.isError).toBe(false);
+    const text = previewResult.content.map(c => c.text).join('\n');
+    const tokenMatch = text.match(/confirm_output\(\{ token: \"([\w\d]+)\" \}\)/);
+    expect(tokenMatch).not.toBeNull();
+    const token = tokenMatch![1];
+
+    const { ConfirmOutputTool } = await import('../../../common/confirm_output.js');
+    const confirmTool = new ConfirmOutputTool({});
+
+    // Mock a screenshot error on confirmation
     mockScreenshot.mockImplementationOnce(() => Promise.reject(new Error('Screenshot failed')));
-
-    const result = await screenshotTool.execute(args, mockContext);
-
-    expect(mockScreenshot).toHaveBeenCalled();
-    expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('Operation failed');
+    const finalResult = await confirmTool.execute({ token }, mockContext);
+    expect(finalResult.isError).toBe(true);
+    expect(finalResult.content[0].text).toContain('Screenshot failed');
   });
 
   test('should handle missing page', async () => {
@@ -139,82 +159,73 @@ describe('ScreenshotTool', () => {
     } as unknown as ToolContext;
 
     const result = await screenshotTool.execute(args, contextWithoutPage);
-
     expect(mockScreenshot).not.toHaveBeenCalled();
     expect(result.isError).toBe(true);
     expect(result.content[0].text).toContain('Browser page not initialized');
   });
 
-  test('should store screenshots in a map', async () => {
+  test('should store screenshots in a map (after confirm)', async () => {
     const args = {
       name: 'test-screenshot',
       storeBase64: true
     };
 
-    // Return a buffer for the screenshot
-    const screenshotBuffer = Buffer.from('mock-screenshot');
-    mockScreenshot.mockImplementationOnce(() => Promise.resolve(screenshotBuffer));
-
-    await screenshotTool.execute(args, mockContext);
+    const preview = await screenshotTool.execute(args, mockContext);
+    const token = (preview.content.map(c => c.text).join('\n').match(/confirm_output\(\{ token: \"([\w\d]+)\" \}\)/) || [])[1];
+    const { ConfirmOutputTool } = await import('../../../common/confirm_output.js');
+    const confirmTool = new ConfirmOutputTool({});
+    mockScreenshot.mockImplementationOnce(() => Promise.resolve(Buffer.from('mock-screenshot')));
+    await confirmTool.execute({ token }, mockContext);
     
     // Check that the screenshot was stored in the map
     const screenshots = screenshotTool.getScreenshots();
     expect(screenshots.has('test-screenshot')).toBe(true);
   });
 
-  test('should take a screenshot with specific browser type', async () => {
+  test('should take a screenshot with specific browser type (via confirm_output)', async () => {
     const args = {
       name: 'browser-type-test',
       browserType: 'firefox'
     };
 
-    // Execute with browser type
-    const result = await screenshotTool.execute(args, mockContext);
-
+    const preview = await screenshotTool.execute(args, mockContext);
+    const text = preview.content.map(c => c.text).join('\n');
+    const token = (text.match(/confirm_output\(\{ token: \"([\w\d]+)\" \}\)/) || [])[1];
+    const { ConfirmOutputTool } = await import('../../../common/confirm_output.js');
+    const confirmTool = new ConfirmOutputTool({});
+    mockScreenshot.mockImplementationOnce(() => Promise.resolve(Buffer.from('mock-screenshot')));
+    const result = await confirmTool.execute({ token }, mockContext);
     expect(mockScreenshot).toHaveBeenCalled();
     expect(result.isError).toBe(false);
     expect(result.content[0].text).toContain('Screenshot saved to');
   });
 
-  test('should include actionable guidance for full-page screenshots', async () => {
+  test('preview should suggest alternative tools', async () => {
     const args = {
       name: 'test-screenshot',
       fullPage: true
     };
 
-    const screenshotBuffer = Buffer.from('mock-screenshot');
-    mockScreenshot.mockImplementationOnce(() => Promise.resolve(screenshotBuffer));
-
     const result = await screenshotTool.execute(args, mockContext);
-
     expect(result.isError).toBe(false);
-    // Concatenate all content items to check the full response
     const fullResponseText = result.content.map(c => c.text).join('\n');
-
-    // Verify guidance is included (updated to match new cross-tool advertising)
-    expect(fullResponseText).toContain('💡 To debug layout issues');
+    expect(fullResponseText).toContain('Screenshot requested');
     expect(fullResponseText).toContain('inspect_dom');
-    expect(fullResponseText).toContain('get_test_ids');
+    expect(fullResponseText).toContain('compare_element_alignment');
+    expect(fullResponseText).toContain('get_computed_styles');
     expect(fullResponseText).toContain('inspect_ancestors');
   });
 
-  test('should NOT include guidance for element-specific screenshots', async () => {
+  test('preview should also suggest alternatives for element screenshots', async () => {
     const args = {
       name: 'test-element-screenshot',
       selector: '#test-element'
     };
 
-    const screenshotBuffer = Buffer.from('mock-element-screenshot');
-    mockLocatorScreenshot.mockImplementationOnce(() => Promise.resolve(screenshotBuffer));
-
     const result = await screenshotTool.execute(args, mockContext);
-
     expect(result.isError).toBe(false);
-    // Concatenate all content items to check the full response
     const fullResponseText = result.content.map(c => c.text).join('\n');
-
-    // Verify guidance is NOT included for element screenshots
-    expect(fullResponseText).not.toContain('💡 Next steps to analyze this page:');
-    expect(fullResponseText).not.toContain('inspect_dom');
+    expect(fullResponseText).toContain('Screenshot requested');
+    expect(fullResponseText).toContain('inspect_dom');
   });
 }); 

@@ -145,11 +145,11 @@ export class GetConsoleLogsTool extends BrowserToolBase {
           `Matched ${logs.length} log(s). Showing ${Math.min(messages.length, 10)} line(s) preview.`,
           ...messages.slice(0, Math.min(messages.length, 10)),
         ];
-        const preview = makeConfirmPreview(textPayload, {
-          counts: { totalLength: textPayload.length, shownLength: previewLines.join('\n').length, totalMatched: logs.length, shownCount: Math.min(messages.length, 10), truncated: true },
-          previewLines,
-          extraTips: ['Tip: refine with search/type/since/limit or prefer grouped format.'],
-        });
+      const preview = makeConfirmPreview(() => textPayload, {
+        counts: { totalLength: textPayload.length, shownLength: previewLines.join('\n').length, totalMatched: logs.length, shownCount: Math.min(messages.length, 10), truncated: true },
+        previewLines,
+        extraTips: ['Tip: refine with search/type/since/limit or prefer grouped format.'],
+      });
         return createSuccessResponse(preview.lines.join('\n'));
       }
 
@@ -190,7 +190,7 @@ export class GetConsoleLogsTool extends BrowserToolBase {
         `Matched ${groups.size} group(s). Showing ${limitedGroups.length}.`,
         ...lines.slice(0, Math.min(lines.length, 12)),
       ];
-      const preview = makeConfirmPreview(textPayload, {
+      const preview = makeConfirmPreview(() => textPayload, {
         counts: { totalLength: textPayload.length, shownLength: previewLines.join('\n').length, totalMatched: groups.size, shownCount: limitedGroups.length, truncated: true },
         previewLines,
         extraTips: ['Tip: refine with search/type/since/limit.'],
