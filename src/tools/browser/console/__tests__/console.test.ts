@@ -258,4 +258,52 @@ describe('GetConsoleLogsTool', () => {
     // (The truncation happens in toolHandler.ts before calling registerConsoleMessage)
     expect(logsText).toContain(longStackError);
   });
+
+  test('raw format preview should include confirm token and confirmation returns full payload', async () => {
+    // Generate enough long logs to exceed preview threshold
+    for (let i = 0; i < 40; i++) {
+      consoleLogsTool.registerConsoleMessage('log', `RAW-LONG-${i} ` + 'X'.repeat(160));
+    }
+
+    const previewResult = await consoleLogsTool.execute({ format: 'raw' }, mockContext);
+    expect(previewResult.isError).toBe(false);
+    const previewText = previewResult.content.map(c => c.text).join('\n');
+    // Should include confirm_output token reference
+    expect(previewText).toMatch(/confirm_output\(\{ token: \"([\w\d]+)\" \}\)/);
+
+    const token = (previewText.match(/confirm_output\(\{ token: \"([\w\d]+)\" \}\)/) || [])[1];
+    // Confirm to retrieve full payload
+    const { ConfirmOutputTool } = await import('../../../common/confirm_output.js');
+    const confirmTool = new ConfirmOutputTool({});
+    const full = await confirmTool.execute({ token }, mockContext);
+    expect(full.isError).toBe(false);
+    const fullText = full.content.map(c => c.text).join('\n');
+    // By default limit=20 → header should reflect 20 lines
+    expect(fullText).toContain('Retrieved 20 console log(s):');
+    // And include one of our long messages
+    expect(fullText).toContain('RAW-LONG-39');
+  });
+
+  test('grouped format preview should include confirm token and confirmation returns full payload', async () => {
+    // Generate 30 unique messages to form distinct groups and exceed threshold
+    for (let i = 0; i < 30; i++) {
+      consoleLogsTool.registerConsoleMessage('log', `GROUP-LONG-${i} ` + 'G'.repeat(160));
+    }
+
+    const previewResult = await consoleLogsTool.execute({}, mockContext); // grouped is default
+    expect(previewResult.isError).toBe(false);
+    const previewText = previewResult.content.map(c => c.text).join('\n');
+    expect(previewText).toMatch(/confirm_output\(\{ token: \"([\w\d]+)\" \}\)/);
+
+    const token = (previewText.match(/confirm_output\(\{ token: \"([\w\d]+)\" \}\)/) || [])[1];
+    const { ConfirmOutputTool } = await import('../../../common/confirm_output.js');
+    const confirmTool = new ConfirmOutputTool({});
+    const full = await confirmTool.execute({ token }, mockContext);
+    expect(full.isError).toBe(false);
+    const fullText = full.content.map(c => c.text).join('\n');
+    // Header reflects number of groups shown (limit default 20)
+    expect(fullText).toContain('Retrieved 20 console log(s):');
+    // Should include one of the first 20 grouped messages
+    expect(fullText).toContain('GROUP-LONG-0');
+  });
 }); 
