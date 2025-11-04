@@ -123,7 +123,23 @@ export class NavigateTool extends BrowserToolBase {
           // Best-effort detection; ignore and proceed
         }
 
-        return createSuccessResponse(`Navigated to ${args.url}`);
+        // Try a quick, non-blocking network-idle check. If the page is already
+        // idle, include a compact confirmation line. Keep parameters minimal and
+        // avoid hanging SPAs: use a very small timeout and ignore failures.
+        const messages: string[] = [`Navigated to ${args.url}`];
+        try {
+          const idleStart = Date.now();
+          const waitForLoadState = (page as any).waitForLoadState?.bind(page);
+          if (waitForLoadState) {
+            await waitForLoadState('networkidle', { timeout: 500 });
+            const duration = Date.now() - idleStart;
+            messages.push(`\u2713 Network idle after ${duration}ms, 0 pending requests`);
+          }
+        } catch {
+          // Best-effort quick check; ignore timeout or errors and return immediately
+        }
+
+        return createSuccessResponse(messages);
       } catch (error) {
         const errorMessage = (error as Error).message;
 
