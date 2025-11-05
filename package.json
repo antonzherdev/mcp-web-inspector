@@ -28,14 +28,13 @@
     "url": "https://github.com/antonzherdev/mcp-web-inspector.git"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.11.1",
+    "@modelcontextprotocol/sdk": "1.21.0",
     "@playwright/browser-chromium": "1.56.1",
     "@playwright/browser-firefox": "1.56.1",
     "@playwright/browser-webkit": "1.56.1",
     "@playwright/test": "^1.56.1",
-    "mcp-evals": "^1.0.18",
     "playwright": "1.56.1",
-    "uuid": "11.1.0"
+    "uuid": "13.0.0"
   },
   "keywords": [
     "mcp",
@@ -51,11 +50,11 @@
   ],
   "devDependencies": {
     "@types/jest": "^29.5.14",
-    "@types/node": "^20.10.5",
+    "@types/node": "^24.10.0",
     "jest": "^29.7.0",
     "jest-playwright-preset": "4.0.0",
-    "shx": "^0.3.4",
-    "ts-jest": "^29.2.6",
-    "typescript": "^5.8.3"
+    "shx": "^0.4.0",
+    "ts-jest": "^29.4.5",
+    "typescript": "^5.9.3"
   }
 }
