@@ -35,7 +35,7 @@
     "@playwright/test": "^1.56.1",
     "mcp-evals": "^1.0.18",
     "playwright": "1.56.1",
-    "uuid": "11.1.0"
+    "uuid": "13.0.0"
   },
   "keywords": [
     "mcp",
