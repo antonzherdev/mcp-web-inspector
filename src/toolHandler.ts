@@ -111,15 +111,31 @@ function getColorSchemeValue(): ColorSchemeOverride | null {
 }
 
 async function applyColorScheme(targetPage: Page | undefined): Promise<void> {
-  if (!targetPage) {
-    return;
-  }
+  if (!targetPage) return;
+
+  const scheme = getColorSchemeValue();
 
   try {
-    const scheme = getColorSchemeValue();
-    await targetPage.emulateMedia({ colorScheme: scheme ?? null });
+    // Some test environments or mocks may not implement emulateMedia
+    const anyPage = targetPage as any;
+    if (typeof anyPage.emulateMedia === 'function') {
+      await anyPage.emulateMedia({ colorScheme: scheme ?? null });
+      return;
+    }
+
+    // Fallback: if emulateMedia is unavailable, do a best-effort hint via CSS.
+    // This won't fully emulate prefers-color-scheme but avoids throwing in tests.
+    if (scheme) {
+      const css = scheme === 'dark' ? ':root{color-scheme: dark;}'
+        : scheme === 'light' ? ':root{color-scheme: light;}'
+        : ':root{color-scheme: light dark;}';
+      if (typeof anyPage.addStyleTag === 'function') {
+        await anyPage.addStyleTag({ content: css });
+      }
+    }
   } catch (error) {
-    console.error("Failed to apply color scheme:", error);
+    // Swallow errors to keep color scheme application non-fatal
+    console.warn("Failed to apply color scheme (non-fatal):", error);
   }
 }
 
@@ -330,13 +346,13 @@ async function getScreenSize(): Promise<{ width: number; height: number }> {
 
     // Validate the screen size values
     if (!screenSize || typeof screenSize.width !== 'number' || typeof screenSize.height !== 'number') {
-      console.error('Invalid screen size detected, using defaults');
+      console.warn('Invalid screen size detected, using defaults');
       return { width: 1280, height: 720 };
     }
 
     return screenSize;
   } catch (error) {
-    console.error('Failed to detect screen size, using defaults:', error);
+    console.warn('Failed to detect screen size, using defaults:', error);
     return { width: 1280, height: 720 };
   }
 }
@@ -352,15 +368,15 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
       const browserCheck = checkBrowsersInstalled();
       if (!browserCheck.installed) {
         // Try to install browsers automatically
-        console.error('🎭 Playwright browsers not found. Installing automatically...');
-        console.error('⏳ This will download ~1GB of browser binaries. Please wait...');
+        console.warn('🎭 Playwright browsers not found. Installing automatically...');
+        console.warn('⏳ This will download ~1GB of browser binaries. Please wait...');
         try {
           const { execSync } = await import('child_process');
           execSync('npx playwright install chromium firefox webkit', {
             stdio: 'inherit',
             encoding: 'utf8'
           });
-          console.error('✅ Browsers installed successfully! Starting browser...');
+          console.log('✅ Browsers installed successfully! Starting browser...');
           // Note: browser variable is still undefined here, which is correct.
           // The code below (line 342) will launch the browser after installation.
         } catch (installError) {
@@ -373,7 +389,7 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
 
     // Check if browser exists but is disconnected
     if (browser && !browser.isConnected()) {
-      console.error("Browser exists but is disconnected. Cleaning up...");
+      console.warn("Browser exists but is disconnected. Cleaning up...");
       try {
         await browser.close().catch(err => console.error("Error closing disconnected browser:", err));
       } catch (e) {
@@ -385,7 +401,7 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
 
     // Check if device preset has changed (requires browser restart)
     if (browser && browserSettings?.device && browserSettings.device !== currentDevice) {
-      console.error(`Device preset changed from ${currentDevice || 'none'} to ${browserSettings.device}. Restarting browser...`);
+      console.warn(`Device preset changed from ${currentDevice || 'none'} to ${browserSettings.device}. Restarting browser...`);
       try {
         await browser.close().catch(err => console.error("Error closing browser on device change:", err));
       } catch (e) {
@@ -405,7 +421,7 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
 
         // Check if viewport size actually changed
         if (!currentViewport || currentViewport.width !== targetWidth || currentViewport.height !== targetHeight) {
-          console.error(`Resizing viewport to ${targetWidth}x${targetHeight}`);
+          console.log(`Resizing viewport to ${targetWidth}x${targetHeight}`);
           await page.setViewportSize({ width: targetWidth, height: targetHeight });
         }
       }
@@ -432,17 +448,17 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
         // Check custom configs first, then Playwright's built-in devices
         deviceConfig = CUSTOM_DEVICE_CONFIGS[playwrightDeviceName] || devices[playwrightDeviceName];
         if (deviceConfig) {
-          console.error(`Using device preset: ${device} (${playwrightDeviceName})`);
+          console.log(`Using device preset: ${device} (${playwrightDeviceName})`);
           currentDevice = device;
         } else {
-          console.error(`Warning: Device preset ${playwrightDeviceName} not found`);
+          console.warn(`Warning: Device preset ${playwrightDeviceName} not found`);
           currentDevice = undefined;
         }
       } else {
         currentDevice = undefined;
       }
 
-      console.error(`Launching new ${browserType} browser instance...`);
+      console.warn(`Launching new ${browserType} browser instance...`);
 
       // Use the appropriate browser engine
       let browserInstance;
@@ -475,7 +491,7 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
         viewportWidth = screenSize?.width ?? 1280;
         viewportHeight = screenSize?.height ?? 720;
         if (screenSize && screenSize.width > 0 && screenSize.height > 0) {
-          console.error(`No viewport specified, using screen size: ${viewportWidth}x${viewportHeight}`);
+          console.log(`No viewport specified, using screen size: ${viewportWidth}x${viewportHeight}`);
         }
       }
 
@@ -501,7 +517,7 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
 
       // Use persistent context if session saving is enabled
       if (sessionConfig.saveSession) {
-        console.error(`Launching ${browserType} with persistent context at ${sessionConfig.userDataDir}...`);
+        console.warn(`Launching ${browserType} with persistent context at ${sessionConfig.userDataDir}...`);
 
         const context = await browserInstance.launchPersistentContext(sessionConfig.userDataDir, contextOptions);
 
@@ -511,7 +527,7 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
 
         // Add cleanup logic when browser is disconnected
         browser.on('disconnected', () => {
-          console.error("Browser disconnected event triggered");
+          console.warn("Browser disconnected event triggered");
           browser = undefined;
           page = undefined;
         });
@@ -529,7 +545,7 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
 
         // Add cleanup logic when browser is disconnected
         browser.on('disconnected', () => {
-          console.error("Browser disconnected event triggered");
+          console.warn("Browser disconnected event triggered");
           browser = undefined;
           page = undefined;
         });
@@ -562,7 +578,7 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
     
     // Verify page is still valid
     if (!page || page.isClosed()) {
-      console.error("Page is closed or invalid. Creating new page...");
+      console.warn("Page is closed or invalid. Creating new page...");
       // Create a new page if the current one is invalid
       const context = browser.contexts()[0] || await browser.newContext();
       page = await context.newPage();
@@ -660,7 +676,7 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
 
     // Use persistent context if session saving is enabled
     if (sessionConfig.saveSession) {
-      console.error(`Launching ${browserType} with persistent context at ${sessionConfig.userDataDir} (retry)...`);
+      console.warn(`Launching ${browserType} with persistent context at ${sessionConfig.userDataDir} (retry)...`);
 
       const context = await browserInstance.launchPersistentContext(sessionConfig.userDataDir, retryContextOptions);
 
@@ -668,7 +684,7 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
       currentBrowserType = browserType;
 
       browser.on('disconnected', () => {
-        console.error("Browser disconnected event triggered (retry)");
+        console.warn("Browser disconnected event triggered (retry)");
         browser = undefined;
         page = undefined;
       });
@@ -683,7 +699,7 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
       currentBrowserType = browserType;
 
       browser.on('disconnected', () => {
-        console.error("Browser disconnected event triggered (retry)");
+        console.warn("Browser disconnected event triggered (retry)");
         browser = undefined;
         page = undefined;
       });
@@ -760,7 +776,7 @@ export async function handleToolCall(
 
     // Check if we have a disconnected browser that needs cleanup
     if (browser && !browser.isConnected() && requiresBrowser) {
-      console.error("Detected disconnected browser before tool execution, cleaning up...");
+      console.warn("Detected disconnected browser before tool execution, cleaning up...");
       try {
         await browser.close().catch(() => {}); // Ignore errors
       } catch (e) {
