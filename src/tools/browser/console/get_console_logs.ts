@@ -227,6 +227,16 @@ export class GetConsoleLogsTool extends BrowserToolBase {
       .filter(log => log.timestamp > since)
       .map(log => log.message);
   }
+
+  /**
+   * Return messages for logs captured after the last recorded interaction
+   */
+  getLogsSinceLastInteraction(): string[] {
+    const since = this.lastInteractionTimestamp;
+    return this.consoleLogs
+      .filter(log => log.timestamp > since)
+      .map(log => log.message);
+  }
 }
 
 /**

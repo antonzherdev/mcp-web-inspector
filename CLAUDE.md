@@ -116,8 +116,8 @@ npm run generate:readme  # Regenerate README tool docs from code metadata
 **Inspection** (10 tools):
 - `inspect_dom`, `inspect_ancestors`, `compare_element_alignment`, `get_computed_styles`, `check_visibility`, `query_selector`, `get_test_ids`, `measure_element`, `find_by_text`, `element_exists`
 
-**Navigation** (5 tools):
-- `go_back`, `go_forward`, `navigate`, `scroll_by`, `scroll_to_element`
+**Navigation** (4 tools):
+- `go_history`, `navigate`, `scroll_by`, `scroll_to_element`
 
 **Interaction** (7 tools):
 - `click`, `drag`, `fill`, `hover`, `press_key`, `select`, `upload_file`

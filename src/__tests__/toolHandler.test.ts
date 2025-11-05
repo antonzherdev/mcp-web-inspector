@@ -204,11 +204,11 @@ describe('Tool Handler', () => {
     expect(clickResult.content).toBeDefined();
 
     // Test new navigation tools
-    const goBackResult = await handleToolCall('go_back', {}, mockServer);
+    const goBackResult = await handleToolCall('go_history', { direction: 'back' }, mockServer);
     expect(goBackResult).toBeDefined();
     expect(goBackResult.content).toBeDefined();
     
-    const goForwardResult = await handleToolCall('go_forward', {}, mockServer);
+    const goForwardResult = await handleToolCall('go_history', { direction: 'forward' }, mockServer);
     expect(goForwardResult).toBeDefined();
     expect(goForwardResult.content).toBeDefined();
 

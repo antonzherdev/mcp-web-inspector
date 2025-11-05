@@ -1,5 +1,6 @@
 import { BrowserToolBase } from '../base.js';
-import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, createSuccessResponse } from '../../common/types.js';
+import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, createSuccessResponse, createErrorResponse } from '../../common/types.js';
+import { gatherConsoleErrorsSince, quickNetworkIdleNote, titleUrlChangeLines } from '../common/postAction.js';
 
 /**
  * Tool for clicking elements on the page
@@ -31,8 +32,44 @@ export class ClickTool extends BrowserToolBase {
         originalSelector: args.selector,
       });
 
+      // Capture initial state for change detection
+      let initialUrl = '';
+      let initialTitle = '';
+      try { initialUrl = page.url(); } catch {}
+      try { initialTitle = await page.title(); } catch {}
+
       await element.click();
-      return createSuccessResponse(`Clicked element: ${args.selector}`);
+
+      const lines: string[] = [`Clicked element: ${args.selector}`];
+
+      // First, a quick network-idle hint to allow errors to flush
+      try {
+        const note = await quickNetworkIdleNote(page);
+        if (note) lines.push(note);
+      } catch {}
+
+      // Then, surface console errors triggered by the interaction
+      try {
+        const errs = await gatherConsoleErrorsSince('interaction');
+        if (errs.length > 0) {
+          let titleInfo = '';
+          try {
+            const t = await page.title();
+            if (t) titleInfo = `\nTitle: ${t}`;
+          } catch {}
+          return createErrorResponse(`Console error after click: ${errs[0]}${titleInfo}`);
+        }
+      } catch {
+        // ignore log retrieval errors
+      }
+
+      // Title / URL changes
+      try {
+        const changeLines = await titleUrlChangeLines(page, { url: initialUrl, title: initialTitle });
+        if (changeLines.length > 0) lines.push(...changeLines);
+      } catch {}
+
+      return createSuccessResponse(lines);
     });
   }
 }

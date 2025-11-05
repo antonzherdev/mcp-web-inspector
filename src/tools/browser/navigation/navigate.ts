@@ -1,5 +1,6 @@
 import { BrowserToolBase } from '../base.js';
 import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, createSuccessResponse, createErrorResponse } from '../../common/types.js';
+import { gatherConsoleErrorsSince, quickNetworkIdleNote } from '../common/postAction.js';
 
 async function resetState() {
   const { resetBrowserState } = await import('../../../toolHandler.js');
@@ -123,10 +124,19 @@ export class NavigateTool extends BrowserToolBase {
           // Best-effort detection; ignore and proceed
         }
 
-        // Before returning success, surface hard page errors immediately if any
+        // First, perform a quick network-idle check to allow any errors to flush
+        // before we examine console errors. Keep it best-effort with small timeout.
+        const messages: string[] = [`Navigated to ${args.url}`];
         try {
-          const logs = await getLogsSinceLastNav();
-          const errs = logs.filter(l => l.startsWith('[error]') || l.startsWith('[exception]'));
+          const note = await quickNetworkIdleNote(page);
+          if (note) messages.push(note);
+        } catch {
+          // Ignore failures in the quick check
+        }
+
+        // After waiting briefly, surface hard page errors if any
+        try {
+          const errs = await gatherConsoleErrorsSince('navigation');
           if (errs.length > 0) {
             // Include page title (best-effort) to aid debugging
             let titleInfo = '';
@@ -138,22 +148,6 @@ export class NavigateTool extends BrowserToolBase {
           }
         } catch {
           // If log retrieval fails, continue normally
-        }
-
-        // Try a quick, non-blocking network-idle check. If the page is already
-        // idle, include a compact confirmation line. Keep parameters minimal and
-        // avoid hanging SPAs: use a very small timeout and ignore failures.
-        const messages: string[] = [`Navigated to ${args.url}`];
-        try {
-          const idleStart = Date.now();
-          const waitForLoadState = (page as any).waitForLoadState?.bind(page);
-          if (waitForLoadState) {
-            await waitForLoadState('networkidle', { timeout: 500 });
-            const duration = Date.now() - idleStart;
-            messages.push(`\u2713 Network idle after ${duration}ms, 0 pending requests`);
-          }
-        } catch {
-          // Best-effort quick check; ignore timeout or errors and return immediately
         }
 
         // Add page title to help the agent orient itself

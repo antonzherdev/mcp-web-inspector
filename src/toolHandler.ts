@@ -874,6 +874,16 @@ export function getConsoleLogsSinceLastNavigation(): string[] {
 }
 
 /**
+ * Get console logs captured after the last interaction
+ */
+export function getConsoleLogsSinceLastInteraction(): string[] {
+  const consoleLogsTool = getToolInstance("get_console_logs", null) as GetConsoleLogsTool;
+  if (!consoleLogsTool) return [];
+  // Expose a compact accessor mirroring navigation-based retrieval
+  return (consoleLogsTool as any).getLogsSinceLastInteraction?.() ?? [];
+}
+
+/**
  * Get screenshots
  */
 export function getScreenshots(): Map<string, string> {

@@ -1,5 +1,4 @@
-import { GoBackTool } from '../go_back.js';
-import { GoForwardTool } from '../go_forward.js';
+import { GoHistoryTool } from '../history.js';
 import { ToolContext } from '../../../common/types.js';
 import { Page, Browser } from 'playwright';
 import { jest } from '@jest/globals';
@@ -34,72 +33,58 @@ const mockContext = {
   server: mockServer
 } as ToolContext;
 
-describe('Browser Navigation History Tools', () => {
-  let goBackTool: GoBackTool;
-  let goForwardTool: GoForwardTool;
+describe('Browser Navigation History Tool', () => {
+  let historyTool: GoHistoryTool;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    goBackTool = new GoBackTool(mockServer);
-    goForwardTool = new GoForwardTool(mockServer);
+    historyTool = new GoHistoryTool(mockServer);
     // Reset browser and page mocks
     mockIsConnected.mockReturnValue(true);
     mockIsClosed.mockReturnValue(false);
   });
 
-  describe('GoBackTool', () => {
+  describe('HistoryTool', () => {
     test('should navigate back in browser history', async () => {
-      const args = {};
+      const args = { direction: 'back' };
 
-      const result = await goBackTool.execute(args, mockContext);
+      const result = await historyTool.execute(args, mockContext);
 
       expect(mockGoBack).toHaveBeenCalled();
       expect(result.isError).toBe(false);
       expect(result.content[0].text).toContain('Navigated back');
     });
 
-    test('should handle navigation back errors', async () => {
-      const args = {};
-
-      // Mock a navigation error
-      mockGoBack.mockImplementationOnce(() => Promise.reject(new Error('Navigation back failed')));
-
-      const result = await goBackTool.execute(args, mockContext);
-
-      expect(mockGoBack).toHaveBeenCalled();
-      expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('Operation failed');
-    });
-
-    test('should handle missing page', async () => {
-      const args = {};
-
-      const result = await goBackTool.execute(args, { server: mockServer } as ToolContext);
-
-      expect(mockGoBack).not.toHaveBeenCalled();
-      expect(result.isError).toBe(true);
-      expect(result.content[0].text).toContain('Browser page not initialized');
-    });
-  });
-
-  describe('GoForwardTool', () => {
     test('should navigate forward in browser history', async () => {
-      const args = {};
+      const args = { direction: 'forward' };
 
-      const result = await goForwardTool.execute(args, mockContext);
+      const result = await historyTool.execute(args, mockContext);
 
       expect(mockGoForward).toHaveBeenCalled();
       expect(result.isError).toBe(false);
       expect(result.content[0].text).toContain('Navigated forward');
     });
 
+    test('should handle navigation back errors', async () => {
+      const args = { direction: 'back' };
+
+      // Mock a navigation error
+      mockGoBack.mockImplementationOnce(() => Promise.reject(new Error('Navigation back failed')));
+
+      const result = await historyTool.execute(args, mockContext);
+
+      expect(mockGoBack).toHaveBeenCalled();
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('Operation failed');
+    });
+
     test('should handle navigation forward errors', async () => {
-      const args = {};
+      const args = { direction: 'forward' };
 
       // Mock a navigation error
       mockGoForward.mockImplementationOnce(() => Promise.reject(new Error('Navigation forward failed')));
 
-      const result = await goForwardTool.execute(args, mockContext);
+      const result = await historyTool.execute(args, mockContext);
 
       expect(mockGoForward).toHaveBeenCalled();
       expect(result.isError).toBe(true);
@@ -107,11 +92,11 @@ describe('Browser Navigation History Tools', () => {
     });
 
     test('should handle missing page', async () => {
-      const args = {};
+      const args = { direction: 'back' };
 
-      const result = await goForwardTool.execute(args, { server: mockServer } as ToolContext);
+      const result = await historyTool.execute(args, { server: mockServer } as ToolContext);
 
-      expect(mockGoForward).not.toHaveBeenCalled();
+      expect(mockGoBack).not.toHaveBeenCalled();
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain('Browser page not initialized');
     });

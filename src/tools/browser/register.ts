@@ -2,8 +2,7 @@ import type { ToolClass } from '../common/types.js';
 
 // Navigation
 import { NavigateTool } from './navigation/navigate.js';
-import { GoBackTool } from './navigation/go_back.js';
-import { GoForwardTool } from './navigation/go_forward.js';
+import { GoHistoryTool } from './navigation/history.js';
 import { ScrollToElementTool } from './navigation/scroll_to_element.js';
 import { ScrollByTool } from './navigation/scroll_by.js';
 
@@ -54,8 +53,7 @@ import { WaitForNetworkIdleTool } from './waiting/wait_for_network_idle.js';
 export const BROWSER_TOOL_CLASSES: ToolClass[] = [
   // Navigation (5)
   NavigateTool,
-  GoBackTool,
-  GoForwardTool,
+  GoHistoryTool,
   ScrollToElementTool,
   ScrollByTool,
 

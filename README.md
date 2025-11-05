@@ -911,11 +911,11 @@ Quick check if an element exists on the page. Ultra-lightweight alternative to q
 
 ### Navigation
 
-#### `go_back`
-Navigate back in browser history
+#### `go_history`
+Navigate browser history (back/forward). Returns: 'Navigated <direction> in browser history', a quick network-idle note if available, 'URL: <current>', and 'Title: <current>' when set. If console errors occur after the navigation, returns an error like 'Console error after history navigation: <message>' including Title when available.
 
-#### `go_forward`
-Navigate forward in browser history
+- Parameters:
+  - direction (string, required): History direction to navigate
 
 #### `navigate`
 Navigate to a URL. Browser sessions (cookies, localStorage, sessionStorage) are automatically saved in ./.mcp-web-inspector/user-data directory and persist across restarts. To clear saved sessions, delete the directory.
@@ -1048,7 +1048,7 @@ Clears captured console logs and returns the number of entries cleared.
 Retrieve console logs with filtering and token‑efficient output. Defaults: since='last-interaction', limit=20, format='grouped'. Grouped output deduplicates identical lines and shows counts. Use format='raw' for chronological, ungrouped lines. Large outputs return a preview and a one-time token to fetch the full payload.
 
 - Parameters:
-  - type (string, optional): Type of logs to retrieve (all, error, warning, log, info, debug, exception)
+  - type (string, optional): Type filter (all, error, warning, log, info, debug, exception). Note: 'error' also includes 'exception' entries for convenience.
   - search (string, optional): Text to search for in logs (handles text with square brackets)
   - limit (number, optional): Maximum entries to return (groups when grouped, lines when raw). Default: 20
   - since (string, optional): Filter logs since a specific event: 'last-call' (since last get_console_logs call), 'last-navigation' (since last page navigation), or 'last-interaction' (since last user interaction like click, fill, etc.). Default: 'last-interaction'

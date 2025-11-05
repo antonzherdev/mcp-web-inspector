@@ -42,18 +42,11 @@ describe('Tool Definitions', () => {
     expect(navigateTool!.inputSchema.required).toEqual(['url']);
   });
 
-  test('should validate go_back tool schema', () => {
-    const goBackTool = toolDefinitions.find(tool => tool.name === 'go_back');
-    expect(goBackTool).toBeDefined();
-    expect(goBackTool!.inputSchema.properties).toEqual({});
-    expect(goBackTool!.inputSchema.required).toEqual([]);
-  });
-
-  test('should validate go_forward tool schema', () => {
-    const goForwardTool = toolDefinitions.find(tool => tool.name === 'go_forward');
-    expect(goForwardTool).toBeDefined();
-    expect(goForwardTool!.inputSchema.properties).toEqual({});
-    expect(goForwardTool!.inputSchema.required).toEqual([]);
+  test('should validate go_history tool schema', () => {
+    const historyTool = toolDefinitions.find(tool => tool.name === 'go_history');
+    expect(historyTool).toBeDefined();
+    expect(historyTool!.inputSchema.properties).toHaveProperty('direction');
+    expect(historyTool!.inputSchema.required).toEqual(['direction']);
   });
 
   test('should validate drag tool schema', () => {
@@ -87,20 +80,20 @@ describe('Tool Definitions', () => {
     expect(waitForNetworkIdleTool!.inputSchema.required).toEqual([]);
   });
 
-  test('should have 34 tools registered as browser tools', () => {
+  test('should have 33 tools registered as browser tools', () => {
     const browserTools = getBrowserToolNames();
-    expect(browserTools.length).toBe(34);
+    expect(browserTools.length).toBe(33);
   });
 
-  test('should have all tool definitions available (35 total incl. confirm tool)', () => {
+  test('should have all tool definitions available (34 total incl. confirm tool)', () => {
     // Removed HTTP API, codegen, iframe, and other unused tools; includes confirm_output
-    expect(toolDefinitions.length).toBe(35);
+    expect(toolDefinitions.length).toBe(34);
   });
 
   test('browser tool list should only contain web inspection tools', () => {
     const browserTools = getBrowserToolNames();
     const expectedTools = [
-      'navigate', 'go_back', 'go_forward', 'scroll_to_element', 'scroll_by', 'visual_screenshot_for_humans', 'close',
+      'navigate', 'go_history', 'scroll_to_element', 'scroll_by', 'visual_screenshot_for_humans', 'close',
       'inspect_dom', 'inspect_ancestors', 'get_test_ids', 'query_selector', 'find_by_text',
       'check_visibility', 'compare_element_alignment', 'element_exists',
       'get_computed_styles', 'measure_element', 'get_text', 'get_html', 'get_console_logs', 'clear_console_logs',
