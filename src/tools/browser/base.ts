@@ -283,8 +283,8 @@ export abstract class BrowserToolBase implements ToolHandler {
     // Check for multiple elements with errorOnMultiple flag
     if (options?.errorOnMultiple && count > 1) {
       const selector = options.originalSelector || 'selector';
-      const nthHint = this.buildNthSelectorHint(selector, count).trimEnd();
-      const warning = this.getDuplicateTestIdWarning(selector, count).trimEnd();
+      const nthHint = ''.trimEnd();
+      const warning = ''.trimEnd();
 
       let message = `Selector "${selector}" matched ${count} elements. Please use a more specific selector.`;
       if (nthHint) {
@@ -294,7 +294,15 @@ export abstract class BrowserToolBase implements ToolHandler {
         message += `\n${warning}`;
       }
 
-      throw new Error(message);
+      {
+        const guidance = [
+          `1) Preferred: add a unique data-testid and select it directly (e.g., testid:submit).`,
+          `2) If you cannot change markup: append \`>> nth=<index>\` to target a specific match.`,
+        ];
+        const matchesDetails = await this.describeMatchedElements(locator, selector, count);
+        message += `\n${guidance.join('\n')}\n\nMatches:\n${matchesDetails}`;
+        throw new Error(message);
+      }
     }
 
     // Handle explicit element index (1-based)
@@ -438,5 +446,71 @@ export abstract class BrowserToolBase implements ToolHandler {
       `Note: nth selectors are brittle and may break with layout/content changes.\n` +
       `Prefer unique data-testid attributes for long-term stability.`
     );
+  }
+
+  /**
+   * Describe matched elements in a compact, copyable format for disambiguation errors.
+   * Shows: index, tag, trimmed text, nearest parent marker, and a suggested selector.
+   * Suggests testid:VALUE when present; otherwise falls back to id=VALUE or original >> nth=i.
+   */
+  protected async describeMatchedElements(locator: any, originalSelector: string, count: number): Promise<string> {
+    const maxItems = Math.min(count, 5);
+    const lines: string[] = [];
+
+    for (let i = 0; i < maxItems; i++) {
+      const nth = locator.nth(i);
+      try {
+        const info = await nth.evaluate((el: any) => {
+          const tag = (el.tagName || '').toLowerCase();
+          let text = (el as HTMLElement).innerText || el.textContent || '';
+          text = (text || '').replace(/\s+/g, ' ').trim();
+          const testid = el.getAttribute?.('data-testid') || el.getAttribute?.('data-test') || el.getAttribute?.('data-cy') || null;
+          const id = (el as HTMLElement).id || null;
+          let parentLabel: string | null = null;
+          let p: any = el.parentElement;
+          while (p && !parentLabel) {
+            const ptid = p.getAttribute?.('data-testid');
+            const ptest = p.getAttribute?.('data-test');
+            const pcy = p.getAttribute?.('data-cy');
+            const pid = (p as HTMLElement).id || null;
+            if (ptid) parentLabel = `[data-testid="${ptid}"]`;
+            else if (ptest) parentLabel = `[data-test="${ptest}"]`;
+            else if (pcy) parentLabel = `[data-cy="${pcy}"]`;
+            else if (pid) parentLabel = `#${pid}`;
+            p = p.parentElement;
+          }
+          return { tag, text, testid, id, parentLabel };
+        });
+
+        const truncatedText = info.text && info.text.length > 80 ? `${info.text.slice(0, 77)}...` : info.text;
+
+        let selectorSuggestion = `${originalSelector} >> nth=${i}`;
+        let altSuggestion: string | undefined;
+        if (info?.testid) {
+          selectorSuggestion = `testid:${info.testid}`;
+          altSuggestion = `${originalSelector} >> nth=${i}`;
+        } else if (info?.id) {
+          selectorSuggestion = `id=${info.id}`;
+          altSuggestion = `${originalSelector} >> nth=${i}`;
+        }
+
+        const parts = [
+          `[${i}] <${info.tag}>${truncatedText ? ` "${truncatedText}"` : ''}`,
+          info.parentLabel ? `    parent: ${info.parentLabel}` : undefined,
+          `    selector: ${selectorSuggestion}`,
+          altSuggestion ? `    alt: ${altSuggestion}` : undefined,
+        ].filter(Boolean) as string[];
+
+        lines.push(parts.join('\n'));
+      } catch {
+        lines.push(`[${i}] (element)\n    selector: ${originalSelector} >> nth=${i}`);
+      }
+    }
+
+    if (count > maxItems) {
+      lines.push(`… and ${count - maxItems} more matches (use >> nth=<index> to target).`);
+    }
+
+    return lines.join('\n');
   }
 }
