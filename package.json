@@ -28,7 +28,7 @@
     "url": "https://github.com/antonzherdev/mcp-web-inspector.git"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.11.1",
+    "@modelcontextprotocol/sdk": "1.21.0",
     "@playwright/browser-chromium": "1.56.1",
     "@playwright/browser-firefox": "1.56.1",
     "@playwright/browser-webkit": "1.56.1",
