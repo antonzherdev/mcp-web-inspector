@@ -8,6 +8,7 @@ import {
   createErrorResponse,
 } from '../../common/types.js';
 import { makeConfirmPreview } from '../../common/confirm_output.js';
+import { gatherConsoleErrorsSince, quickNetworkIdleNote } from '../common/postAction.js';
 
 /**
  * Tool for executing JavaScript in the browser
@@ -154,6 +155,26 @@ export class EvaluateTool extends BrowserToolBase {
         '     → Precise pixel scrolling for testing sticky headers, infinite scroll\n' +
         '   Why: Playwright auto-scrolls before interactions, but these tools help with\n' +
         '        testing scroll behavior, lazy-loading, and scroll-triggered content'
+      );
+    }
+
+    // Pattern: Navigation (top-level or SPA routing)
+    // Detect common navigation attempts: window.location / document.location assignments,
+    // location.assign|replace, history.pushState|replaceState, and href changes.
+    if (
+      scriptLower.match(/\blocation\s*\./) ||
+      scriptLower.match(/window\s*\.\s*location/) ||
+      scriptLower.match(/document\s*\.\s*location/) ||
+      scriptLower.match(/history\s*\.\s*pushstate|history\s*\.\s*replacestate/) ||
+      scriptLower.match(/location\s*=(?!\s*location)/) ||
+      scriptLower.match(/location\s*\.\s*href\s*=|location\s*\.\s*assign|location\s*\.\s*replace/)
+    ) {
+      suggestions.push(
+        '🌐 Navigation\n' +
+        '   • navigate({ url: "..." }) — full document navigation with proper waits\n' +
+        '   • SPA-only: click a router link or evaluate history.pushState(...), then wait_for_element\n' +
+        '   • go_history for back/forward\n' +
+        '   Note: setting window.location.href causes a reload; prefer navigate for reliability'
       );
     }
 
@@ -313,6 +334,43 @@ export class EvaluateTool extends BrowserToolBase {
         }
       }
 
+      // Detect navigation patterns in the script for post-action waits
+      const scriptLower = (args.script || '').toLowerCase();
+      const navDetected = (
+        /\blocation\s*\./.test(scriptLower) ||
+        /window\s*\.\s*location/.test(scriptLower) ||
+        /document\s*\.\s*location/.test(scriptLower) ||
+        /history\s*\.\s*pushstate|history\s*\.\s*replacestate/.test(scriptLower) ||
+        /location\s*=(?!\s*location)/.test(scriptLower) ||
+        /location\s*\.\s*href\s*=|location\s*\.\s*assign|location\s*\.\s*replace/.test(scriptLower)
+      );
+
+      // Optional quick network-idle note when navigation is detected
+      let netIdleNote: string | null = null;
+      if (navDetected) {
+        try {
+          const note = await quickNetworkIdleNote(page);
+          if (note) netIdleNote = note;
+        } catch {
+          // ignore
+        }
+      }
+
+      // After script execution (and any quick wait), surface console errors since this interaction
+      try {
+        const errs = await gatherConsoleErrorsSince('interaction');
+        if (errs.length > 0) {
+          let titleInfo = '';
+          try {
+            const t = await page.title();
+            if (t) titleInfo = `\nTitle: ${t}`;
+          } catch {}
+          return createErrorResponse(`Console error after evaluate: ${errs[0]}${titleInfo}`);
+        }
+      } catch {
+        // Best-effort; continue on failure
+      }
+
       // Guard for large outputs: preview + confirm
       const totalLength = resultStr.length;
 
@@ -335,6 +393,11 @@ export class EvaluateTool extends BrowserToolBase {
 
         lines.push(...previewBlock.lines);
 
+        if (netIdleNote) {
+          lines.push('');
+          lines.push(netIdleNote);
+        }
+
         if (suggestions.length > 0) {
           lines.push('');
           lines.push('💡 Consider specialized tools:');
@@ -345,6 +408,11 @@ export class EvaluateTool extends BrowserToolBase {
       }
 
       const messages = [`✓ JavaScript execution result:`, resultStr];
+
+      if (netIdleNote) {
+        messages.push('');
+        messages.push(netIdleNote);
+      }
 
       // Detect if specialized tools would be better
       if (suggestions.length > 0) {
