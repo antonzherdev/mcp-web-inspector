@@ -306,4 +306,14 @@ describe('GetConsoleLogsTool', () => {
     // Should include one of the first 20 grouped messages
     expect(fullText).toContain('GROUP-LONG-0');
   });
+
+  test('type: error should include exception entries', async () => {
+    consoleLogsTool.registerConsoleMessage('exception', 'Hook failed');
+    consoleLogsTool.registerConsoleMessage('error', 'Console error');
+    const result = await consoleLogsTool.execute({ type: 'error' }, mockContext);
+    expect(result.isError).toBe(false);
+    const text = result.content.map(c => c.text).join('\n');
+    expect(text).toContain('[exception] Hook failed');
+    expect(text).toContain('[error] Console error');
+  });
 }); 

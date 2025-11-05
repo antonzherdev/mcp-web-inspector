@@ -34,7 +34,7 @@ export class GetConsoleLogsTool extends BrowserToolBase {
         properties: {
           type: {
             type: "string",
-            description: "Type of logs to retrieve (all, error, warning, log, info, debug, exception)",
+            description: "Type filter (all, error, warning, log, info, debug, exception). Note: 'error' also includes 'exception' entries for convenience.",
             enum: ["all", "error", "warning", "log", "info", "debug", "exception"]
           },
           search: {
@@ -119,7 +119,10 @@ export class GetConsoleLogsTool extends BrowserToolBase {
 
     // Filter by type if specified
     if (args.type && args.type !== 'all') {
-      logs = logs.filter(log => log.message.startsWith(`[${args.type}]`));
+      const wanted = args.type as string;
+      // Treat 'error' as including both console errors and exceptions captured via pageerror/unhandledrejection
+      const prefixes = wanted === 'error' ? ['[error]', '[exception]'] : [`[${wanted}]`];
+      logs = logs.filter(log => prefixes.some(p => log.message.startsWith(p)));
     }
 
     // Filter by search text if specified

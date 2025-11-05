@@ -123,6 +123,23 @@ export class NavigateTool extends BrowserToolBase {
           // Best-effort detection; ignore and proceed
         }
 
+        // Before returning success, surface hard page errors immediately if any
+        try {
+          const logs = await getLogsSinceLastNav();
+          const errs = logs.filter(l => l.startsWith('[error]') || l.startsWith('[exception]'));
+          if (errs.length > 0) {
+            // Include page title (best-effort) to aid debugging
+            let titleInfo = '';
+            try {
+              const t = await page.title();
+              if (t) titleInfo = `\nTitle: ${t}`;
+            } catch {}
+            return createErrorResponse(`Console error after navigation: ${errs[0]}${titleInfo}`);
+          }
+        } catch {
+          // If log retrieval fails, continue normally
+        }
+
         // Try a quick, non-blocking network-idle check. If the page is already
         // idle, include a compact confirmation line. Keep parameters minimal and
         // avoid hanging SPAs: use a very small timeout and ignore failures.
@@ -137,6 +154,14 @@ export class NavigateTool extends BrowserToolBase {
           }
         } catch {
           // Best-effort quick check; ignore timeout or errors and return immediately
+        }
+
+        // Add page title to help the agent orient itself
+        try {
+          const title = await page.title();
+          if (title) messages.push(`Title: ${title}`);
+        } catch {
+          // Ignore title failures
         }
 
         return createSuccessResponse(messages);
