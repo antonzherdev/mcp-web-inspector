@@ -1,5 +1,7 @@
 import type { Browser, Page } from 'playwright';
 import { chromium, firefox, webkit, devices } from 'playwright';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import type { ToolContext, SessionConfig } from './tools/common/types.js';
 import { checkBrowsersInstalled, getInstallationInstructions } from './utils/browserCheck.js';
@@ -43,6 +45,11 @@ let sessionConfig: SessionConfig = {
 
 type ColorSchemeOverride = 'light' | 'dark' | 'no-preference';
 let colorSchemeOverride: ColorSchemeOverride | null = null;
+
+// Resolve package root so any child processes (like npx) run
+// relative to this package, not the caller's working directory.
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PACKAGE_ROOT = join(__dirname, '..');
 
 /**
  * Sets the session configuration
@@ -103,7 +110,7 @@ export async function setGlobalPage(newPage: Page): Promise<void> {
   await applyColorScheme(page);
 
   page.bringToFront();// Bring the new tab to the front
-  console.log("Global page has been updated with listeners registered.");
+  console.error("Global page has been updated with listeners registered.");
 }
 
 function getColorSchemeValue(): ColorSchemeOverride | null {
@@ -374,9 +381,10 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
           const { execSync } = await import('child_process');
           execSync('npx playwright install chromium firefox webkit', {
             stdio: 'inherit',
-            encoding: 'utf8'
+            encoding: 'utf8',
+            cwd: PACKAGE_ROOT,
           });
-          console.log('✅ Browsers installed successfully! Starting browser...');
+          console.error('✅ Browsers installed successfully! Starting browser...');
           // Note: browser variable is still undefined here, which is correct.
           // The code below (line 342) will launch the browser after installation.
         } catch (installError) {
@@ -421,7 +429,7 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
 
         // Check if viewport size actually changed
         if (!currentViewport || currentViewport.width !== targetWidth || currentViewport.height !== targetHeight) {
-          console.log(`Resizing viewport to ${targetWidth}x${targetHeight}`);
+          console.error(`Resizing viewport to ${targetWidth}x${targetHeight}`);
           await page.setViewportSize({ width: targetWidth, height: targetHeight });
         }
       }
@@ -448,7 +456,7 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
         // Check custom configs first, then Playwright's built-in devices
         deviceConfig = CUSTOM_DEVICE_CONFIGS[playwrightDeviceName] || devices[playwrightDeviceName];
         if (deviceConfig) {
-          console.log(`Using device preset: ${device} (${playwrightDeviceName})`);
+          console.error(`Using device preset: ${device} (${playwrightDeviceName})`);
           currentDevice = device;
         } else {
           console.warn(`Warning: Device preset ${playwrightDeviceName} not found`);
@@ -491,7 +499,7 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
         viewportWidth = screenSize?.width ?? 1280;
         viewportHeight = screenSize?.height ?? 720;
         if (screenSize && screenSize.width > 0 && screenSize.height > 0) {
-          console.log(`No viewport specified, using screen size: ${viewportWidth}x${viewportHeight}`);
+          console.error(`No viewport specified, using screen size: ${viewportWidth}x${viewportHeight}`);
         }
       }
 

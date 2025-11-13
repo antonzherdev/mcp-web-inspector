@@ -91,7 +91,7 @@ async function runServer() {
 
   // Graceful shutdown logic
   function shutdown() {
-    console.log('Shutdown signal received');
+    console.error('Shutdown signal received');
     process.exit(0);
   }
 

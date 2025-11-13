@@ -1,6 +1,12 @@
 import { execSync } from 'child_process';
 import { existsSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+// Resolve package root so npx uses this package's Playwright,
+// not whatever is in the caller's working directory.
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PACKAGE_ROOT = join(__dirname, '..', '..');
 
 /**
  * Check if Playwright browsers are installed
@@ -11,7 +17,8 @@ export function checkBrowsersInstalled(): { installed: boolean; message?: string
     // Check if playwright is available
     const result = execSync('npx playwright --version', {
       encoding: 'utf8',
-      stdio: 'pipe'
+      stdio: 'pipe',
+      cwd: PACKAGE_ROOT,
     });
 
     // If we got here, playwright CLI is available
