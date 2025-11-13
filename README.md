@@ -319,6 +319,7 @@ Customize server behavior with command line flags:
 - **`--no-save-session`** - Disable automatic session persistence (start with fresh browser state each time)
 - **`--user-data-dir <path>`** - Custom directory for session data (default: `./.mcp-web-inspector`)
 - **`--headless`** - Run browser in headless mode by default (no visible window)
+- **`--expose-sensitive-network-data`** - Loosen redaction for sensitive network headers (e.g., show truncated auth/cookie values). Disabled by default for safety.
 
 **Example usage:**
 ```json
@@ -350,7 +351,7 @@ Customize server behavior with command line flags:
   "mcpServers": {
     "web-inspector": {
       "command": "npx",
-      "args": ["-y", "mcp-web-inspector", "--headless", "--no-save-session"]
+      "args": ["-y", "mcp-web-inspector", "--headless", "--no-save-session", "--user-data-dir", "./.mcp-web-inspector"]
     }
   }
 }

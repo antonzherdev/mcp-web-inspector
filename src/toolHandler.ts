@@ -41,6 +41,7 @@ let sessionConfig: SessionConfig = {
   userDataDir: './.mcp-web-inspector/user-data',
   screenshotsDir: './.mcp-web-inspector/screenshots',
   headlessDefault: false,
+  exposeSensitiveNetworkData: false,
 };
 
 type ColorSchemeOverride = 'light' | 'dark' | 'no-preference';
@@ -56,6 +57,13 @@ const PACKAGE_ROOT = join(__dirname, '..');
  */
 export function setSessionConfig(config: Partial<SessionConfig>) {
   sessionConfig = { ...sessionConfig, ...config };
+}
+
+/**
+ * Gets the current session configuration
+ */
+export function getSessionConfig(): SessionConfig {
+  return sessionConfig;
 }
 
 /**

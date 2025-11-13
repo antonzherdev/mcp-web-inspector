@@ -30,8 +30,10 @@ export class GetRequestDetailsTool extends BrowserToolBase {
     return this.safeExecute(context, async () => {
       const { index } = args;
 
-      const { getNetworkLog } = await import('../../../toolHandler.js');
+      const { getNetworkLog, getSessionConfig } = await import('../../../toolHandler.js');
       const networkLog = getNetworkLog();
+      const sessionConfig = getSessionConfig();
+      const exposeSensitive = Boolean(sessionConfig?.exposeSensitiveNetworkData);
 
       if (index < 0 || index >= networkLog.length) {
         return {
@@ -44,6 +46,16 @@ export class GetRequestDetailsTool extends BrowserToolBase {
       }
 
       const req = networkLog[index];
+
+      // Helper to look up headers case-insensitively
+      const getHeader = (headers: Record<string, string> | undefined, key: string): string | undefined => {
+        if (!headers) return undefined;
+        const found = Object.entries(headers).find(([k]) => k.toLowerCase() === key.toLowerCase());
+        return found ? String(found[1]) : undefined;
+      };
+
+      const reqContentType = getHeader(req.requestData.headers, 'content-type') || '';
+      const respContentType = getHeader(req.responseData?.headers || {}, 'content-type') || '';
 
       // Build compact text response
       const lines: string[] = [];
@@ -71,10 +83,10 @@ export class GetRequestDetailsTool extends BrowserToolBase {
         return `${(bytes / 1024).toFixed(1)}KB`;
       };
 
-      if (responseSize > 0) {
-        lines.push(`Size: ${formatBytes(requestSize)} → ${formatBytes(responseSize)}`);
-      } else if (requestSize > 0) {
-        lines.push(`Size: ${formatBytes(requestSize)} →`);
+      if (responseSize > 0 || requestSize > 0) {
+        const reqPart = requestSize > 0 ? formatBytes(requestSize) : '0 bytes';
+        const respPart = responseSize > 0 ? formatBytes(responseSize) : '0 bytes';
+        lines.push(`Size: requestBody=${reqPart}, responseBody≈${respPart}`);
       }
 
       // Request headers (show important ones)
@@ -84,17 +96,37 @@ export class GetRequestDetailsTool extends BrowserToolBase {
 
       if (reqHeaders.length > 0) {
         lines.push('\nRequest Headers:');
-        reqHeaders.forEach(([key, value]) => {
-          // Truncate sensitive values
-          if (key.toLowerCase() === 'authorization' || key.toLowerCase() === 'cookie') {
-            const truncated = value.length > 20
-              ? value.substring(0, 17) + '...'
-              : value;
-            lines.push(`  ${key}: ${truncated}`);
-          } else {
-            lines.push(`  ${key}: ${value}`);
-          }
-        });
+        const order = (name: string) => {
+          const idx = importantRequestHeaders.indexOf(name.toLowerCase());
+          return idx === -1 ? importantRequestHeaders.length : idx;
+        };
+        reqHeaders
+          .sort(([a], [b]) => {
+            const oa = order(a);
+            const ob = order(b);
+            if (oa !== ob) return oa - ob;
+            return a.localeCompare(b);
+          })
+          .forEach(([key, value]) => {
+            const keyLower = key.toLowerCase();
+            if (keyLower === 'authorization' || keyLower === 'cookie') {
+              if (!exposeSensitive) {
+                if (keyLower === 'authorization') {
+                  const scheme = value.split(' ')[0] || '';
+                  lines.push(`  ${key}: ${scheme ? `${scheme} <redacted>` : '<redacted>'}`);
+                } else {
+                  lines.push(`  ${key}: <redacted>`);
+                }
+              } else {
+                const truncated = value.length > 60
+                  ? value.substring(0, 57) + '...'
+                  : value;
+                lines.push(`  ${key}: ${truncated}`);
+              }
+            } else {
+              lines.push(`  ${key}: ${value}`);
+            }
+          });
       }
 
       // Request body
@@ -107,15 +139,21 @@ export class GetRequestDetailsTool extends BrowserToolBase {
           const parsed = JSON.parse(displayData);
           if (parsed.password) parsed.password = '***';
           if (parsed.pass) parsed.pass = '***';
-          displayData = JSON.stringify(parsed);
+          const compact = JSON.stringify(parsed);
+          const pretty = JSON.stringify(parsed, null, 2);
+          // Pretty-print small JSON bodies for readability; keep large ones compact
+          displayData = pretty.length <= 500 ? pretty : compact;
         } catch (e) {
           // Not JSON, use as is
         }
 
         // Truncate at 500 chars
         if (displayData.length > 500) {
-          lines.push(`  ${displayData.substring(0, 500)}`);
-          lines.push(`  ... [${displayData.length - 500} more chars]`);
+          const shown = 500;
+          const remaining = displayData.length - shown;
+          const coverage = Math.round((shown / displayData.length) * 1000) / 10;
+          lines.push(`  ${displayData.substring(0, shown)}`);
+          lines.push(`  ... [${remaining} more chars] (previewCoverage≈${coverage}%)`);
         } else {
           lines.push(`  ${displayData}`);
         }
@@ -130,30 +168,61 @@ export class GetRequestDetailsTool extends BrowserToolBase {
 
       if (respHeaders.length > 0) {
         lines.push('\nResponse Headers:');
-        respHeaders.forEach(([key, value]) => {
-          // Truncate cookies
-          if (key.toLowerCase() === 'set-cookie') {
-            const truncated = value.length > 60
-              ? value.substring(0, 57) + '...'
-              : value;
-            lines.push(`  ${key}: ${truncated}`);
-          } else {
-            lines.push(`  ${key}: ${value}`);
-          }
-        });
+        const order = (name: string) => {
+          const idx = importantResponseHeaders.indexOf(name.toLowerCase());
+          return idx === -1 ? importantResponseHeaders.length : idx;
+        };
+        respHeaders
+          .sort(([a], [b]) => {
+            const oa = order(a);
+            const ob = order(b);
+            if (oa !== ob) return oa - ob;
+            return a.localeCompare(b);
+          })
+          .forEach(([key, value]) => {
+            const keyLower = key.toLowerCase();
+            if (keyLower === 'set-cookie') {
+              if (!exposeSensitive) {
+                lines.push(`  ${key}: <redacted>`);
+              } else {
+                const truncated = value.length > 60
+                  ? value.substring(0, 57) + '...'
+                  : value;
+                lines.push(`  ${key}: ${truncated}`);
+              }
+            } else {
+              lines.push(`  ${key}: ${value}`);
+            }
+          });
       }
 
       // Response body
       if (req.responseData?.body) {
         lines.push('\nResponse Body (truncated at 500 chars):');
 
-        const body = req.responseData.body;
+        const rawBody = req.responseData.body;
+        let displayBody = rawBody;
 
-        if (body.length > 500) {
-          lines.push(`  ${body.substring(0, 500)}`);
-          lines.push(`  ... [${body.length - 500} more chars]`);
+        // Pretty-print small JSON responses for readability; keep large ones compact
+        if (respContentType.toLowerCase().includes('application/json')) {
+          try {
+            const parsed = JSON.parse(rawBody);
+            const compact = JSON.stringify(parsed);
+            const pretty = JSON.stringify(parsed, null, 2);
+            displayBody = pretty.length <= 500 ? pretty : compact;
+          } catch {
+            // Not valid JSON, fall back to raw body
+          }
+        }
+
+        if (displayBody.length > 500) {
+          const shown = 500;
+          const remaining = displayBody.length - shown;
+          const coverage = Math.round((shown / displayBody.length) * 1000) / 10;
+          lines.push(`  ${displayBody.substring(0, shown)}`);
+          lines.push(`  ... [${remaining} more chars] (previewCoverage≈${coverage}%)`);
         } else {
-          lines.push(`  ${body}`);
+          lines.push(`  ${displayBody}`);
         }
       } else if (req.status) {
         lines.push('\nResponse Body: (none or binary data)');
@@ -166,16 +235,6 @@ export class GetRequestDetailsTool extends BrowserToolBase {
       const respTruncated = typeof respBody === 'string' && respBody.length > 500;
 
       if (reqTruncated || respTruncated) {
-        // Helper to infer extension from content-type
-        const getHeader = (headers: Record<string, string> | undefined, key: string): string | undefined => {
-          if (!headers) return undefined;
-          const found = Object.entries(headers).find(([k]) => k.toLowerCase() === key.toLowerCase());
-          return found ? String(found[1]) : undefined;
-        };
-
-        const reqContentType = getHeader(req.requestData.headers, 'content-type') || '';
-        const respContentType = getHeader(req.responseData?.headers || {}, 'content-type') || '';
-
         const inferExt = (ct: string): string => {
           const c = (ct || '').toLowerCase();
           if (c.includes('application/json')) return 'json';
@@ -217,6 +276,9 @@ export class GetRequestDetailsTool extends BrowserToolBase {
 
           if (messages.length === 0) {
             messages.push('Nothing to save (no truncated text bodies).');
+          } else {
+            messages.push('');
+            messages.push(`Paths above are relative to the current working directory: ${process.cwd()}`);
           }
 
           messages.push('');

@@ -25,6 +25,10 @@ const { values } = parseArgs({
       type: 'boolean',
       default: false,
     },
+    'expose-sensitive-network-data': {
+      type: 'boolean',
+      default: false,
+    },
     'user-data-dir': {
       type: 'string',
       default: './.mcp-web-inspector',
@@ -52,6 +56,7 @@ const sessionConfig = {
   userDataDir: `${baseDir}/user-data`,
   screenshotsDir: `${baseDir}/screenshots`,
   headlessDefault: Boolean(values['headless']),
+  exposeSensitiveNetworkData: Boolean(values['expose-sensitive-network-data']),
 };
 setSessionConfig(sessionConfig);
 

@@ -99,7 +99,7 @@ export class ListNetworkRequestsTool extends BrowserToolBase {
         lines.push(parts.join(' '));
       });
 
-      lines.push('\nUse get_request_details(index) for full info');
+      lines.push('\nUse get_request_details(index) for full info (indices are 0-based from this list)');
 
       return {
         content: [{

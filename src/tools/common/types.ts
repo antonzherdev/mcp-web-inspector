@@ -7,6 +7,9 @@ export interface SessionConfig {
   userDataDir: string;
   screenshotsDir: string;
   headlessDefault: boolean;
+  // When true, network tools may show more sensitive data (e.g., partial auth headers).
+  // Defaults to false for safety; configured via CLI/session, not per-tool params.
+  exposeSensitiveNetworkData?: boolean;
 }
 
 // Context for tool execution
