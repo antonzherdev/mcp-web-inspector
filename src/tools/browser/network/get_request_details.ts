@@ -262,14 +262,14 @@ export class GetRequestDetailsTool extends BrowserToolBase {
 
           if (respTruncated) {
             const ext = inferExt(respContentType);
-            const respFile = path.join(outDir, `${index}-${makeSafe(req.method)}-${host}-${ts}.response.${ext}`);
+            const respFile = path.join(outDir, `${ts}-${index}-${makeSafe(req.method)}-${host}.response.${ext}`);
             fs.writeFileSync(respFile, respBody, 'utf8');
             messages.push(`✓ Saved full response body to: ${path.relative(process.cwd(), respFile)} (${respBody.length} bytes${respContentType ? `, content-type: ${respContentType}` : ''})`);
           }
 
           if (reqTruncated) {
             const ext = inferExt(reqContentType);
-            const reqFile = path.join(outDir, `${index}-${makeSafe(req.method)}-${host}-${ts}.request.${ext}`);
+            const reqFile = path.join(outDir, `${ts}-${index}-${makeSafe(req.method)}-${host}.request.${ext}`);
             fs.writeFileSync(reqFile, reqBody, 'utf8');
             messages.push(`✓ Saved full request body to: ${path.relative(process.cwd(), reqFile)} (${reqBody.length} bytes${reqContentType ? `, content-type: ${reqContentType}` : ''})`);
           }
