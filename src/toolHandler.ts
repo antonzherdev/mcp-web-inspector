@@ -1,7 +1,6 @@
 import type { Browser, Page } from 'playwright';
 import { chromium, firefox, webkit, devices } from 'playwright';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import type { ToolContext, SessionConfig } from './tools/common/types.js';
 import { checkBrowsersInstalled, getInstallationInstructions } from './utils/browserCheck.js';
@@ -47,10 +46,10 @@ let sessionConfig: SessionConfig = {
 type ColorSchemeOverride = 'light' | 'dark' | 'no-preference';
 let colorSchemeOverride: ColorSchemeOverride | null = null;
 
-// Resolve package root so any child processes (like npx) run
-// relative to this package, not the caller's working directory.
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const PACKAGE_ROOT = join(__dirname, '..');
+// Resolve package root for child processes (like npx). Entry point sets
+// MCP_WEB_INSPECTOR_PACKAGE_ROOT using import.meta.url; tests and other
+// environments fall back to process.cwd().
+const PACKAGE_ROOT = process.env.MCP_WEB_INSPECTOR_PACKAGE_ROOT || process.cwd();
 
 /**
  * Sets the session configuration

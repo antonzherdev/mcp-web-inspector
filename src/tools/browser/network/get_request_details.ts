@@ -264,14 +264,14 @@ export class GetRequestDetailsTool extends BrowserToolBase {
             const ext = inferExt(respContentType);
             const respFile = path.join(outDir, `${index}-${makeSafe(req.method)}-${host}-${ts}.response.${ext}`);
             fs.writeFileSync(respFile, respBody, 'utf8');
-            messages.push(`✓ Saved response body to: ${path.relative(process.cwd(), respFile)} (${respBody.length} bytes${respContentType ? `, content-type: ${respContentType}` : ''})`);
+            messages.push(`✓ Saved full response body to: ${path.relative(process.cwd(), respFile)} (${respBody.length} bytes${respContentType ? `, content-type: ${respContentType}` : ''})`);
           }
 
           if (reqTruncated) {
             const ext = inferExt(reqContentType);
             const reqFile = path.join(outDir, `${index}-${makeSafe(req.method)}-${host}-${ts}.request.${ext}`);
             fs.writeFileSync(reqFile, reqBody, 'utf8');
-            messages.push(`✓ Saved request body to: ${path.relative(process.cwd(), reqFile)} (${reqBody.length} bytes${reqContentType ? `, content-type: ${reqContentType}` : ''})`);
+            messages.push(`✓ Saved full request body to: ${path.relative(process.cwd(), reqFile)} (${reqBody.length} bytes${reqContentType ? `, content-type: ${reqContentType}` : ''})`);
           }
 
           if (messages.length === 0) {

@@ -13,6 +13,14 @@ import { dirname, join } from "node:path";
 
 // Get package.json version
 const __dirname = dirname(fileURLToPath(import.meta.url));
+const PACKAGE_ROOT = join(__dirname, "..");
+
+// Expose package root for tools that need to spawn child processes (e.g., npx playwright)
+// Tests and non-CLI environments can override or ignore this.
+if (!process.env.MCP_WEB_INSPECTOR_PACKAGE_ROOT) {
+  process.env.MCP_WEB_INSPECTOR_PACKAGE_ROOT = PACKAGE_ROOT;
+}
+
 const packageJson = JSON.parse(
   readFileSync(join(__dirname, "../package.json"), "utf-8")
 );

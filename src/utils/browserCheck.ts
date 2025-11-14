@@ -1,12 +1,11 @@
 import { execSync } from 'child_process';
 import { existsSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { join } from 'path';
 
-// Resolve package root so npx uses this package's Playwright,
-// not whatever is in the caller's working directory.
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const PACKAGE_ROOT = join(__dirname, '..', '..');
+// Resolve package root so npx uses this package's Playwright.
+// Entry point sets MCP_WEB_INSPECTOR_PACKAGE_ROOT using import.meta.url;
+// tests and other environments fall back to process.cwd().
+const PACKAGE_ROOT = process.env.MCP_WEB_INSPECTOR_PACKAGE_ROOT || process.cwd();
 
 /**
  * Check if Playwright browsers are installed
