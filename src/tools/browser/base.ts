@@ -30,6 +30,12 @@ export abstract class BrowserToolBase implements ToolHandler {
    * @returns Normalized selector
    */
   protected normalizeSelector(selector: string): string {
+    const raw = selector.trim();
+
+    if (!raw) {
+      return '';
+    }
+
     const prefixMap: Record<string, string> = {
       'testid:': 'data-testid',
       'data-test:': 'data-test',
@@ -38,13 +44,28 @@ export abstract class BrowserToolBase implements ToolHandler {
 
     // Handle testid shortcuts first
     for (const [prefix, attr] of Object.entries(prefixMap)) {
-      if (selector.startsWith(prefix)) {
-        const value = selector.slice(prefix.length);
-        return `[${attr}="${value}"]`;
+      if (raw.startsWith(prefix)) {
+        const rest = raw.slice(prefix.length);
+
+        // Allow combined selectors like:
+        //   "testid:chat-buttons button:first-child"
+        //   "testid:chat-buttons\n  button:first-child"
+        // We treat the portion immediately after the prefix up to the first
+        // whitespace or combinator as the attribute value, and append the tail.
+        const splitIndex = rest.search(/[\s>+~,]/);
+
+        if (splitIndex === -1) {
+          return `[${attr}="${rest}"]`;
+        }
+
+        const attrValue = rest.slice(0, splitIndex);
+        const tail = rest.slice(splitIndex);
+
+        return `[${attr}="${attrValue}"]${tail}`;
       }
     }
 
-    const trimmed = selector.trim();
+    const trimmed = raw;
 
     // Helper: unescape simple backslash-escapes used inside IDs (e.g., \:, \[, \])
     const unescapeCssIdentifier = (s: string): string => {

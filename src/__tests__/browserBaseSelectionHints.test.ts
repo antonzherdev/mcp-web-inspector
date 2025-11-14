@@ -65,6 +65,18 @@ describe('BrowserToolBase selector normalization', () => {
       expect(tool.normalize('testid:submit-button')).toBe('[data-testid="submit-button"]');
     });
 
+    test('supports combined selector after testid shortcut', () => {
+      expect(tool.normalize('testid:chat-buttons button:first-child')).toBe(
+        '[data-testid="chat-buttons"] button:first-child',
+      );
+    });
+
+    test('supports combined selector with newline after testid shortcut', () => {
+      const input = 'testid:chat-buttons\n                                 button:first-child';
+      const expected = '[data-testid="chat-buttons"]\n                                 button:first-child';
+      expect(tool.normalize(input)).toBe(expected);
+    });
+
     test('converts data-test: shortcut', () => {
       expect(tool.normalize('data-test:login-form')).toBe('[data-test="login-form"]');
     });
