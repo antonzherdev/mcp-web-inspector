@@ -82,10 +82,6 @@ export class InspectAncestorsTool extends BrowserToolBase {
           limit: {
             type: "number",
             description: "Maximum number of ancestors to traverse (default: 10, max: 15). Increase for deeply nested component frameworks."
-          },
-          elementIndex: {
-            type: "number",
-            description: "When selector matches multiple elements, use this 1-based index to select a specific one (e.g., 2 = second element). Default: first visible element."
           }
         },
         required: ["selector"],

@@ -22,7 +22,7 @@ export class CheckVisibilityTool extends BrowserToolBase {
       ],
       examples: [
         "check_visibility({ selector: 'testid:submit' })",
-        "check_visibility({ selector: '#login button', elementIndex: 2 })",
+        "check_visibility({ selector: '#login button' })",
       ],
       exampleOutputs: [
         {
@@ -40,10 +40,6 @@ export class CheckVisibilityTool extends BrowserToolBase {
           selector: {
             type: "string",
             description: "CSS selector, text selector, or testid shorthand (e.g., 'testid:login-button', '#submit', 'text=Click here')"
-          },
-          elementIndex: {
-            type: "number",
-            description: "When selector matches multiple elements, use this 1-based index to select a specific one (e.g., 2 = second element). Default: first visible element."
           }
         },
         required: ["selector"],
@@ -62,7 +58,6 @@ export class CheckVisibilityTool extends BrowserToolBase {
       try {
         // Use standard element selection with visibility preference
         const { element, elementIndex, totalCount } = await this.selectPreferredLocator(locator, {
-          elementIndex: args.elementIndex,
           originalSelector: args.selector,
         });
 

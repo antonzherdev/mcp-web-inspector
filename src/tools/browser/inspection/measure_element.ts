@@ -2,11 +2,6 @@ import { ToolHandler, ToolMetadata, SessionConfig } from '../../common/types.js'
 import { BrowserToolBase } from '../base.js';
 import type { ToolContext, ToolResponse } from '../../common/types.js';
 
-export interface MeasureElementArgs {
-  selector: string;
-  elementIndex?: number;  // Optional 1-based index to select specific element when multiple match
-}
-
 export class MeasureElementTool extends BrowserToolBase implements ToolHandler {
   static getMetadata(sessionConfig?: SessionConfig): ToolMetadata {
     return {
@@ -36,10 +31,6 @@ export class MeasureElementTool extends BrowserToolBase implements ToolHandler {
           selector: {
             type: "string",
             description: "CSS selector or testid shorthand (e.g., 'testid:submit', '#login-button')"
-          },
-          elementIndex: {
-            type: "number",
-            description: "When selector matches multiple elements, use this 1-based index to select a specific one (e.g., 2 = second element). Default: first visible element."
           }
         },
         required: ["selector"],
@@ -47,14 +38,13 @@ export class MeasureElementTool extends BrowserToolBase implements ToolHandler {
     };
   }
 
-  async execute(args: MeasureElementArgs, context: ToolContext): Promise<ToolResponse> {
+  async execute(args: { selector: string }, context: ToolContext): Promise<ToolResponse> {
     return this.safeExecute(context, async (page) => {
       const normalizedSelector = this.normalizeSelector(args.selector);
 
       // Use standard element selection with visibility preference
       const locator = page.locator(normalizedSelector);
       const { element, elementIndex, totalCount } = await this.selectPreferredLocator(locator, {
-        elementIndex: args.elementIndex,
         originalSelector: args.selector,
       });
 

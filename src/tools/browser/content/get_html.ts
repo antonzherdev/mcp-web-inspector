@@ -25,10 +25,6 @@ export class GetHtmlTool extends BrowserToolBase {
             type: "string",
             description: "CSS selector, text selector, or testid shorthand to limit HTML extraction to a specific container. Omit to get entire page HTML. Example: 'testid:main-content' or '#app'"
           },
-          elementIndex: {
-            type: "number",
-            description: "When selector matches multiple elements, use this 1-based index to select a specific one (e.g., 2 = second element). Default: first visible element."
-          },
           clean: {
             type: "boolean",
             description: "Remove noise from HTML: false (default) = remove scripts only, true = remove scripts + styles + comments + meta tags for minimal markup"
@@ -76,7 +72,6 @@ export class GetHtmlTool extends BrowserToolBase {
           const locator = page.locator(normalizedSelector);
 
           const { element, elementIndex, totalCount } = await this.selectPreferredLocator(locator, {
-            elementIndex: args.elementIndex,
             originalSelector: args.selector,
           });
 

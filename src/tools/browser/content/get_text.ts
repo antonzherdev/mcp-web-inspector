@@ -24,10 +24,6 @@ export class GetTextTool extends BrowserToolBase {
             type: "string",
             description: "CSS selector, text selector, or testid shorthand to limit text extraction to a specific container. Omit to get text from entire page. Example: 'testid:article-body' or '#main-content'"
           },
-          elementIndex: {
-            type: "number",
-            description: "When selector matches multiple elements, use this 1-based index to select a specific one (e.g., 2 = second element). Default: first visible element."
-          },
           maxLength: {
             type: "number",
             description: "Maximum number of characters to return (default: 20000)"
@@ -71,7 +67,6 @@ export class GetTextTool extends BrowserToolBase {
           const locator = page.locator(normalizedSelector);
 
           const { element, elementIndex, totalCount } = await this.selectPreferredLocator(locator, {
-            elementIndex: args.elementIndex,
             originalSelector: args.selector,
           });
 

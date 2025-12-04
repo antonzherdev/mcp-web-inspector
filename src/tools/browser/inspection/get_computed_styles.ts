@@ -2,12 +2,6 @@ import { ToolHandler, ToolMetadata, SessionConfig } from '../../common/types.js'
 import { BrowserToolBase } from '../base.js';
 import type { ToolContext, ToolResponse } from '../../common/types.js';
 
-export interface GetComputedStylesArgs {
-  selector: string;
-  properties?: string;
-  elementIndex?: number;  // Optional 1-based index to select specific element when multiple match
-}
-
 export class GetComputedStylesTool extends BrowserToolBase implements ToolHandler {
   static getMetadata(sessionConfig?: SessionConfig): ToolMetadata {
     return {
@@ -27,7 +21,7 @@ export class GetComputedStylesTool extends BrowserToolBase implements ToolHandle
       exampleOutputs: [
         {
           call: "get_computed_styles({ selector: 'testid:login-form' })",
-          output: `⚠ Warning: Selector matched 2 elements, showing 1 (use elementIndex to target a specific one)\n\nComputed Styles: <form data-testid=\"login-form\">\n\nLayout:\n  display: block\n  position: static\n  width: 560px\n  height: 480px\n\nVisibility:\n  opacity: 1\n  visibility: visible\n  z-index: auto\n  overflow: visible\n\nSpacing:\n  margin: 0px\n  padding: 24px\n\nTypography:\n  font-size: 16px\n  font-weight: 400\n  color: rgb(33, 37, 41)`
+          output: `⚠ Found 2 elements matching \"testid:login-form\", using element 1 (first visible)\n💡 Tip: Consider adding a unique data-testid attribute for more reliable selection.\n   Primary fix: add data-testid and target it (e.g., testid:submit).\n   Workaround: use '>> nth=<index>' only when you can't add test IDs.\n\nComputed Styles: <form data-testid=\"login-form\">\n\nLayout:\n  display: block\n  position: static\n  width: 560px\n  height: 480px\n\nVisibility:\n  opacity: 1\n  visibility: visible\n  z-index: auto\n  overflow: visible\n\nSpacing:\n  margin: 0px\n  padding: 24px\n\nTypography:\n  font-size: 16px\n  font-weight: 400\n  color: rgb(33, 37, 41)`
         }
       ],
       inputSchema: {
@@ -40,10 +34,6 @@ export class GetComputedStylesTool extends BrowserToolBase implements ToolHandle
           properties: {
             type: "string",
             description: "Comma-separated list of CSS properties to retrieve (e.g., 'display,width,color'). If not specified, returns common layout properties: display, position, width, height, opacity, visibility, z-index, overflow, margin, padding, font-size, font-weight, color, background-color"
-          },
-          elementIndex: {
-            type: "number",
-            description: "When selector matches multiple elements, use this 1-based index to select a specific one (e.g., 2 = second element). Default: first visible element."
           }
         },
         required: ["selector"],
@@ -58,7 +48,7 @@ export class GetComputedStylesTool extends BrowserToolBase implements ToolHandle
     'font-size', 'font-weight', 'color', 'background-color'
   ];
 
-  async execute(args: GetComputedStylesArgs, context: ToolContext): Promise<ToolResponse> {
+  async execute(args: { selector: string; properties?: string }, context: ToolContext): Promise<ToolResponse> {
     return this.safeExecute(context, async (page) => {
       const normalizedSelector = this.normalizeSelector(args.selector);
 
@@ -70,7 +60,6 @@ export class GetComputedStylesTool extends BrowserToolBase implements ToolHandle
       // Use standard element selection with visibility preference
       const locator = page.locator(normalizedSelector);
       const { element, elementIndex, totalCount } = await this.selectPreferredLocator(locator, {
-        elementIndex: args.elementIndex,
         originalSelector: args.selector,
       });
 

@@ -105,10 +105,6 @@ RELATED TOOLS: For comparing TWO elements' alignment (not parent-child), use com
           maxDepth: {
             type: "number",
             description: "Maximum depth to drill through non-semantic wrapper elements when looking for semantic children (default: 5). Increase for extremely deeply nested components, decrease to 1 to see only immediate children without drilling."
-          },
-          elementIndex: {
-            type: "number",
-            description: "When selector matches multiple elements, use this 1-based index to select a specific one (e.g., 2 = second element). Default: first visible element."
           }
         },
         required: [],
