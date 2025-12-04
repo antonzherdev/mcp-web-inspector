@@ -89,6 +89,7 @@ export function resetBrowserState() {
   currentBrowserType = 'chromium';
   currentDevice = undefined;
   networkLog = [];
+  clearConsoleLogs();
 }
 
 /**

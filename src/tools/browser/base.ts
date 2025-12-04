@@ -210,8 +210,9 @@ export abstract class BrowserToolBase implements ToolHandler {
    * Record that a navigation occurred (for console log filtering)
    */
   protected recordNavigation(): void {
-    import('../../toolHandler.js').then(({ updateLastNavigationTimestamp }) => {
+    import('../../toolHandler.js').then(({ updateLastNavigationTimestamp, updateLastInteractionTimestamp }) => {
       updateLastNavigationTimestamp();
+      updateLastInteractionTimestamp();
     });
   }
 
