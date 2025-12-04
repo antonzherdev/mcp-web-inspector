@@ -496,7 +496,6 @@ RELATED TOOLS: For comparing TWO elements' alignment (not parent-child), use com
   - includeHidden (boolean, optional): Include hidden elements in results (default: false)
   - maxChildren (number, optional): Maximum number of children to show (default: 20)
   - maxDepth (number, optional): Maximum depth to drill through non-semantic wrapper elements when looking for semantic children (default: 5). Increase for extremely deeply nested components, decrease to 1 to see only immediate children without drilling.
-  - elementIndex (number, optional): When selector matches multiple elements, use this 1-based index to select a specific one (e.g., 2 = second element). Default: first visible element.
 
 - Output Format:
   - Optional selection header when multiple matches (with chosen index).
@@ -543,7 +542,6 @@ DEBUG LAYOUT CONSTRAINTS: Walk up the DOM tree to find where width constraints, 
 - Parameters:
   - selector (string, required): CSS selector or testid shorthand for the element to start from (e.g., 'testid:header', '#main')
   - limit (number, optional): Maximum number of ancestors to traverse (default: 10, max: 15). Increase for deeply nested component frameworks.
-  - elementIndex (number, optional): When selector matches multiple elements, use this 1-based index to select a specific one (e.g., 2 = second element). Default: first visible element.
 
 - Output Format:
   - Header showing selected element index when selector matched multiple.
@@ -635,7 +633,6 @@ INSPECT CSS PROPERTIES: Get computed CSS values for specific properties (display
 - Parameters:
   - selector (string, required): CSS selector, text selector, or testid shorthand (e.g., 'testid:submit-button', '#main')
   - properties (string, optional): Comma-separated list of CSS properties to retrieve (e.g., 'display,width,color'). If not specified, returns common layout properties: display, position, width, height, opacity, visibility, z-index, overflow, margin, padding, font-size, font-weight, color, background-color
-  - elementIndex (number, optional): When selector matches multiple elements, use this 1-based index to select a specific one (e.g., 2 = second element). Default: first visible element.
 
 - Output Format:
   - Optional selection header when multiple elements matched.
@@ -649,7 +646,10 @@ INSPECT CSS PROPERTIES: Get computed CSS values for specific properties (display
 
 - Example Output (get_computed_styles({ selector: 'testid:login-form' })):
 ```
-⚠ Warning: Selector matched 2 elements, showing 1 (use elementIndex to target a specific one)
+⚠ Found 2 elements matching "testid:login-form", using element 1 (first visible)
+💡 Tip: Consider adding a unique data-testid attribute for more reliable selection.
+   Primary fix: add data-testid and target it (e.g., testid:submit).
+   Workaround: use '>> nth=<index>' only when you can't add test IDs.
 
 Computed Styles: <form data-testid="login-form">
 
@@ -680,7 +680,6 @@ Check if an element is visible to the user. CRITICAL for debugging click/interac
 
 - Parameters:
   - selector (string, required): CSS selector, text selector, or testid shorthand (e.g., 'testid:login-button', '#submit', 'text=Click here')
-  - elementIndex (number, optional): When selector matches multiple elements, use this 1-based index to select a specific one (e.g., 2 = second element). Default: first visible element.
 
 - Output Format:
   - Header: Visibility: <tag id/class/testid>
@@ -693,7 +692,7 @@ Check if an element is visible to the user. CRITICAL for debugging click/interac
 
 - Examples:
 - check_visibility({ selector: 'testid:submit' })
-- check_visibility({ selector: '#login button', elementIndex: 2 })
+- check_visibility({ selector: '#login button' })
 
 - Example Output (check_visibility({ selector: 'testid:submit' })):
 ```
@@ -809,7 +808,6 @@ data-cy (2):
 
 - Parameters:
   - selector (string, required): CSS selector or testid shorthand (e.g., 'testid:submit', '#login-button')
-  - elementIndex (number, optional): When selector matches multiple elements, use this 1-based index to select a specific one (e.g., 2 = second element). Default: first visible element.
 
 - Output Format:
   - Header: Element: <tag id/class/testid>
@@ -1002,7 +1000,6 @@ Upload a file to an input[type='file'] element on the page
 
 - Parameters:
   - selector (string, optional): CSS selector, text selector, or testid shorthand to limit HTML extraction to a specific container. Omit to get entire page HTML. Example: 'testid:main-content' or '#app'
-  - elementIndex (number, optional): When selector matches multiple elements, use this 1-based index to select a specific one (e.g., 2 = second element). Default: first visible element.
   - clean (boolean, optional): Remove noise from HTML: false (default) = remove scripts only, true = remove scripts + styles + comments + meta tags for minimal markup
   - maxLength (number, optional): Maximum number of characters to return (default: 20000)
 
@@ -1011,7 +1008,6 @@ Upload a file to an input[type='file'] element on the page
 
 - Parameters:
   - selector (string, optional): CSS selector, text selector, or testid shorthand to limit text extraction to a specific container. Omit to get text from entire page. Example: 'testid:article-body' or '#main-content'
-  - elementIndex (number, optional): When selector matches multiple elements, use this 1-based index to select a specific one (e.g., 2 = second element). Default: first visible element.
   - maxLength (number, optional): Maximum number of characters to return (default: 20000)
 
 #### `visual_screenshot_for_humans`
