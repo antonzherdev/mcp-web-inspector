@@ -1121,6 +1121,7 @@ Return full output for a previously previewed large result using a one-time toke
 
 - Parameters:
   - token (string, required): One-time token obtained from a tool's preview response
+  - reason (string, required): Explain why the full output is needed and how it will be used. This helps the user understand whether the action is reasonable and necessary.
 
 - Output Format:
   - Full original payload if token is valid (one-time)

@@ -113,8 +113,12 @@ export class ConfirmOutputTool implements ToolHandler {
             type: 'string',
             description: "One-time token obtained from a tool's preview response",
           },
+          reason: {
+            type: 'string',
+            description: "Explain why the full output is needed and how it will be used. This helps the user understand whether the action is reasonable and necessary.",
+          },
         },
-        required: ['token'],
+        required: ['token', 'reason'],
       },
       priority: 2,
       category: 'Other',
@@ -124,6 +128,9 @@ export class ConfirmOutputTool implements ToolHandler {
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
     const token = typeof args.token === 'string' ? args.token : '';
     if (!token) return createErrorResponse('Token is required');
+
+    const reason = typeof args.reason === 'string' ? args.reason : '';
+    if (!reason) return createErrorResponse('Reason is required');
 
     const res = consumeThunk(token);
     if (!res.ok) {
