@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import { chromium, Browser, Page } from 'playwright';
 import { ElementExistsTool } from '../element_exists.js';
-import { findSystemChromium } from '../../../../toolHandler.js';
+
 
 describe('ElementExistsTool', () => {
   let browser: Browser;
@@ -9,7 +9,7 @@ describe('ElementExistsTool', () => {
   let tool: ElementExistsTool;
 
   beforeAll(async () => {
-    browser = await chromium.launch({ executablePath: findSystemChromium() });
+    browser = await chromium.launch();
     const context = await browser.newContext();
     page = await context.newPage();
     tool = new ElementExistsTool({} as any);

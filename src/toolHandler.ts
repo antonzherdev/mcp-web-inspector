@@ -1,11 +1,8 @@
 import type { Browser, Page } from 'playwright';
 import { chromium, firefox, webkit, devices } from 'playwright';
-import { execSync, spawnSync } from 'node:child_process';
-import { join } from 'node:path';
-import { homedir } from 'node:os';
+import { spawnSync } from 'node:child_process';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import type { ToolContext, SessionConfig } from './tools/common/types.js';
-import { getInstallationInstructions } from './utils/browserCheck.js';
 import { getToolInstance, isBrowserTool, executeTool } from './tools/common/registry.js';
 import { ScreenshotTool } from './tools/browser/content/screenshot.js';
 import { GetConsoleLogsTool } from './tools/browser/console/get_console_logs.js';
@@ -47,11 +44,6 @@ let sessionConfig: SessionConfig = {
 
 type ColorSchemeOverride = 'light' | 'dark' | 'no-preference';
 let colorSchemeOverride: ColorSchemeOverride | null = null;
-
-// Resolve package root for child processes (like npx). Entry point sets
-// MCP_WEB_INSPECTOR_PACKAGE_ROOT using import.meta.url; tests and other
-// environments fall back to process.cwd().
-const PACKAGE_ROOT = process.env.MCP_WEB_INSPECTOR_PACKAGE_ROOT || process.cwd();
 
 /**
  * Sets the session configuration
@@ -339,35 +331,13 @@ async function registerConsoleMessage(page) {
   });
 }
 
-// Track if we've checked browser installation
-let browserInstallationChecked = false;
-
-/**
- * Finds a system-installed Chrome or Chromium executable.
- * Checks CHROME_EXECUTABLE_PATH env var first, then probes common binary names.
- * Returns undefined if nothing is found (Playwright will use its bundled browser).
- */
-export function findSystemChromium(): string | undefined {
-  if (process.env.CHROME_EXECUTABLE_PATH) return process.env.CHROME_EXECUTABLE_PATH;
-  const candidates = [
-    'google-chrome-stable', 'google-chrome', 'chromium-browser', 'chromium',
-  ];
-  for (const name of candidates) {
-    try {
-      const path = execSync(`which ${name}`, { encoding: 'utf8', stdio: 'pipe' }).trim();
-      if (path) return path;
-    } catch { /* not found, try next */ }
-  }
-  return undefined;
-}
-
 /**
  * Gets the screen size using Playwright's API
  */
 async function getScreenSize(): Promise<{ width: number; height: number }> {
   try {
     // Launch a temporary browser to get screen size
-    const tempBrowser = await chromium.launch({ headless: true, executablePath: findSystemChromium() });
+    const tempBrowser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_EXECUTABLE_PATH || undefined });
     const tempContext = await tempBrowser.newContext();
     const tempPage = await tempContext.newPage();
 
@@ -398,61 +368,6 @@ async function getScreenSize(): Promise<{ width: number; height: number }> {
  */
 export async function ensureBrowser(browserSettings?: BrowserSettings) {
   try {
-    // On first launch, ensure Chromium is available. Prefer system Chrome/Chromium;
-    // if none found, auto-install Playwright's bundled Chromium as fallback.
-    if (!browser && !browserInstallationChecked) {
-      browserInstallationChecked = true;
-      if (!findSystemChromium()) {
-        // Ensure PLAYWRIGHT_BROWSERS_PATH points to a writable directory.
-        // The system default (e.g. /opt/ms-playwright) may be read-only.
-        const browsersPath = process.env.PLAYWRIGHT_BROWSERS_PATH;
-        let installPath = browsersPath;
-        let writable = false;
-        if (installPath) {
-          try {
-            const { accessSync, constants, mkdirSync } = await import('node:fs');
-            mkdirSync(installPath, { recursive: true });
-            accessSync(installPath, constants.W_OK);
-            writable = true;
-          } catch { /* not writable */ }
-        }
-        if (!writable) {
-          installPath = join(homedir(), '.cache', 'ms-playwright');
-          console.error(`📁 Using ${installPath} for Playwright browsers`);
-        }
-
-        console.error('🎭 No system Chrome/Chromium found. Downloading Playwright Chromium (~170 MB)...');
-        console.error('⏳ This is a one-time setup and may take a few minutes. Please wait...');
-        const installEnv = { ...process.env, PLAYWRIGHT_BROWSERS_PATH: installPath };
-        const result = spawnSync('npx', ['playwright', 'install', 'chromium'], {
-          stdio: ['ignore', 'inherit', 'inherit'],
-          encoding: 'utf8',
-          cwd: PACKAGE_ROOT,
-          env: installEnv,
-        });
-        if (result.status !== 0) {
-          const instructions = getInstallationInstructions();
-          throw new Error(`Failed to install Chromium.\n\n${instructions}`);
-        }
-
-        // Find the installed chrome binary and set CHROME_EXECUTABLE_PATH
-        // so findSystemChromium() returns it. This avoids relying on
-        // Playwright's internal browser lookup which may cache a stale path.
-        const { readdirSync } = await import('node:fs');
-        try {
-          const dirs = readdirSync(installPath!);
-          const chromiumDir = dirs.find(d => d.startsWith('chromium-') && !d.includes('headless'));
-          if (chromiumDir) {
-            const chromePath = join(installPath!, chromiumDir, 'chrome-linux', 'chrome');
-            process.env.CHROME_EXECUTABLE_PATH = chromePath;
-            console.error(`✅ Chromium installed at ${chromePath}`);
-          }
-        } catch {
-          console.error('✅ Chromium installed successfully! Starting browser...');
-        }
-      }
-    }
-
     // Check if browser exists but is disconnected
     if (browser && !browser.isConnected()) {
       console.warn("Browser exists but is disconnected. Cleaning up...");
@@ -541,7 +456,7 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
           break;
       }
 
-      const executablePath = browserType === 'chromium' ? findSystemChromium() : undefined;
+      const executablePath = process.env.CHROME_EXECUTABLE_PATH || undefined;
 
       // Determine viewport size
       let viewportWidth: number;
@@ -670,6 +585,59 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
     
     resetBrowserState();
 
+    // If browser executable is missing, try installing it automatically
+    const errorMessage = (error as Error).message || '';
+    if (errorMessage.includes("Executable doesn't exist")) {
+      // Ensure we have a writable browsers path
+      const browsersPath = process.env.PLAYWRIGHT_BROWSERS_PATH;
+      let installPath = browsersPath;
+      if (installPath) {
+        try {
+          const { accessSync, constants, mkdirSync } = await import('node:fs');
+          mkdirSync(installPath, { recursive: true });
+          accessSync(installPath, constants.W_OK);
+        } catch {
+          installPath = undefined; // not writable, fall back
+        }
+      }
+      if (!installPath) {
+        const { homedir } = await import('node:os');
+        installPath = `${homedir()}/.cache/ms-playwright`;
+        console.error(`Default browsers path not writable, using ${installPath}`);
+      }
+
+      console.error('Browser not found. Installing Chromium...');
+      const result = spawnSync('npx', ['playwright', 'install', 'chromium'], {
+        stdio: ['ignore', 'inherit', 'inherit'],
+        encoding: 'utf8',
+        env: { ...process.env, PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '', PLAYWRIGHT_BROWSERS_PATH: installPath },
+      });
+      if (result.status === 0) {
+        // Playwright caches PLAYWRIGHT_BROWSERS_PATH at import time, so setting
+        // process.env mid-process won't help. Find the actual chrome binary and
+        // set CHROME_EXECUTABLE_PATH so the retry uses it via executablePath.
+        const { readdirSync, existsSync } = await import('node:fs');
+        const { join } = await import('node:path');
+        try {
+          const dirs = readdirSync(installPath);
+          const chromiumDir = dirs.find(d => d.startsWith('chromium-') && !d.includes('headless'));
+          if (chromiumDir) {
+            const chromePath = join(installPath, chromiumDir, 'chrome-linux', 'chrome');
+            if (existsSync(chromePath)) {
+              process.env.CHROME_EXECUTABLE_PATH = chromePath;
+              console.error(`Chromium installed at ${chromePath}`);
+            }
+          }
+        } catch {
+          // Fall back — also try setting PLAYWRIGHT_BROWSERS_PATH in case it helps
+          process.env.PLAYWRIGHT_BROWSERS_PATH = installPath;
+          console.error('Chromium installed successfully.');
+        }
+      } else {
+        console.error('Failed to install Chromium. Retrying launch anyway...');
+      }
+    }
+
     // Try one more time from scratch
     const { viewport, userAgent, headless = sessionConfig.headlessDefault, browserType = 'chromium', device } = browserSettings ?? {};
 
@@ -703,7 +671,7 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
         break;
     }
 
-    const executablePath = browserType === 'chromium' ? findSystemChromium() : undefined;
+    const executablePath = process.env.CHROME_EXECUTABLE_PATH || undefined;
 
     // Determine viewport size for retry
     let retryViewportWidth: number;

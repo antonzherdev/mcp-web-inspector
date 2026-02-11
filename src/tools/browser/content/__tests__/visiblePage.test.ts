@@ -534,7 +534,7 @@ describe('GetHtmlTool', () => {
 
     const { ConfirmOutputTool } = await import('../../../common/confirm_output.js');
     const confirmTool = new ConfirmOutputTool({});
-    const fullResult = await confirmTool.execute({ token }, {} as any);
+    const fullResult = await confirmTool.execute({ token, reason: 'test' }, {} as any);
 
     expect(fullResult.isError).toBe(false);
     expect(fullResult.content[0].text).toContain(largeHtml);
@@ -543,7 +543,7 @@ describe('GetHtmlTool', () => {
   test('confirm_output should error on invalid token', async () => {
     const { ConfirmOutputTool } = await import('../../../common/confirm_output.js');
     const confirmTool = new ConfirmOutputTool({});
-    const res = await confirmTool.execute({ token: 'invalid123' }, {} as any);
+    const res = await confirmTool.execute({ token: 'invalid123', reason: 'test' }, {} as any);
     expect(res.isError).toBe(true);
     expect(res.content[0].text).toContain('Invalid or expired token');
   });
@@ -580,12 +580,12 @@ describe('GetHtmlTool', () => {
     const confirmTool = new ConfirmOutputTool({});
 
     // Second call - use token (should work)
-    const fullResult = await confirmTool.execute({ token }, {} as any);
+    const fullResult = await confirmTool.execute({ token, reason: 'test' }, {} as any);
     expect(fullResult.isError).toBe(false);
     expect(fullResult.content[0].text).toContain(largeHtml);
 
     // Third call - try to reuse same token (should fail)
-    const retryResult = await confirmTool.execute({ token }, {} as any);
+    const retryResult = await confirmTool.execute({ token, reason: 'test' }, {} as any);
     expect(retryResult.isError).toBe(true);
     expect(retryResult.content[0].text).toContain('Invalid or expired token');
   });
@@ -613,7 +613,7 @@ describe('GetHtmlTool', () => {
     // Second call - with token via confirm tool
     const { ConfirmOutputTool } = await import('../../../common/confirm_output.js');
     const confirmTool = new ConfirmOutputTool({});
-    const fullResult = await confirmTool.execute({ token }, {} as any);
+    const fullResult = await confirmTool.execute({ token, reason: 'test' }, {} as any);
     expect(fullResult.isError).toBe(false);
     expect(fullResult.content[0].text).toContain(largeHtml);
 

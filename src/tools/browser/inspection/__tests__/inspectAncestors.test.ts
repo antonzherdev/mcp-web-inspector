@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import { chromium, Browser, Page } from 'playwright';
 import { InspectAncestorsTool } from '../inspect_ancestors.js';
-import { findSystemChromium } from '../../../../toolHandler.js';
+
 
 describe('InspectAncestorsTool', () => {
   let browser: Browser;
@@ -9,7 +9,7 @@ describe('InspectAncestorsTool', () => {
   let tool: InspectAncestorsTool;
 
   beforeAll(async () => {
-    browser = await chromium.launch({ executablePath: findSystemChromium() });
+    browser = await chromium.launch();
     const context = await browser.newContext();
     page = await context.newPage();
     tool = new InspectAncestorsTool({} as any);

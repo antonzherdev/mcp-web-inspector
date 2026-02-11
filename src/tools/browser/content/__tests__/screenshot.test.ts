@@ -95,7 +95,7 @@ describe('ScreenshotTool', () => {
     const screenshotBuffer = Buffer.from('mock-screenshot');
     mockScreenshot.mockImplementationOnce(() => Promise.resolve(screenshotBuffer));
 
-    const finalResult = await confirmTool.execute({ token }, mockContext);
+    const finalResult = await confirmTool.execute({ token, reason: 'test' }, mockContext);
     expect(finalResult.isError).toBe(false);
     expect(finalResult.content[0].text).toContain('Screenshot saved to');
     expect(mockScreenshot).toHaveBeenCalledWith(expect.objectContaining({ fullPage: true, type: 'png' }));
@@ -120,7 +120,7 @@ describe('ScreenshotTool', () => {
     const screenshotBuffer = Buffer.from('mock-element-screenshot');
     mockLocatorScreenshot.mockImplementationOnce(() => Promise.resolve(screenshotBuffer));
 
-    const finalResult = await confirmTool.execute({ token }, mockContext);
+    const finalResult = await confirmTool.execute({ token, reason: 'test' }, mockContext);
     expect(finalResult.isError).toBe(false);
     expect(finalResult.content[0].text).toContain('Screenshot saved to');
   });
@@ -142,7 +142,7 @@ describe('ScreenshotTool', () => {
 
     // Mock a screenshot error on confirmation
     mockScreenshot.mockImplementationOnce(() => Promise.reject(new Error('Screenshot failed')));
-    const finalResult = await confirmTool.execute({ token }, mockContext);
+    const finalResult = await confirmTool.execute({ token, reason: 'test' }, mockContext);
     expect(finalResult.isError).toBe(true);
     expect(finalResult.content[0].text).toContain('Screenshot failed');
   });
@@ -175,7 +175,7 @@ describe('ScreenshotTool', () => {
     const { ConfirmOutputTool } = await import('../../../common/confirm_output.js');
     const confirmTool = new ConfirmOutputTool({});
     mockScreenshot.mockImplementationOnce(() => Promise.resolve(Buffer.from('mock-screenshot')));
-    await confirmTool.execute({ token }, mockContext);
+    await confirmTool.execute({ token, reason: 'test' }, mockContext);
     
     // Check that the screenshot was stored in the map
     const screenshots = screenshotTool.getScreenshots();
@@ -194,7 +194,7 @@ describe('ScreenshotTool', () => {
     const { ConfirmOutputTool } = await import('../../../common/confirm_output.js');
     const confirmTool = new ConfirmOutputTool({});
     mockScreenshot.mockImplementationOnce(() => Promise.resolve(Buffer.from('mock-screenshot')));
-    const result = await confirmTool.execute({ token }, mockContext);
+    const result = await confirmTool.execute({ token, reason: 'test' }, mockContext);
     expect(mockScreenshot).toHaveBeenCalled();
     expect(result.isError).toBe(false);
     expect(result.content[0].text).toContain('Screenshot saved to');

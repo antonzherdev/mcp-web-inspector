@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import { chromium, Browser, Page } from 'playwright';
 import { MeasureElementTool } from '../measure_element.js';
-import { findSystemChromium } from '../../../../toolHandler.js';
+
 
 describe('MeasureElementTool', () => {
   let browser: Browser;
@@ -9,7 +9,7 @@ describe('MeasureElementTool', () => {
   let tool: MeasureElementTool;
 
   beforeAll(async () => {
-    browser = await chromium.launch({ executablePath: findSystemChromium() });
+    browser = await chromium.launch();
     const context = await browser.newContext();
     page = await context.newPage();
     tool = new MeasureElementTool({} as any);

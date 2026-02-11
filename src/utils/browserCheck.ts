@@ -5,13 +5,10 @@ export function getInstallationInstructions(): string {
   return `
 Chromium is not available. To fix this:
 
-1. Install Chrome or Chromium via your OS package manager:
-   - Debian/Ubuntu: sudo apt install chromium-browser
-   - Alpine:        apk add chromium
-   - macOS:         brew install --cask chromium
-   - Or set CHROME_EXECUTABLE_PATH to your Chrome/Chromium binary
+1. Run: npm install (installs bundled Chromium via @playwright/browser-chromium)
 
-2. For Firefox/WebKit (optional): install via Playwright:
-   npx playwright install firefox webkit
+2. Or set CHROME_EXECUTABLE_PATH to your Chrome/Chromium binary
+
+3. For Firefox/WebKit (optional): npx playwright install firefox webkit
 `.trim();
 }

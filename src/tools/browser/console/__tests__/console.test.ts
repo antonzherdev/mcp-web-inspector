@@ -275,7 +275,7 @@ describe('GetConsoleLogsTool', () => {
     // Confirm to retrieve full payload
     const { ConfirmOutputTool } = await import('../../../common/confirm_output.js');
     const confirmTool = new ConfirmOutputTool({});
-    const full = await confirmTool.execute({ token }, mockContext);
+    const full = await confirmTool.execute({ token, reason: 'test' }, mockContext);
     expect(full.isError).toBe(false);
     const fullText = full.content.map(c => c.text).join('\n');
     // By default limit=20 → header should reflect 20 lines
@@ -298,7 +298,7 @@ describe('GetConsoleLogsTool', () => {
     const token = (previewText.match(/confirm_output\(\{ token: \"([\w\d]+)\" \}\)/) || [])[1];
     const { ConfirmOutputTool } = await import('../../../common/confirm_output.js');
     const confirmTool = new ConfirmOutputTool({});
-    const full = await confirmTool.execute({ token }, mockContext);
+    const full = await confirmTool.execute({ token, reason: 'test' }, mockContext);
     expect(full.isError).toBe(false);
     const fullText = full.content.map(c => c.text).join('\n');
     // Header reflects number of groups shown (limit default 20)
