@@ -1,0 +1,6 @@
+{
+  "web-inspector": {
+    "command": "node",
+    "args": ["dist/index.js"]
+  }
+}
