@@ -21,6 +21,10 @@ RUN npm run build
 # Use a minimal Node.js image for running the project
 FROM node:20-alpine AS release
 
+# Install system Chromium (used instead of bundled Playwright browser)
+RUN apk add --no-cache chromium
+ENV CHROME_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
 # Set the working directory
 WORKDIR /app
 

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import { chromium, Browser, Page } from 'playwright';
 import { FindByTextTool } from '../find_by_text.js';
+import { findSystemChromium } from '../../../../toolHandler.js';
 
 describe('FindByTextTool', () => {
   let browser: Browser;
@@ -8,7 +9,7 @@ describe('FindByTextTool', () => {
   let tool: FindByTextTool;
 
   beforeAll(async () => {
-    browser = await chromium.launch();
+    browser = await chromium.launch({ executablePath: findSystemChromium() });
     const context = await browser.newContext();
     page = await context.newPage();
     tool = new FindByTextTool({} as any);

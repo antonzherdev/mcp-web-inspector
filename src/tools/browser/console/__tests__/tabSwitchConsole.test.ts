@@ -8,6 +8,7 @@
 
 import { chromium, Browser, Page, BrowserContext } from 'playwright';
 import { jest } from '@jest/globals';
+import { findSystemChromium } from '../../../../toolHandler.js';
 
 describe('Console logs after tab switch - Bug Reproduction', () => {
   let browser: Browser;
@@ -16,7 +17,7 @@ describe('Console logs after tab switch - Bug Reproduction', () => {
   let page2: Page;
 
   beforeAll(async () => {
-    browser = await chromium.launch({ headless: true });
+    browser = await chromium.launch({ headless: true, executablePath: findSystemChromium() });
     context = await browser.newContext();
   });
 
