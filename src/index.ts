@@ -63,7 +63,7 @@ const sessionConfig = {
   saveSession: !Boolean(values['no-save-session']),
   userDataDir: `${baseDir}/user-data`,
   screenshotsDir: `${baseDir}/screenshots`,
-  headlessDefault: Boolean(values['headless']),
+  headlessDefault: Boolean(values['headless']) || (process.platform === 'linux' && !process.env.DISPLAY && !process.env.WAYLAND_DISPLAY),
   exposeSensitiveNetworkData: Boolean(values['expose-sensitive-network-data']),
 };
 setSessionConfig(sessionConfig);

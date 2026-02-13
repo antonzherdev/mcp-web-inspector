@@ -1,6 +1,8 @@
 {
-  "web-inspector": {
-    "command": "node",
-    "args": ["dist/index.js"]
+  "mcpServers": {
+    "web-inspector": {
+      "command": "node",
+      "args": ["dist/index.js"]
+    }
   }
 }
