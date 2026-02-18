@@ -476,10 +476,15 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
         }
       }
 
+      // LocalNetworkAccessChecks: Chrome blocks fetch/XHR from public origins to private/CGNAT
+      // IPs (e.g. Tailscale 100.64.0.0/10). This breaks environments where the API is on an
+      // internal network but the app is served from a public CDN.
+
       // Prepare context options
       const contextOptions: any = {
         headless,
         executablePath: executablePath,
+        args: ['--disable-features=LocalNetworkAccessChecks'],
       };
 
       // If device config exists, use it; otherwise use manual viewport/userAgent
@@ -620,13 +625,21 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
         const { join } = await import('node:path');
         try {
           const dirs = readdirSync(installPath);
-          const chromiumDir = dirs.find(d => d.startsWith('chromium-') && !d.includes('headless'));
-          if (chromiumDir) {
-            const chromePath = join(installPath, chromiumDir, 'chrome-linux', 'chrome');
-            if (existsSync(chromePath)) {
-              process.env.CHROME_EXECUTABLE_PATH = chromePath;
-              console.error(`Chromium installed at ${chromePath}`);
+          // Sort descending to prefer the newest chromium revision
+          const chromiumDirs = dirs
+            .filter(d => d.startsWith('chromium-') && !d.includes('headless'))
+            .sort().reverse();
+          for (const chromiumDir of chromiumDirs) {
+            // Newer Playwright uses chrome-linux64/, older uses chrome-linux/
+            for (const subdir of ['chrome-linux64', 'chrome-linux']) {
+              const chromePath = join(installPath, chromiumDir, subdir, 'chrome');
+              if (existsSync(chromePath)) {
+                process.env.CHROME_EXECUTABLE_PATH = chromePath;
+                console.error(`Chromium installed at ${chromePath}`);
+                break;
+              }
             }
+            if (process.env.CHROME_EXECUTABLE_PATH) break;
           }
         } catch {
           // Fall back — also try setting PLAYWRIGHT_BROWSERS_PATH in case it helps
@@ -692,6 +705,7 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
     const retryContextOptions: any = {
       headless,
       executablePath: executablePath,
+      args: ['--disable-features=LocalNetworkAccessChecks'],
     };
 
     // If device config exists, use it; otherwise use manual viewport/userAgent
