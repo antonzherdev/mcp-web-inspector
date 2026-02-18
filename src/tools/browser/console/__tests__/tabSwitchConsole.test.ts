@@ -8,9 +8,11 @@
 
 import { chromium, Browser, Page, BrowserContext } from 'playwright';
 import { jest } from '@jest/globals';
+import { browserAvailable } from '../../../../__tests__/helpers/browserSetup.js';
 
+const d = browserAvailable ? describe : describe.skip;
 
-describe('Console logs after tab switch - Bug Reproduction', () => {
+d('Console logs after tab switch - Bug Reproduction', () => {
   let browser: Browser;
   let context: BrowserContext;
   let page1: Page;

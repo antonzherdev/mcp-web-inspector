@@ -5,12 +5,15 @@
 
 import { handleToolCall } from '../../toolHandler.js';
 import { jest } from '@jest/globals';
+import { browserAvailable } from '../helpers/browserSetup.js';
 
 const mockServer = {
   sendMessage: jest.fn()
 };
 
-describe('Tab switch integration test', () => {
+const d = browserAvailable ? describe : describe.skip;
+
+d('Tab switch integration test', () => {
   afterEach(async () => {
     // Clean up by closing the browser
     await handleToolCall('close', {}, mockServer);

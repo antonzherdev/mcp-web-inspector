@@ -4,8 +4,11 @@ import { ListNetworkRequestsTool } from '../list_network_requests.js';
 import { GetRequestDetailsTool } from '../get_request_details.js';
 import type { ToolContext } from '../../../common/types.js';
 import { clearNetworkLog, getNetworkLog, ensureBrowser, resetBrowserState } from '../../../../toolHandler.js';
+import { browserAvailable } from '../../../../__tests__/helpers/browserSetup.js';
 
-describe('Network Monitoring Tools', () => {
+const d = browserAvailable ? describe : describe.skip;
+
+d('Network Monitoring Tools', () => {
   let browser: Browser;
   let page: Page;
   let context: ToolContext;

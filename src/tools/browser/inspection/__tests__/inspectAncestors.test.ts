@@ -1,9 +1,11 @@
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import { chromium, Browser, Page } from 'playwright';
 import { InspectAncestorsTool } from '../inspect_ancestors.js';
+import { browserAvailable } from '../../../../__tests__/helpers/browserSetup.js';
 
+const d = browserAvailable ? describe : describe.skip;
 
-describe('InspectAncestorsTool', () => {
+d('InspectAncestorsTool', () => {
   let browser: Browser;
   let page: Page;
   let tool: InspectAncestorsTool;

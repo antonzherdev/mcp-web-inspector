@@ -7,12 +7,15 @@
 
 import { handleToolCall } from '../../toolHandler.js';
 import { jest } from '@jest/globals';
+import { browserAvailable } from '../helpers/browserSetup.js';
 
 const mockServer = {
   sendMessage: jest.fn()
 };
 
-describe('Console logs after navigation - Bug Reproduction', () => {
+const d = browserAvailable ? describe : describe.skip;
+
+d('Console logs after navigation - Bug Reproduction', () => {
   afterEach(async () => {
     // Clean up by closing the browser
     await handleToolCall('close', {}, mockServer);
