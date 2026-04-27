@@ -1,4 +1,4 @@
-import { ToolHandler, ToolMetadata, SessionConfig } from '../../common/types.js';
+import { ToolHandler, ToolMetadata, SessionConfig, ANNOTATIONS } from '../../common/types.js';
 import { BrowserToolBase } from '../base.js';
 import type { ToolContext, ToolResponse } from '../../common/types.js';
 
@@ -7,6 +7,7 @@ export class GetComputedStylesTool extends BrowserToolBase implements ToolHandle
     return {
       name: "get_computed_styles",
       description: "INSPECT CSS PROPERTIES: Get computed CSS values for specific properties (display, position, width, etc.). Use when you need raw CSS values or specific properties not shown by measure_element(). Returns styles grouped by category (Layout, Visibility, Spacing, Typography). For box model visualization (padding/margin), use measure_element() instead.",
+      annotations: ANNOTATIONS.readOnly,
       outputs: [
         "Optional selection header when multiple elements matched.",
         "Header: 'Computed Styles: <tag id/class/testid>'",

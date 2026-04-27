@@ -1,5 +1,5 @@
 import { BrowserToolBase } from '../base.js';
-import { ToolContext, ToolResponse, ToolMetadata, SessionConfig } from '../../common/types.js';
+import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, ANNOTATIONS } from '../../common/types.js';
 
 export interface WaitForNetworkIdleArgs {
   timeout?: number;
@@ -10,6 +10,7 @@ export class WaitForNetworkIdleTool extends BrowserToolBase {
     return {
       name: "wait_for_network_idle",
       description: "Wait for network activity to settle. Waits until there are no network connections for at least 500ms. Better than fixed delays when waiting for AJAX calls or dynamic content loading. Returns actual wait duration and confirmation of idle state.",
+      annotations: ANNOTATIONS.readOnly,
       inputSchema: {
         type: "object",
         properties: {

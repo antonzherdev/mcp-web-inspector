@@ -285,7 +285,7 @@ describe('Browser Interaction Tools', () => {
       const fullResponse = result.content.map(c => c.text).join('\n');
 
       expect(result.isError).toBe(false);
-      expect(fullResponse).toContain('💡 Consider using specialized tools instead');
+      expect(fullResponse).toContain('💡 Specialized tools:');
       expect(fullResponse).toContain('inspect_dom');
     });
 
@@ -298,7 +298,7 @@ describe('Browser Interaction Tools', () => {
       const fullResponse = result.content.map(c => c.text).join('\n');
 
       expect(result.isError).toBe(false);
-      expect(fullResponse).toContain('💡 Consider using specialized tools instead');
+      expect(fullResponse).toContain('💡 Specialized tools:');
       expect(fullResponse).toContain('get_text');
     });
 
@@ -311,7 +311,7 @@ describe('Browser Interaction Tools', () => {
       const fullResponse = result.content.map(c => c.text).join('\n');
 
       expect(result.isError).toBe(false);
-      expect(fullResponse).toContain('💡 Consider using specialized tools instead');
+      expect(fullResponse).toContain('💡 Specialized tools:');
       expect(fullResponse).toContain('measure_element');
     });
 
@@ -324,7 +324,7 @@ describe('Browser Interaction Tools', () => {
       const fullResponse = result.content.map(c => c.text).join('\n');
 
       expect(result.isError).toBe(false);
-      expect(fullResponse).toContain('💡 Consider using specialized tools instead');
+      expect(fullResponse).toContain('💡 Specialized tools:');
       expect(fullResponse).toContain('check_visibility');
     });
 
@@ -337,7 +337,7 @@ describe('Browser Interaction Tools', () => {
       const fullResponse = result.content.map(c => c.text).join('\n');
 
       expect(result.isError).toBe(false);
-      expect(fullResponse).toContain('💡 Consider using specialized tools instead');
+      expect(fullResponse).toContain('💡 Specialized tools:');
       expect(fullResponse).toContain('get_computed_styles');
     });
 
@@ -350,7 +350,7 @@ describe('Browser Interaction Tools', () => {
       const fullResponse = result.content.map(c => c.text).join('\n');
 
       expect(result.isError).toBe(false);
-      expect(fullResponse).toContain('💡 Consider using specialized tools instead');
+      expect(fullResponse).toContain('💡 Specialized tools:');
       expect(fullResponse).toContain('element_exists');
     });
 
@@ -363,7 +363,7 @@ describe('Browser Interaction Tools', () => {
       const fullResponse = result.content.map(c => c.text).join('\n');
 
       expect(result.isError).toBe(false);
-      expect(fullResponse).toContain('💡 Consider using specialized tools instead');
+      expect(fullResponse).toContain('💡 Specialized tools:');
       expect(fullResponse).toContain('get_test_ids');
     });
 
@@ -376,7 +376,7 @@ describe('Browser Interaction Tools', () => {
       const fullResponse = result.content.map(c => c.text).join('\n');
 
       expect(result.isError).toBe(false);
-      expect(fullResponse).toContain('💡 Consider using specialized tools instead');
+      expect(fullResponse).toContain('💡 Specialized tools:');
       expect(fullResponse).toContain('compare_element_alignment');
     });
 
@@ -389,7 +389,7 @@ describe('Browser Interaction Tools', () => {
       const fullResponse = result.content.map(c => c.text).join('\n');
 
       expect(result.isError).toBe(false);
-      expect(fullResponse).toContain('💡 Consider using specialized tools instead');
+      expect(fullResponse).toContain('💡 Specialized tools:');
       expect(fullResponse).toContain('scroll_to_element');
       expect(fullResponse).toContain('scroll_by');
     });
@@ -404,7 +404,7 @@ describe('Browser Interaction Tools', () => {
 
       expect(result.isError).toBe(false);
       // Should not contain suggestions for custom logic
-      expect(fullResponse).not.toContain('💡 Consider using specialized tools instead');
+      expect(fullResponse).not.toContain('💡 Specialized tools:');
     });
 
     test('should provide multiple suggestions when script matches multiple patterns', async () => {
@@ -416,7 +416,7 @@ describe('Browser Interaction Tools', () => {
       const fullResponse = result.content.map(c => c.text).join('\n');
 
       expect(result.isError).toBe(false);
-      expect(fullResponse).toContain('💡 Consider using specialized tools instead');
+      expect(fullResponse).toContain('💡 Specialized tools:');
       expect(fullResponse).toContain('inspect_dom');
       expect(fullResponse).toContain('measure_element');
       expect(fullResponse).toContain('get_computed_styles');

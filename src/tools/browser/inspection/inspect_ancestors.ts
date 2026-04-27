@@ -1,5 +1,6 @@
 import { BrowserToolBase } from "../base.js";
 import type { ToolResponse, ToolContext, ToolMetadata, SessionConfig } from "../../common/types.js";
+import { ANNOTATIONS } from "../../common/types.js";
 
 interface AncestorData {
   tagName: string;
@@ -48,6 +49,7 @@ export class InspectAncestorsTool extends BrowserToolBase {
     return {
       name: "inspect_ancestors",
       description: "DEBUG LAYOUT CONSTRAINTS: Walk up the DOM tree to find where width constraints, margins, borders, and overflow clipping come from. Shows for each ancestor: position/size, width constraints (w, max-w, min-w), margins with directional arrows (↑↓←→ format), padding, display type, borders (directional if non-uniform), overflow (🔒=hidden, ↕️=scroll), flexbox context (flex direction justify items gap), grid context (cols rows gap), position/z-index/transform when set. Automatically detects horizontal centering via auto margins and flags clipping points (🎯). Essential for debugging unexpected centering, constrained width, or clipped content. Default: 10 ancestors (reaches <body> in most React apps), max: 15. Use after inspect_dom() to understand parent layout constraints.",
+      annotations: ANNOTATIONS.readOnly,
       outputs: [
         "Header showing selected element index when selector matched multiple.",
         "For each ancestor (starting from target):",

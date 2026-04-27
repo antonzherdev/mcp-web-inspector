@@ -1,4 +1,4 @@
-import { ToolHandler, ToolMetadata, SessionConfig } from '../../common/types.js';
+import { ToolHandler, ToolMetadata, SessionConfig, ANNOTATIONS } from '../../common/types.js';
 import { BrowserToolBase } from '../base.js';
 import type { ToolContext, ToolResponse } from '../../common/types.js';
 
@@ -11,6 +11,7 @@ export class ElementExistsTool extends BrowserToolBase implements ToolHandler {
     return {
       name: "element_exists",
       description: "Quick check if an element exists on the page. Ultra-lightweight alternative to query_selector_all when you only need existence confirmation. Returns simple exists/not found status. Most common check before attempting interaction. Supports testid shortcuts.",
+      annotations: ANNOTATIONS.readOnly,
       outputs: [
         "Returns one line:",
         "- ✓ exists: <tag id/class> (N matches) when found (N optional)",

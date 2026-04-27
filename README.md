@@ -491,6 +491,8 @@ RELATED TOOLS: For comparing TWO elements' alignment (not parent-child), use com
 
 ⚠️ More efficient than get_html() or evaluate() for structural analysis. Use BEFORE visual tools (screenshot) or evaluate(). Supports testid shortcuts.
 
+NOTE: Dropdowns, listboxes, dialogs, and popovers (especially in react-aria/headless UI/Radix) are commonly portaled to document.body — when a combobox or menu is open, query at the root level (e.g. `[role="listbox"]`, `[role="dialog"]`) rather than inside the trigger's subtree.
+
 - Parameters:
   - selector (string, optional): CSS selector, text selector, or testid shorthand to inspect. Omit for page overview (defaults to body). Use 'testid:login-form', '#main', etc.
   - includeHidden (boolean, optional): Include hidden elements in results (default: false)
@@ -996,7 +998,7 @@ Upload a file to an input[type='file'] element on the page
 ### Content
 
 #### `get_html`
-⚠️ RARELY NEEDED: Get raw HTML markup from the page (no rendering, just source code). Most tasks need structured inspection instead. ONLY use get_html for: (1) checking specific HTML attributes or element nesting, (2) analyzing markup structure, (3) debugging SSR/HTML issues. For structured tasks, use: inspect_dom() to understand page structure with positions, query_selector() to find and inspect elements, get_computed_styles() for CSS values. Auto-returns HTML if <2000 chars (small elements); if larger, returns a preview and a one-time token to fetch the full output. Scripts removed by default for security/size. Supports testid shortcuts.
+[may return preview+token] ⚠️ RARELY NEEDED: Get raw HTML markup from the page (no rendering, just source code). Most tasks need structured inspection instead. ONLY use get_html for: (1) checking specific HTML attributes or element nesting, (2) analyzing markup structure, (3) debugging SSR/HTML issues. For structured tasks, use: inspect_dom() to understand page structure with positions, query_selector() to find and inspect elements, get_computed_styles() for CSS values. Auto-returns HTML if <2000 chars (small elements); if larger, returns a preview and a one-time token to fetch the full output. Scripts removed by default for security/size. Supports testid shortcuts.
 
 - Parameters:
   - selector (string, optional): CSS selector, text selector, or testid shorthand to limit HTML extraction to a specific container. Omit to get entire page HTML. Example: 'testid:main-content' or '#app'
@@ -1004,14 +1006,14 @@ Upload a file to an input[type='file'] element on the page
   - maxLength (number, optional): Maximum number of characters to return (default: 20000)
 
 #### `get_text`
-⚠️ RARELY NEEDED: Get ALL visible text content from the entire page (no structure, just raw text). Most tasks need structured inspection instead. ONLY use get_text for: (1) extracting text for content analysis (word count, language detection), (2) searching for text when location is completely unknown, (3) text-only snapshots for comparison. For structured tasks, use: inspect_dom() to understand page structure, find_by_text() to locate specific text with context, query_selector() to find elements. Auto-returns text if <2000 chars (small elements); if larger, returns a preview and a one-time token to fetch the full output via confirm_output. Supports testid shortcuts.
+[may return preview+token] ⚠️ RARELY NEEDED: Get ALL visible text content from the entire page (no structure, just raw text). Most tasks need structured inspection instead. ONLY use get_text for: (1) extracting text for content analysis (word count, language detection), (2) searching for text when location is completely unknown, (3) text-only snapshots for comparison. For structured tasks, use: inspect_dom() to understand page structure, find_by_text() to locate specific text with context, query_selector() to find elements. Auto-returns text if <2000 chars (small elements); if larger, returns a preview and a one-time token to fetch the full output via confirm_output. Supports testid shortcuts.
 
 - Parameters:
   - selector (string, optional): CSS selector, text selector, or testid shorthand to limit text extraction to a specific container. Omit to get text from entire page. Example: 'testid:article-body' or '#main-content'
   - maxLength (number, optional): Maximum number of characters to return (default: 20000)
 
 #### `visual_screenshot_for_humans`
-📸 VISUAL OUTPUT TOOL - Captures page/element appearance and saves to file. Essential for: visual regression testing, sharing with humans, confirming UI appearance (colors/fonts/images).
+[may return preview+token] 📸 VISUAL OUTPUT TOOL - Captures page/element appearance and saves to file. Essential for: visual regression testing, sharing with humans, confirming UI appearance (colors/fonts/images).
 
 ❌ WRONG: "Take screenshot to debug button alignment"
 ✅ RIGHT: "Use compare_element_alignment() - alignment in <100 tokens"
@@ -1042,7 +1044,7 @@ Screenshots saved to ./.mcp-web-inspector/screenshots. Example: { name: "login-p
 Clears captured console logs and returns the number of entries cleared.
 
 #### `get_console_logs`
-Retrieve console logs with filtering and token‑efficient output. Defaults: since='last-interaction', limit=20, format='grouped'. Grouped output deduplicates identical lines and shows counts. Use format='raw' for chronological, ungrouped lines. Large outputs return a preview and a one-time token to fetch the full payload.
+[may return preview+token] Retrieve console logs with filtering and token‑efficient output. Defaults: since='last-interaction', limit=20, format='grouped'. Grouped output deduplicates identical lines and shows counts. Use format='raw' for chronological, ungrouped lines. Large outputs return a preview and a one-time token to fetch the full payload.
 
 - Parameters:
   - type (string, optional): Type filter (all, error, warning, log, info, debug, exception). Note: 'error' also includes 'exception' entries for convenience.
@@ -1054,7 +1056,7 @@ Retrieve console logs with filtering and token‑efficient output. Defaults: sin
 ### Evaluation
 
 #### `evaluate`
-⚙️ CUSTOM JAVASCRIPT EXECUTION - Execute arbitrary JavaScript in the browser console and return a compact, token-efficient summary of the result. Includes a large-output preview guard with a one-time token. ⚠️ NOT for: scroll detection (inspect_dom shows 'scrollable ↕️'), element dimensions (use measure_element), DOM inspection (use inspect_dom), CSS properties (use get_computed_styles), position comparison (use compare_element_alignment). Use ONLY when specialized tools cannot accomplish the task. Automatically detects common patterns and suggests better alternatives.
+[may return preview+token] ⚙️ CUSTOM JAVASCRIPT EXECUTION - Execute arbitrary JavaScript in the browser console and return a compact, token-efficient summary of the result. Single expressions return their value automatically; multi-statement scripts must use `return`. Includes a large-output preview guard with a one-time token. ⚠️ NOT for: scroll detection (inspect_dom shows 'scrollable ↕️'), element dimensions (use measure_element), DOM inspection (use inspect_dom), CSS properties (use get_computed_styles), position comparison (use compare_element_alignment). Use ONLY when specialized tools cannot accomplish the task. Automatically detects common patterns and suggests better alternatives.
 
 - Parameters:
   - script (string, required): JavaScript code to execute
@@ -1075,7 +1077,7 @@ Retrieve console logs with filtering and token‑efficient output. Defaults: sin
 ### Network
 
 #### `get_request_details`
-Get detailed information about a specific network request by index (from list_network_requests). Returns request/response headers, body (truncated at 500 chars), timing, and size. Request bodies with passwords are automatically masked. If a request or response body exceeds 500 chars, includes a preview and a one-time confirm_output token that, when called, saves the full body to disk under ./.mcp-web-inspector/network-bodies/ and returns the file path(s). Essential for debugging API responses and investigating failed requests.
+[may return preview+token] Get detailed information about a specific network request by index (from list_network_requests). Returns request/response headers, body (truncated at 500 chars), timing, and size. Request bodies with passwords are automatically masked. If a request or response body exceeds 500 chars, includes a preview and a one-time confirm_output token that, when called, saves the full body to disk under ./.mcp-web-inspector/network-bodies/ and returns the file path(s). Essential for debugging API responses and investigating failed requests.
 
 - Parameters:
   - index (number, required): Index of the request from list_network_requests output (e.g., [0], [1], etc.)

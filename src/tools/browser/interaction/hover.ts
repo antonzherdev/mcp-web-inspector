@@ -1,5 +1,5 @@
 import { BrowserToolBase } from '../base.js';
-import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, createSuccessResponse } from '../../common/types.js';
+import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, ANNOTATIONS, createSuccessResponse } from '../../common/types.js';
 
 /**
  * Tool for hovering over elements
@@ -9,6 +9,7 @@ export class HoverTool extends BrowserToolBase {
     return {
       name: "hover",
       description: "Hover an element on the page",
+      annotations: ANNOTATIONS.interaction,
       inputSchema: {
         type: "object",
         properties: {

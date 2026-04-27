@@ -1,5 +1,5 @@
 import { BrowserToolBase } from '../base.js';
-import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, createSuccessResponse, createErrorResponse } from '../../common/types.js';
+import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, ANNOTATIONS, createSuccessResponse, createErrorResponse } from '../../common/types.js';
 import { gatherConsoleErrorsSince, quickNetworkIdleNote, titleUrlChangeLines } from '../common/postAction.js';
 
 /**
@@ -10,6 +10,7 @@ export class ClickTool extends BrowserToolBase {
     return {
       name: "click",
       description: "Click an element on the page",
+      annotations: ANNOTATIONS.interaction,
       inputSchema: {
         type: "object",
         properties: {

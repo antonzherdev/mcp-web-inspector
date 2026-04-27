@@ -1,5 +1,5 @@
 import { BrowserToolBase } from '../base.js';
-import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, createSuccessResponse, createErrorResponse } from '../../common/types.js';
+import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, ANNOTATIONS, createSuccessResponse, createErrorResponse } from '../../common/types.js';
 
 /**
  * Interface for test ID discovery results
@@ -25,6 +25,7 @@ export class GetTestIdsTool extends BrowserToolBase {
     return {
       name: "get_test_ids",
       description: "Discover all test identifiers on the page (data-testid, data-test, data-cy, etc.). Returns a compact text list grouped by attribute type. Essential for test-driven workflows and understanding what elements can be reliably selected. Use the returned test IDs with selector shortcuts like 'testid:submit-button'.",
+      annotations: ANNOTATIONS.readOnly,
       priority: 6,
       outputs: [
         "'Found N test IDs' header or 'Found 0 test IDs' with tips",

@@ -1,5 +1,27 @@
-import type { CallToolResult, TextContent, ImageContent, Tool } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult, TextContent, ImageContent, Tool, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 import type { Page, Browser, APIRequestContext } from 'playwright';
+
+// MCP ToolAnnotations presets. Hints to the client about a tool's behavior:
+//   readOnlyHint   — tool does not modify environment (DOM, browser state, files)
+//   idempotentHint — repeated calls with same args produce the same effect (only when readOnlyHint=false)
+//   openWorldHint  — tool interacts with external/uncontrolled systems (the live open web)
+//
+// Note: `destructiveHint` is omitted from every preset because none of our browser-automation
+// tools are destructive in the MCP-spec sense (rm -rf, drop table, kill process). Closing
+// the browser or clearing logs is routine state change, not data loss the user must be warned about.
+export const ANNOTATIONS = {
+  // Pure read-only tools — DOM inspection, console reads, network log reads, waits.
+  readOnly: { readOnlyHint: true, openWorldHint: false } satisfies ToolAnnotations,
+  // Element interactions (click, fill, etc.) — modify DOM state, non-idempotent (state can advance).
+  interaction: { readOnlyHint: false, idempotentHint: false } satisfies ToolAnnotations,
+  // Page navigation — modifies state, touches the live open web, idempotent (same URL = same end state).
+  navigation: { readOnlyHint: false, idempotentHint: true, openWorldHint: true } satisfies ToolAnnotations,
+  // State-modifying internal operations: idempotent, not openWorld.
+  // (clearing an in-memory debug buffer, closing the browser, setting browser-emulation flags)
+  internalState: { readOnlyHint: false, idempotentHint: true, openWorldHint: false } satisfies ToolAnnotations,
+  // Arbitrary code execution — can do anything to the page or the open web.
+  arbitrary: { readOnlyHint: false, idempotentHint: false, openWorldHint: true } satisfies ToolAnnotations,
+} as const;
 
 // Session configuration (matches toolHandler.ts)
 export interface SessionConfig {

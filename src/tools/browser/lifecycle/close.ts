@@ -1,5 +1,5 @@
 import { BrowserToolBase } from '../base.js';
-import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, createSuccessResponse } from '../../common/types.js';
+import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, ANNOTATIONS, createSuccessResponse } from '../../common/types.js';
 
 async function resetState() {
   const { resetBrowserState } = await import('../../../toolHandler.js');
@@ -14,6 +14,7 @@ export class CloseTool extends BrowserToolBase {
     return {
       name: "close",
       description: "Close the browser and release all resources",
+      annotations: ANNOTATIONS.internalState,
       inputSchema: {
         type: "object",
         properties: {},

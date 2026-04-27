@@ -1,5 +1,5 @@
 import { BrowserToolBase } from '../base.js';
-import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, createSuccessResponse, createErrorResponse } from '../../common/types.js';
+import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, ANNOTATIONS, createSuccessResponse, createErrorResponse } from '../../common/types.js';
 import { gatherConsoleErrorsSince, quickNetworkIdleNote } from '../common/postAction.js';
 
 type Direction = 'back' | 'forward';
@@ -12,6 +12,7 @@ export class GoHistoryTool extends BrowserToolBase {
     return {
       name: 'go_history',
       description: "Navigate browser history (back/forward). Returns: 'Navigated <direction> in browser history', a quick network-idle note if available, 'URL: <current>', and 'Title: <current>' when set. If console errors occur after the navigation, returns an error like 'Console error after history navigation: <message>' including Title when available.",
+      annotations: ANNOTATIONS.navigation,
       inputSchema: {
         type: 'object',
         properties: {

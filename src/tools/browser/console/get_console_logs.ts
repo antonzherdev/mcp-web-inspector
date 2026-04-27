@@ -1,5 +1,5 @@
 import { BrowserToolBase } from '../base.js';
-import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, createSuccessResponse, createErrorResponse } from '../../common/types.js';
+import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, ANNOTATIONS, createSuccessResponse, createErrorResponse } from '../../common/types.js';
 import { makeConfirmPreview } from '../../common/confirm_output.js';
 
 interface ConsoleLogEntry {
@@ -28,7 +28,8 @@ export class GetConsoleLogsTool extends BrowserToolBase {
   static getMetadata(sessionConfig?: SessionConfig): ToolMetadata {
     return {
       name: "get_console_logs",
-      description: "Retrieve console logs with filtering and token‑efficient output. Defaults: since='last-interaction', limit=20, format='grouped'. Grouped output deduplicates identical lines and shows counts. Use format='raw' for chronological, ungrouped lines. Large outputs return a preview and a one-time token to fetch the full payload.",
+      description: "[may return preview+token] Retrieve console logs with filtering and token‑efficient output. Defaults: since='last-interaction', limit=20, format='grouped'. Grouped output deduplicates identical lines and shows counts. Use format='raw' for chronological, ungrouped lines. Large outputs return a preview and a one-time token to fetch the full payload.",
+      annotations: ANNOTATIONS.readOnly,
       inputSchema: {
         type: "object",
         properties: {
@@ -247,6 +248,7 @@ export class ClearConsoleLogsTool extends BrowserToolBase {
     return {
       name: "clear_console_logs",
       description: "Clears captured console logs and returns the number of entries cleared.",
+      annotations: ANNOTATIONS.internalState,
       inputSchema: {
         type: "object",
         properties: {},

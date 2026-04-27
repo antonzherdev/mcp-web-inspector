@@ -116,4 +116,76 @@ describe('Tool Definitions', () => {
       expect(browserTools.includes(toolName)).toBe(false);
     });
   });
-}); 
+
+  // Item #5: every confirm-flow tool surfaces its preview+token behavior up front.
+  test('confirm-flow tools start with the [may return preview+token] marker', () => {
+    const confirmFlowTools = [
+      'evaluate',
+      'get_html',
+      'get_text',
+      'get_console_logs',
+      'get_request_details',
+      'visual_screenshot_for_humans',
+    ];
+    confirmFlowTools.forEach(name => {
+      const tool = toolDefinitions.find(t => t.name === name);
+      expect(tool).toBeDefined();
+      expect(tool!.description).toMatch(/^\[may return preview\+token\] /);
+    });
+  });
+
+  // Item #6: every tool declares MCP ToolAnnotations.
+  test('every tool declares annotations', () => {
+    toolDefinitions.forEach(tool => {
+      expect((tool as any).annotations).toBeDefined();
+      expect(typeof (tool as any).annotations).toBe('object');
+    });
+  });
+
+  test('read-only tools have readOnlyHint=true', () => {
+    const readOnly = [
+      'inspect_dom', 'inspect_ancestors', 'compare_element_alignment',
+      'get_computed_styles', 'check_visibility', 'query_selector', 'get_test_ids',
+      'measure_element', 'find_by_text', 'element_exists',
+      'get_html', 'get_text', 'get_console_logs', 'get_request_details',
+      'list_network_requests', 'visual_screenshot_for_humans', 'confirm_output',
+      'wait_for_element', 'wait_for_network_idle',
+    ];
+    readOnly.forEach(name => {
+      const tool = toolDefinitions.find(t => t.name === name);
+      expect(tool).toBeDefined();
+      expect((tool as any).annotations.readOnlyHint).toBe(true);
+    });
+  });
+
+  test('state-modifying tools have readOnlyHint=false', () => {
+    const stateModifying = [
+      'navigate', 'go_history', 'scroll_by', 'scroll_to_element',
+      'click', 'fill', 'hover', 'select', 'upload_file', 'drag', 'press_key',
+      'set_color_scheme', 'close', 'clear_console_logs', 'evaluate',
+    ];
+    stateModifying.forEach(name => {
+      const tool = toolDefinitions.find(t => t.name === name);
+      expect(tool).toBeDefined();
+      expect((tool as any).annotations.readOnlyHint).toBe(false);
+    });
+  });
+
+  test('open-world tools have openWorldHint=true', () => {
+    const openWorld = ['navigate', 'go_history', 'evaluate'];
+    openWorld.forEach(name => {
+      const tool = toolDefinitions.find(t => t.name === name);
+      expect(tool).toBeDefined();
+      expect((tool as any).annotations.openWorldHint).toBe(true);
+    });
+  });
+
+  test('no tool currently uses destructiveHint=true', () => {
+    // None of our browser-automation tools are destructive in the MCP-spec sense
+    // (rm -rf, drop table, kill process). If a future tool is, it should set this
+    // explicitly — and this test should be updated alongside.
+    toolDefinitions.forEach(tool => {
+      expect((tool as any).annotations.destructiveHint).not.toBe(true);
+    });
+  });
+});

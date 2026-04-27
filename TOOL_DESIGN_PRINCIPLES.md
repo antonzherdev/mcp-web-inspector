@@ -894,15 +894,27 @@ Describe the workflow LLMs should follow:
 
 ### 16. **Tool Count Management** ✅ IMPORTANT
 
-**Research Finding (2025-01):** "Too many tools or overlapping tools can distract agents from optimal strategies." - Anthropic
+**Research Finding (2025-01, refined 2025-11):** "Too many tools or overlapping tools can distract agents from optimal strategies." — Anthropic. The 2025-11 follow-ups (Tool Search Tool, Code Execution with MCP) reframe the calculus: tool count is only a problem when toolsets are *eagerly loaded* into the model's context.
 
 **The Problem:**
 
-When LLMs face 30+ tools simultaneously, they experience:
+When LLMs face 30+ *eagerly-loaded* tools simultaneously, they experience:
 1. **Analysis paralysis**: More time spent selecting tools vs executing tasks
 2. **Wrong tool selection**: Similar tools cause confusion (inspect_dom vs screenshot vs get_visible_html)
 3. **Redundant calls**: Tools invoked that don't contribute to outcomes
 4. **Token waste**: Reading 30+ tool descriptions consumes context window
+
+**Eager vs lazy discovery — important nuance:**
+
+Lazy tool discovery is a **client-side capability**, not something the MCP server can implement on its own. The MCP `tools/list` response always returns the full list of registered tools — there's no server-side pagination or filtering primitive in the spec. Whether those tools are loaded eagerly into the model context, or kept in an embedding index and surfaced on demand, is the client's decision.
+
+- **Eagerly-loaded toolsets** (what most clients still do today): aim for ~25 or fewer tools, follow the consolidation guidance below.
+- **Lazily-discovered toolsets** (clients with the Tool Search Tool, or agents using the Code Execution with MCP pattern): can be much larger. Reported reductions: ~46.9% MCP-context-bloat reduction with Tool Search; ~98% with code-execution-with-MCP in published case studies.
+
+What the **server** should do regardless of how the client loads tools:
+- Provide high-quality, distinctive tool **names** (§14).
+- Write descriptions that explicitly list outputs and anti-patterns (§13, §15).
+- Set MCP `ToolAnnotations` (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) so search indexes have structured signals — see "Tool Annotations" subsection below.
 
 **Solution Strategies:**
 
@@ -926,7 +938,8 @@ extract_content({
 **Guidelines:**
 - Consolidate when tools differ ONLY in output format
 - Keep separate when tools have fundamentally different purposes
-- Target: <25 tools total for single-agent systems
+- For eagerly-loaded toolsets: aim for ~25 or fewer tools (rule of thumb, not a hard cap)
+- For lazily-discovered toolsets: count is less important; description quality and annotations matter more
 
 #### Strategy 2: RAG-Based Dynamic Tool Filtering
 
@@ -1032,15 +1045,45 @@ return agent.tools;
 
 **Recommended Approach:**
 
-1. **Phase 1 (Immediate)**: Tool consolidation - reduce from 34 to ~25 tools
-2. **Phase 2 (Medium-term)**: RAG-based filtering - expose only relevant subset
-3. **Phase 3 (Long-term)**: Multi-agent routing - specialized agents with <7 tools each
+1. **Phase 1 (Immediate)**: Tool consolidation where it's cheap (consolidating tools that differ only in output format).
+2. **Phase 2 (Description hygiene)**: Set `ToolAnnotations` on every tool (see subsection below) and review descriptions for §13/§15 quality. This pays off both for eager and lazy clients.
+3. **Phase 3 (Lazy clients)**: When the deployment target supports it, prefer Tool-Search-Tool / code-execution-with-MCP clients over server-side filtering — that's where the published wins are.
+4. **Phase 4 (Last resort)**: Multi-agent routing or RAG-based filtering at the server. Significant architecture work; only worth it if Phases 1–3 aren't enough.
+
+#### Subsection: MCP `ToolAnnotations` (added 2025-11)
+
+The MCP 2025-06-18 spec introduced `ToolAnnotations` — structured hints clients can use to filter, group, and describe tools to the user without parsing prose:
+
+```typescript
+import type { ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
+
+// In each tool's getMetadata():
+return {
+  name: "click",
+  description: "Click an element on the page",
+  annotations: {
+    readOnlyHint: false,    // tool modifies state
+    destructiveHint: false, // not destructive in the spec sense
+    idempotentHint: false,  // clicking twice ≠ clicking once
+    openWorldHint: false,   // doesn't reach into the open web
+  } satisfies ToolAnnotations,
+  inputSchema: { /* ... */ },
+};
+```
+
+**The four hints (all optional booleans):**
+- `readOnlyHint` — true if the tool only reads; the most useful filter for clients.
+- `destructiveHint` — true for operations the user should be warned about (rm -rf, drop table). Most browser-automation tools are NOT destructive in this sense; closing a browser or clearing logs is routine.
+- `idempotentHint` — true if calling twice with the same args has the same effect.
+- `openWorldHint` — true if the tool reaches into the open/external world (the live web, third-party APIs).
+
+**Best practice:** define a small map of presets (one per behavior class) in your shared types file and reference them from each tool, instead of inlining the same object on every metadata block. This keeps the classification reviewable in one place. See `src/tools/common/types.ts` `ANNOTATIONS` for the pattern used here.
 
 ---
 
-### 17. **Response Format Parameters** ✅ IMPORTANT
+### 17. **Response Format Parameters** ⚠️ USE SPARINGLY
 
-**Research Finding (2025-01):** "Offer response_format enum parameters so agents retrieve only necessary identifiers for downstream calls, reducing spurious tool invocations." - Anthropic
+**Research Finding (2025-01, refined 2025-11):** "Offer response_format enum parameters so agents retrieve only necessary identifiers for downstream calls, reducing spurious tool invocations." — Anthropic. The 2026 follow-up advice is to add this only when the levels produce *materially different output shapes*; for "just less verbose" cases, prefer good defaults plus truncation hints.
 
 **The Problem:**
 
@@ -1070,7 +1113,21 @@ When tools return extensive information, LLMs feel compelled to "use" all that d
 // → 3 unnecessary tool calls triggered by information overload
 ```
 
-**Solution: Add detail_level Parameter**
+**When to add `detail_level` (and when not to):**
+
+Add a `detail_level` parameter only when the levels produce *materially different output shapes* — different fields present, different nesting, or different units of information. Examples where it pays off:
+- An inspection tool where `minimal` returns only IDs/types, `standard` adds positions/sizes, `comprehensive` adds full child trees and computed styles.
+- A network tool where `minimal` returns just status+URL, `comprehensive` returns headers/body/timing.
+
+When the difference is *just verbosity* (same fields, more or fewer of them), prefer:
+- A sensible default (typically the standard/balanced shape).
+- A `limit` parameter for list-shaped outputs.
+- The "preview + confirm token" pattern for large payloads (see `confirm_output`).
+- Truncation with explicit hints in the response on how to refine.
+
+Adding `detail_level` reflexively to every inspection tool inflates the schema surface and forces every agent call to make a level decision. The 2026 guidance is to keep it where it earns its place.
+
+**Pattern when `detail_level` IS warranted:**
 
 Control information exposure based on task needs:
 
@@ -1481,7 +1538,11 @@ Based on research from:
 ### Research Dates & Updates
 
 - Initial document: Based on 2024-2025 research
-- **Latest update (2025-10-31)**: Added §14 Tool Naming, §16 Tool Count Management, §17 Response Format Parameters based on Anthropic's "Writing effective tools for AI agents" article and RAG optimization research
+- **Update (2025-10-31)**: Added §14 Tool Naming, §16 Tool Count Management, §17 Response Format Parameters based on Anthropic's "Writing effective tools for AI agents" article and RAG optimization research
+- **Update (2026-04-27)**: Reframed §16 around eager-vs-lazy discovery (Tool Search Tool / Code Execution with MCP), softened §17 (`detail_level` is now an opt-in pattern, not a default), and added the **MCP `ToolAnnotations`** subsection covering `readOnlyHint`/`destructiveHint`/`idempotentHint`/`openWorldHint`. Sources:
+  - [Anthropic — Code execution with MCP](https://www.anthropic.com/engineering/code-execution-with-mcp)
+  - [MCP Spec 2025-11-25 changelog](https://modelcontextprotocol.io/specification/2025-11-25/changelog)
+  - Tool Search Tool announcement & published context-bloat reductions (~46.9%)
 
 ## Universal Applicability
 

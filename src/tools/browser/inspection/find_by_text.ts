@@ -1,4 +1,4 @@
-import { ToolHandler, ToolMetadata, SessionConfig } from '../../common/types.js';
+import { ToolHandler, ToolMetadata, SessionConfig, ANNOTATIONS } from '../../common/types.js';
 import { BrowserToolBase } from '../base.js';
 import type { ToolContext, ToolResponse } from '../../common/types.js';
 
@@ -15,6 +15,7 @@ export class FindByTextTool extends BrowserToolBase implements ToolHandler {
     return {
       name: "find_by_text",
       description: "Find elements by their text content. Essential for finding elements without good selectors, especially in poorly structured DOM. Returns elements with position, visibility, and interaction state. Supports exact match, case-sensitive search, and NEW: regex pattern matching for advanced text searching (e.g., '/\\d+ items?/' to find elements with numbers).",
+      annotations: ANNOTATIONS.readOnly,
       priority: 8,
       outputs: [
         "Header showing 'No elements found ...' or 'Found N elements ...'",

@@ -1,5 +1,5 @@
 import { BrowserToolBase } from '../base.js';
-import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, createSuccessResponse, createErrorResponse } from '../../common/types.js';
+import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, ANNOTATIONS, createSuccessResponse, createErrorResponse } from '../../common/types.js';
 
 /**
  * Interface for element match data
@@ -27,6 +27,7 @@ export class QuerySelectorTool extends BrowserToolBase {
     return {
       name: "query_selector",
       description: "Test a selector and return detailed information about all matched elements. Essential for selector debugging and finding the right element to interact with. Returns compact text format with element tag, position, text content, visibility status, and interaction capability. Shows why elements are hidden (display:none, opacity:0, zero size). Supports testid shortcuts (e.g., 'testid:submit-button'). Use limit parameter to control how many matches to show (default: 10). NEW: Use onlyVisible parameter to filter results (true=visible only, false=hidden only, undefined=all).",
+      annotations: ANNOTATIONS.readOnly,
       outputs: [
         "Header showing total matches (and filtered visible/hidden counts if requested).",
         "For each match (up to limit):",

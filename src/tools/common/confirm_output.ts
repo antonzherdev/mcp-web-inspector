@@ -1,5 +1,5 @@
 import type { ToolHandler, ToolContext, ToolResponse, ToolMetadata, SessionConfig } from './types.js';
-import { createSuccessResponse, createErrorResponse } from './types.js';
+import { createSuccessResponse, createErrorResponse, ANNOTATIONS } from './types.js';
 
 // One-time token store for deferred payload generation (closures)
 type PayloadThunk = () => Promise<string> | string;
@@ -102,6 +102,7 @@ export class ConfirmOutputTool implements ToolHandler {
     return {
       name: 'confirm_output',
       description: "Return full output for a previously previewed large result using a one-time token. Use when a tool responded with a preview + token. Safer than resending original parameters.",
+      annotations: ANNOTATIONS.readOnly,
       outputs: [
         "Full original payload if token is valid (one-time)",
         "Error: 'Invalid or expired token'",

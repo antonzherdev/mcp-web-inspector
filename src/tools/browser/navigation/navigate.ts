@@ -1,5 +1,5 @@
 import { BrowserToolBase } from '../base.js';
-import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, createSuccessResponse, createErrorResponse } from '../../common/types.js';
+import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, ANNOTATIONS, createSuccessResponse, createErrorResponse } from '../../common/types.js';
 import { gatherConsoleErrorsSince, quickNetworkIdleNote } from '../common/postAction.js';
 
 async function resetState() {
@@ -28,6 +28,7 @@ export class NavigateTool extends BrowserToolBase {
     return {
       name: "navigate",
       description,
+      annotations: ANNOTATIONS.navigation,
       inputSchema: {
         type: "object",
         properties: {
@@ -134,28 +135,27 @@ export class NavigateTool extends BrowserToolBase {
           // Ignore failures in the quick check
         }
 
-        // After waiting briefly, surface hard page errors if any
-        try {
-          const errs = await gatherConsoleErrorsSince('navigation');
-          if (errs.length > 0) {
-            // Include page title (best-effort) to aid debugging
-            let titleInfo = '';
-            try {
-              const t = await page.title();
-              if (t) titleInfo = `\nTitle: ${t}`;
-            } catch {}
-            return createErrorResponse(`Console error after navigation: ${errs[0]}${titleInfo}`);
-          }
-        } catch {
-          // If log retrieval fails, continue normally
-        }
-
         // Add page title to help the agent orient itself
         try {
           const title = await page.title();
           if (title) messages.push(`Title: ${title}`);
         } catch {
           // Ignore title failures
+        }
+
+        // Surface any console errors observed during navigation as a warning, not a failure.
+        // The page loaded; pre-existing app errors (analytics, flag SDKs, etc.) shouldn't
+        // make navigate() return isError=true.
+        try {
+          const errs = await gatherConsoleErrorsSince('navigation');
+          if (errs.length > 0) {
+            messages.push('');
+            messages.push(`⚠ Console errors observed during navigation (${errs.length}):`);
+            errs.slice(0, 3).forEach(e => messages.push(`  ${e}`));
+            if (errs.length > 3) messages.push(`  …and ${errs.length - 3} more (use get_console_logs)`);
+          }
+        } catch {
+          // If log retrieval fails, continue normally
         }
 
         return createSuccessResponse(messages);

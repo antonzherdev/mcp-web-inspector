@@ -1,4 +1,4 @@
-import { ToolHandler, ToolMetadata, SessionConfig } from '../../common/types.js';
+import { ToolHandler, ToolMetadata, SessionConfig, ANNOTATIONS } from '../../common/types.js';
 import { BrowserToolBase } from '../base.js';
 import type { ToolContext, ToolResponse } from '../../common/types.js';
 
@@ -7,6 +7,7 @@ export class MeasureElementTool extends BrowserToolBase implements ToolHandler {
     return {
       name: "measure_element",
       description: "📏 MEASUREMENT TOOL - DEBUG SPACING ISSUES: See padding, margin, border, and dimension measurements in visual box model format. Use when elements have unexpected spacing or size. Returns compact visual representation showing content → padding → border → margin with directional arrows (↑24px for top margin, etc.). Also provides raw dimensions useful for scroll detection (clientHeight vs content height). For parent-child centering issues, use inspect_dom() first (shows if child is centered in parent). For comparing alignment between two elements, use compare_element_alignment(). For quick scroll detection, use inspect_dom() instead (shows 'scrollable ↕️'). More readable than get_computed_styles() or evaluate() for box model debugging.",
+      annotations: ANNOTATIONS.readOnly,
       priority: 7,
       outputs: [
         "Header: Element: <tag id/class/testid>",

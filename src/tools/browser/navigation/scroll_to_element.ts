@@ -1,5 +1,5 @@
 import { BrowserToolBase } from '../base.js';
-import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, createSuccessResponse } from '../../common/types.js';
+import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, ANNOTATIONS, createSuccessResponse } from '../../common/types.js';
 
 /**
  * Tool for scrolling an element into view
@@ -9,6 +9,7 @@ export class ScrollToElementTool extends BrowserToolBase {
     return {
       name: "scroll_to_element",
       description: "Scroll an element into view. Automatically handles scrolling within the nearest scrollable ancestor (page or scrollable container). Essential for: making elements visible before interaction, triggering lazy-loaded content, testing scroll behavior. Position: start (top of viewport), center (middle), end (bottom). Default: start.",
+      annotations: ANNOTATIONS.interaction,
       inputSchema: {
         type: "object",
         properties: {

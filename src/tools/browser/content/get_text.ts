@@ -4,6 +4,7 @@ import {
   ToolResponse,
   ToolMetadata,
   SessionConfig,
+  ANNOTATIONS,
   createSuccessResponse,
   createErrorResponse,
 } from '../../common/types.js';
@@ -16,7 +17,8 @@ export class GetTextTool extends BrowserToolBase {
   static getMetadata(sessionConfig?: SessionConfig): ToolMetadata {
     return {
       name: "get_text",
-      description: "⚠️ RARELY NEEDED: Get ALL visible text content from the entire page (no structure, just raw text). Most tasks need structured inspection instead. ONLY use get_text for: (1) extracting text for content analysis (word count, language detection), (2) searching for text when location is completely unknown, (3) text-only snapshots for comparison. For structured tasks, use: inspect_dom() to understand page structure, find_by_text() to locate specific text with context, query_selector() to find elements. Auto-returns text if <2000 chars (small elements); if larger, returns a preview and a one-time token to fetch the full output via confirm_output. Supports testid shortcuts.",
+      description: "[may return preview+token] ⚠️ RARELY NEEDED: Get ALL visible text content from the entire page (no structure, just raw text). Most tasks need structured inspection instead. ONLY use get_text for: (1) extracting text for content analysis (word count, language detection), (2) searching for text when location is completely unknown, (3) text-only snapshots for comparison. For structured tasks, use: inspect_dom() to understand page structure, find_by_text() to locate specific text with context, query_selector() to find elements. Auto-returns text if <2000 chars (small elements); if larger, returns a preview and a one-time token to fetch the full output via confirm_output. Supports testid shortcuts.",
+      annotations: ANNOTATIONS.readOnly,
       inputSchema: {
         type: "object",
         properties: {

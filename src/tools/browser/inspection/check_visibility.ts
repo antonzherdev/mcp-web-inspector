@@ -1,5 +1,5 @@
 import { BrowserToolBase } from '../base.js';
-import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, createSuccessResponse, createErrorResponse } from '../../common/types.js';
+import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, ANNOTATIONS, createSuccessResponse, createErrorResponse } from '../../common/types.js';
 
 /**
  * Tool for checking element visibility with detailed diagnostics
@@ -10,6 +10,7 @@ export class CheckVisibilityTool extends BrowserToolBase {
     return {
       name: "check_visibility",
       description: "Check if an element is visible to the user. CRITICAL for debugging click/interaction failures. Returns detailed visibility information including viewport intersection, clipping by overflow:hidden, and whether element needs scrolling. Supports testid shortcuts (e.g., 'testid:submit-button').",
+      annotations: ANNOTATIONS.readOnly,
       priority: 4,
       outputs: [
         "Header: Visibility: <tag id/class/testid>",

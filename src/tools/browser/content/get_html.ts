@@ -4,6 +4,7 @@ import {
   ToolResponse,
   ToolMetadata,
   SessionConfig,
+  ANNOTATIONS,
   createSuccessResponse,
   createErrorResponse,
 } from '../../common/types.js';
@@ -17,7 +18,8 @@ export class GetHtmlTool extends BrowserToolBase {
   static getMetadata(sessionConfig?: SessionConfig): ToolMetadata {
     return {
       name: "get_html",
-      description: "⚠️ RARELY NEEDED: Get raw HTML markup from the page (no rendering, just source code). Most tasks need structured inspection instead. ONLY use get_html for: (1) checking specific HTML attributes or element nesting, (2) analyzing markup structure, (3) debugging SSR/HTML issues. For structured tasks, use: inspect_dom() to understand page structure with positions, query_selector() to find and inspect elements, get_computed_styles() for CSS values. Auto-returns HTML if <2000 chars (small elements); if larger, returns a preview and a one-time token to fetch the full output. Scripts removed by default for security/size. Supports testid shortcuts.",
+      description: "[may return preview+token] ⚠️ RARELY NEEDED: Get raw HTML markup from the page (no rendering, just source code). Most tasks need structured inspection instead. ONLY use get_html for: (1) checking specific HTML attributes or element nesting, (2) analyzing markup structure, (3) debugging SSR/HTML issues. For structured tasks, use: inspect_dom() to understand page structure with positions, query_selector() to find and inspect elements, get_computed_styles() for CSS values. Auto-returns HTML if <2000 chars (small elements); if larger, returns a preview and a one-time token to fetch the full output. Scripts removed by default for security/size. Supports testid shortcuts.",
+      annotations: ANNOTATIONS.readOnly,
       inputSchema: {
         type: "object",
         properties: {

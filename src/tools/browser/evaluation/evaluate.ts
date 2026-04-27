@@ -4,6 +4,7 @@ import {
   ToolResponse,
   ToolMetadata,
   SessionConfig,
+  ANNOTATIONS,
   createSuccessResponse,
   createErrorResponse,
 } from '../../common/types.js';
@@ -15,10 +16,22 @@ import { gatherConsoleErrorsSince, quickNetworkIdleNote } from '../common/postAc
  */
 export class EvaluateTool extends BrowserToolBase {
 
+  // Track which hint keys have been emitted in the current working window.
+  // The window resets whenever evaluate has been idle for IDLE_WINDOW_MS, which
+  // approximates a `/clear` / new-conversation boundary on stdio MCP (no protocol
+  // signal exists for that). See plan: see-todo-web-inspector-mcp-improvements.
+  private shownHintKeys = new Set<string>();
+  private lastEvaluateAt = 0;
+  private static readonly IDLE_WINDOW_MS = 10 * 60 * 1000; // 10 minutes
+
+  // Overridable for tests (avoid jest.useFakeTimers since real Playwright runs)
+  protected now(): number { return Date.now(); }
+
   static getMetadata(sessionConfig?: SessionConfig): ToolMetadata {
     return {
       name: "evaluate",
-      description: "⚙️ CUSTOM JAVASCRIPT EXECUTION - Execute arbitrary JavaScript in the browser console and return a compact, token-efficient summary of the result. Includes a large-output preview guard with a one-time token. ⚠️ NOT for: scroll detection (inspect_dom shows 'scrollable ↕️'), element dimensions (use measure_element), DOM inspection (use inspect_dom), CSS properties (use get_computed_styles), position comparison (use compare_element_alignment). Use ONLY when specialized tools cannot accomplish the task. Automatically detects common patterns and suggests better alternatives.",
+      description: "[may return preview+token] ⚙️ CUSTOM JAVASCRIPT EXECUTION - Execute arbitrary JavaScript in the browser console and return a compact, token-efficient summary of the result. Single expressions return their value automatically; multi-statement scripts must use `return`. Includes a large-output preview guard with a one-time token. ⚠️ NOT for: scroll detection (inspect_dom shows 'scrollable ↕️'), element dimensions (use measure_element), DOM inspection (use inspect_dom), CSS properties (use get_computed_styles), position comparison (use compare_element_alignment). Use ONLY when specialized tools cannot accomplish the task. Automatically detects common patterns and suggests better alternatives.",
+      annotations: ANNOTATIONS.arbitrary,
       outputs: [
         "Header: '✓ JavaScript execution result:'",
         "Default result: compact summary string (arrays/objects/dom nodes summarized)",
@@ -43,124 +56,63 @@ export class EvaluateTool extends BrowserToolBase {
   }
 
   /**
-   * Detect common patterns and suggest better tools
+   * Detect common patterns and suggest better tools.
+   * Returns compact one-line hints, each tagged with a stable key for session-scoped dedup.
    */
-  private detectBetterToolSuggestions(script: string): string[] {
-    const suggestions: string[] = [];
+  private detectBetterToolSuggestions(script: string): { key: string; line: string }[] {
+    const suggestions: { key: string; line: string }[] = [];
     const scriptLower = script.toLowerCase();
 
-    // Pattern: DOM inspection/querying
     if (scriptLower.match(/queryselector|getelementby|getelement|innerhtml|outerhtml|children|childnodes/)) {
-      suggestions.push(
-        '📍 DOM Inspection - Use inspect_dom({ selector: "..." })\n' +
-        '   Why: Returns semantic structure with test IDs, ARIA roles, interactive elements\n' +
-        '   Token savings: ~60% fewer tokens than parsing raw HTML'
-      );
+      suggestions.push({ key: 'inspect_dom', line: '📍 inspect_dom — semantic DOM with test IDs/ARIA (vs querySelector/innerHTML)' });
     }
 
-    // Pattern: Getting text content
     if (scriptLower.match(/textcontent|innertext/)) {
-      suggestions.push(
-        '📝 Text Content\n' +
-        '   • get_text - Extract all visible text\n' +
-        '   • find_by_text({ text: "..." }) - Locate elements by content'
-      );
+      suggestions.push({ key: 'text', line: '📝 get_text / find_by_text — extract or locate visible text' });
     }
 
-    // Pattern: Checking if element is scrollable (scrollHeight > clientHeight)
     if (scriptLower.match(/scrollheight|clientheight|scrollwidth|clientwidth/) &&
         (scriptLower.match(/scrollheight.*clientheight|clientheight.*scrollheight|scrollwidth.*clientwidth|clientwidth.*scrollwidth/) ||
          scriptLower.match(/>\s*el\.clientheight|<\s*el\.scrollheight/))) {
-      suggestions.push(
-        '📜 Scroll Detection - Use inspect_dom({ selector: "..." })\n' +
-        '   Why: Already shows "scrollable ↕️ [amount]px" for overflow containers\n' +
-        '   Token savings: ~90% fewer tokens than evaluate() + manual calculation\n' +
-        '   Better than: Comparing scrollHeight > clientHeight manually'
-      );
+      suggestions.push({ key: 'scroll_detect', line: '📜 inspect_dom — shows "scrollable ↕️Npx" (vs scrollHeight/clientHeight)' });
     }
 
-    // Pattern: Getting element position/size/layout
     if (scriptLower.match(/getboundingclientrect|offsetwidth|offsetheight|offsetleft|offsettop/) ||
         (scriptLower.match(/clientwidth|clientheight/) && !scriptLower.match(/scrollheight|scrollwidth/))) {
-      suggestions.push(
-        '📏 Element Measurements - Use measure_element({ selector: "..." })\n' +
-        '   Why: Returns position, size, gaps to siblings, and visibility state\n' +
-        '   Better than: Manual getBoundingClientRect() + visibility checks'
-      );
+      suggestions.push({ key: 'measure', line: '📏 measure_element — position/size/gaps/visibility (vs getBoundingClientRect)' });
     }
 
-    // Pattern: Walking up DOM tree / checking parents
     if (scriptLower.match(/parentelement|parentnode|offsetparent|closest/) ||
         (scriptLower.match(/while.*parent/) && scriptLower.match(/getcomputedstyle/))) {
-      suggestions.push(
-        '🔼 Parent Chain - Use inspect_ancestors({ selector: "..." })\n' +
-        '   Why: Shows width constraints, margins, overflow, flexbox/grid context\n' +
-        '   Detects: Clipping points (🎯), centering via auto margins, layout issues'
-      );
+      suggestions.push({ key: 'ancestors', line: '🔼 inspect_ancestors — width/margin/overflow chain (vs walking parentElement)' });
     }
 
-    // Pattern: Checking visibility
     if (scriptLower.match(/offsetparent|visibility|display.*none|opacity/)) {
-      suggestions.push(
-        '👁️  Visibility Check - Use check_visibility({ selector: "..." })\n' +
-        '   Returns: isVisible, inViewport, opacity, display, visibility properties\n' +
-        '   More reliable: Handles edge cases (opacity:0, visibility:hidden, etc.)'
-      );
+      suggestions.push({ key: 'visibility', line: '👁️  check_visibility — handles opacity/visibility edge cases' });
     }
 
-    // Pattern: Getting computed styles
     if (scriptLower.match(/getcomputedstyle|style\.|currentstyle/)) {
-      suggestions.push(
-        '🎨 CSS Styles - Use get_computed_styles({ selector: "..." })\n' +
-        '   Why: Returns filtered, relevant styles in compact format\n' +
-        '   Token savings: ~70% fewer tokens than full getComputedStyle() dump'
-      );
+      suggestions.push({ key: 'styles', line: '🎨 get_computed_styles — filtered relevant styles (vs full getComputedStyle)' });
     }
 
-    // Pattern: Checking element existence
     if (scriptLower.match(/\!=\s*null|\!==\s*null/) && scriptLower.match(/queryselector/)) {
-      suggestions.push(
-        '✓ Element Existence - Use element_exists({ selector: "..." })\n' +
-        '   Returns: Boolean + element summary if found\n' +
-        '   Simpler: No need for null checks'
-      );
+      suggestions.push({ key: 'exists', line: '✓ element_exists — boolean + summary (vs querySelector !== null)' });
     }
 
-    // Pattern: Finding test IDs
     if (scriptLower.match(/data-testid|data-test|data-cy/)) {
-      suggestions.push(
-        '🔍 Test IDs - Use get_test_ids()\n' +
-        '   Returns: All test identifiers grouped by type\n' +
-        '   Detects: Duplicates and validation issues'
-      );
+      suggestions.push({ key: 'testids', line: '🔍 get_test_ids — all data-testid/data-test/data-cy grouped' });
     }
 
-    // Pattern: Comparing positions/alignment
     if (scriptLower.match(/getboundingclientrect.*getboundingclientrect/) ||
         (scriptLower.match(/\.left|\.top|\.right|\.bottom/) && scriptLower.match(/===|==|!==|!=/))) {
-      suggestions.push(
-        '⚖️  Position Comparison - Use compare_element_alignment({ selector1: "...", selector2: "..." })\n' +
-        '   Returns: Alignment status (left/right/top/bottom/center), pixel gaps\n' +
-        '   Perfect for: Checking if elements are aligned or overlapping'
-      );
+      suggestions.push({ key: 'align', line: '⚖️  compare_element_alignment — alignment + pixel gaps (vs comparing rects)' });
     }
 
-    // Pattern: Scrolling operations
     if (scriptLower.match(/scrollto|scrollby|scrollintoview|scrolltop|scrollleft|window\.scroll|pageyoffset|scrolly/)) {
-      suggestions.push(
-        '📜 Scrolling - Use specialized scroll tools\n' +
-        '   • scroll_to_element({ selector: "...", position: "start|center|end" })\n' +
-        '     → Scrolls element into view (handles containers automatically)\n' +
-        '   • scroll_by({ selector: "html", pixels: 500 })\n' +
-        '     → Precise pixel scrolling for testing sticky headers, infinite scroll\n' +
-        '   Why: Playwright auto-scrolls before interactions, but these tools help with\n' +
-        '        testing scroll behavior, lazy-loading, and scroll-triggered content'
-      );
+      suggestions.push({ key: 'scroll', line: '📜 scroll_to_element / scroll_by — vs scrollTo/scrollIntoView/pageYOffset' });
     }
 
     // Pattern: Navigation (top-level or SPA routing)
-    // Detect common navigation attempts: window.location / document.location assignments,
-    // location.assign|replace, history.pushState|replaceState, and href changes.
     if (
       scriptLower.match(/\blocation\s*\./) ||
       scriptLower.match(/window\s*\.\s*location/) ||
@@ -169,16 +121,26 @@ export class EvaluateTool extends BrowserToolBase {
       scriptLower.match(/location\s*=(?!\s*location)/) ||
       scriptLower.match(/location\s*\.\s*href\s*=|location\s*\.\s*assign|location\s*\.\s*replace/)
     ) {
-      suggestions.push(
-        '🌐 Navigation\n' +
-        '   • navigate({ url: "..." }) — full document navigation with proper waits\n' +
-        '   • SPA-only: click a router link or evaluate history.pushState(...), then wait_for_element\n' +
-        '   • go_history for back/forward\n' +
-        '   Note: setting window.location.href causes a reload; prefer navigate for reliability'
-      );
+      suggestions.push({ key: 'nav', line: '🌐 navigate / go_history — vs window.location / history.pushState' });
     }
 
     return suggestions;
+  }
+
+  /**
+   * Filter `suggestions` down to the ones not already shown in this working window.
+   * If we've been idle longer than IDLE_WINDOW_MS, reset first.
+   * Mutates this.shownHintKeys with the freshly-emitted keys.
+   */
+  private filterFreshHints(suggestions: { key: string; line: string }[]): { key: string; line: string }[] {
+    const now = this.now();
+    if (now - this.lastEvaluateAt > EvaluateTool.IDLE_WINDOW_MS) {
+      this.shownHintKeys.clear();
+    }
+    this.lastEvaluateAt = now;
+    const fresh = suggestions.filter(s => !this.shownHintKeys.has(s.key));
+    fresh.forEach(s => this.shownHintKeys.add(s.key));
+    return fresh;
   }
 
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
@@ -306,9 +268,17 @@ export class EvaluateTool extends BrowserToolBase {
         };
 
         try {
-          // Build an async function so both sync and async scripts are supported
+          // Build an async function so both sync and async scripts are supported.
+          // Try treating the script as a single expression first (so bare expressions
+          // like `JSON.stringify(x)` return their value); fall back to statement-body
+          // form for multi-statement scripts that use `return`, declarations, etc.
           const AsyncFunction = Object.getPrototypeOf(async function () {/**/}).constructor as any;
-          const fn = new AsyncFunction(userScript);
+          let fn: any;
+          try {
+            fn = new AsyncFunction(`return (\n${userScript}\n);`);
+          } catch {
+            fn = new AsyncFunction(userScript);
+          }
           const result = await fn();
           const text = render(result, 0, new WeakSet());
           return { ok: true, text } as const;
@@ -356,16 +326,18 @@ export class EvaluateTool extends BrowserToolBase {
         }
       }
 
-      // After script execution (and any quick wait), surface console errors since this interaction
+      // After script execution, gather console errors since this interaction.
+      // We surface them as a warning, not as a failed response — the script ran fine.
+      let consoleErrorWarning: string[] | null = null;
       try {
         const errs = await gatherConsoleErrorsSince('interaction');
         if (errs.length > 0) {
-          let titleInfo = '';
-          try {
-            const t = await page.title();
-            if (t) titleInfo = `\nTitle: ${t}`;
-          } catch {}
-          return createErrorResponse(`Console error after evaluate: ${errs[0]}${titleInfo}`);
+          consoleErrorWarning = [
+            '',
+            `⚠ Console errors observed during evaluate (${errs.length}):`,
+            ...errs.slice(0, 3).map(e => `  ${e}`),
+            ...(errs.length > 3 ? [`  …and ${errs.length - 3} more (use get_console_logs)`] : []),
+          ];
         }
       } catch {
         // Best-effort; continue on failure
@@ -375,7 +347,8 @@ export class EvaluateTool extends BrowserToolBase {
       const totalLength = resultStr.length;
 
       const lines: string[] = [];
-      const suggestions = this.detectBetterToolSuggestions(args.script);
+      const allSuggestions = this.detectBetterToolSuggestions(args.script);
+      const freshSuggestions = this.filterFreshHints(allSuggestions);
 
       if (totalLength >= PREVIEW_THRESHOLD) {
         const previewLen = Math.min(500, totalLength);
@@ -398,11 +371,13 @@ export class EvaluateTool extends BrowserToolBase {
           lines.push(netIdleNote);
         }
 
-        if (suggestions.length > 0) {
+        if (freshSuggestions.length > 0) {
           lines.push('');
-          lines.push('💡 Consider specialized tools:');
-          suggestions.forEach(s => lines.push(`   ${s}`));
+          lines.push('💡 Specialized tools:');
+          freshSuggestions.forEach(s => lines.push(`   ${s.line}`));
         }
+
+        if (consoleErrorWarning) lines.push(...consoleErrorWarning);
 
         return createSuccessResponse(lines);
       }
@@ -414,14 +389,13 @@ export class EvaluateTool extends BrowserToolBase {
         messages.push(netIdleNote);
       }
 
-      // Detect if specialized tools would be better
-      if (suggestions.length > 0) {
+      if (freshSuggestions.length > 0) {
         messages.push('');
-        messages.push('💡 Consider using specialized tools instead:');
-        suggestions.forEach(suggestion => messages.push(`   ${suggestion}`));
-        messages.push('');
-        messages.push('ℹ️  Specialized tools are more reliable and token-efficient than evaluate()');
+        messages.push('💡 Specialized tools:');
+        freshSuggestions.forEach(s => messages.push(`   ${s.line}`));
       }
+
+      if (consoleErrorWarning) messages.push(...consoleErrorWarning);
 
       return createSuccessResponse(messages);
     });

@@ -153,4 +153,59 @@ d('Console logs after navigation - Bug Reproduction', () => {
     expect(allLogsText).toContain('First log');
     expect(allLogsText).toContain('Second log');
   }, 30000);
+
+  // Item #3: navigation-time console errors are a warning, not isError:true.
+  // (Plus item #5 from the QA notes: 'Analytics logging failed' shouldn't fail navigate.)
+  test('navigation succeeds and surfaces console errors as a warning', async () => {
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <body>
+          <h1>App</h1>
+          <script>console.error('Analytics logging failed');</script>
+        </body>
+      </html>
+    `;
+    const dataUrl = `data:text/html;base64,${Buffer.from(html).toString('base64')}`;
+
+    const result = await handleToolCall('navigate', { url: dataUrl, headless: true }, mockServer);
+    expect(result.isError).toBe(false);
+
+    const out = result.content.map((c: any) => c.text).join('\n');
+    expect(out).toContain('Navigated to');
+    expect(out).toMatch(/Console errors observed during navigation/);
+    expect(out).toContain('Analytics logging failed');
+  }, 30000);
+
+  test('navigation caps the warning list at 3 with overflow note', async () => {
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <body>
+          <h1>App</h1>
+          <script>
+            console.error('err 1');
+            console.error('err 2');
+            console.error('err 3');
+            console.error('err 4');
+            console.error('err 5');
+          </script>
+        </body>
+      </html>
+    `;
+    const dataUrl = `data:text/html;base64,${Buffer.from(html).toString('base64')}`;
+
+    const result = await handleToolCall('navigate', { url: dataUrl, headless: true }, mockServer);
+    expect(result.isError).toBe(false);
+
+    const out = result.content.map((c: any) => c.text).join('\n');
+    expect(out).toContain('Console errors observed during navigation (5)');
+    expect(out).toContain('err 1');
+    expect(out).toContain('err 2');
+    expect(out).toContain('err 3');
+    // The 4th and 5th errors are summarized, not listed verbatim.
+    expect(out).not.toContain('err 4');
+    expect(out).not.toContain('err 5');
+    expect(out).toContain('…and 2 more (use get_console_logs)');
+  }, 30000);
 });

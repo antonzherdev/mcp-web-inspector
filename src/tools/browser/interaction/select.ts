@@ -1,5 +1,5 @@
 import { BrowserToolBase } from '../base.js';
-import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, createSuccessResponse } from '../../common/types.js';
+import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, ANNOTATIONS, createSuccessResponse } from '../../common/types.js';
 
 /**
  * Tool for selecting options from dropdown menus
@@ -9,6 +9,7 @@ export class SelectTool extends BrowserToolBase {
     return {
       name: "select",
       description: "Select an element on the page with Select tag",
+      annotations: ANNOTATIONS.interaction,
       inputSchema: {
         type: "object",
         properties: {

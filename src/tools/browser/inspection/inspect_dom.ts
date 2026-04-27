@@ -1,5 +1,5 @@
 import { BrowserToolBase } from '../base.js';
-import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, createSuccessResponse, createErrorResponse } from '../../common/types.js';
+import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, ANNOTATIONS, createSuccessResponse, createErrorResponse } from '../../common/types.js';
 
 /**
  * Interface for semantic child element data
@@ -58,7 +58,10 @@ SCROLL DETECTION: Automatically detects scrollable containers and shows overflow
 
 RELATED TOOLS: For comparing TWO elements' alignment (not parent-child), use compare_element_alignment(). For box model (padding/margin), use measure_element().
 
-⚠️ More efficient than get_html() or evaluate() for structural analysis. Use BEFORE visual tools (screenshot) or evaluate(). Supports testid shortcuts.`,
+⚠️ More efficient than get_html() or evaluate() for structural analysis. Use BEFORE visual tools (screenshot) or evaluate(). Supports testid shortcuts.
+
+NOTE: Dropdowns, listboxes, dialogs, and popovers (especially in react-aria/headless UI/Radix) are commonly portaled to document.body — when a combobox or menu is open, query at the root level (e.g. \`[role="listbox"]\`, \`[role="dialog"]\`) rather than inside the trigger's subtree.`,
+      annotations: ANNOTATIONS.readOnly,
       category: 'Inspection',
       outputs: [
         "Optional selection header when multiple matches (with chosen index).",

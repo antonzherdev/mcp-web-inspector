@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import * as path from 'node:path';
 import type { ToolContext, ToolResponse, ToolMetadata, SessionConfig } from '../../common/types.js';
+import { ANNOTATIONS } from '../../common/types.js';
 import { BrowserToolBase } from '../base.js';
 import { makeConfirmPreview } from '../../common/confirm_output.js';
 
@@ -12,7 +13,8 @@ export class GetRequestDetailsTool extends BrowserToolBase {
   static getMetadata(sessionConfig?: SessionConfig): ToolMetadata {
     return {
       name: "get_request_details",
-      description: "Get detailed information about a specific network request by index (from list_network_requests). Returns request/response headers, body (truncated at 500 chars), timing, and size. Request bodies with passwords are automatically masked. If a request or response body exceeds 500 chars, includes a preview and a one-time confirm_output token that, when called, saves the full body to disk under ./.mcp-web-inspector/network-bodies/ and returns the file path(s). Essential for debugging API responses and investigating failed requests.",
+      description: "[may return preview+token] Get detailed information about a specific network request by index (from list_network_requests). Returns request/response headers, body (truncated at 500 chars), timing, and size. Request bodies with passwords are automatically masked. If a request or response body exceeds 500 chars, includes a preview and a one-time confirm_output token that, when called, saves the full body to disk under ./.mcp-web-inspector/network-bodies/ and returns the file path(s). Essential for debugging API responses and investigating failed requests.",
+      annotations: ANNOTATIONS.readOnly,
       inputSchema: {
         type: "object",
         properties: {

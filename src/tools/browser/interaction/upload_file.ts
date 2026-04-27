@@ -1,5 +1,5 @@
 import { BrowserToolBase } from '../base.js';
-import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, createSuccessResponse } from '../../common/types.js';
+import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, ANNOTATIONS, createSuccessResponse } from '../../common/types.js';
 
 /**
  * Tool for uploading files
@@ -9,6 +9,7 @@ export class UploadFileTool extends BrowserToolBase {
     return {
       name: "upload_file",
       description: "Upload a file to an input[type='file'] element on the page",
+      annotations: ANNOTATIONS.interaction,
       inputSchema: {
         type: "object",
         properties: {

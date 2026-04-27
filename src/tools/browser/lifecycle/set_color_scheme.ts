@@ -6,6 +6,7 @@ import {
   ToolMetadata,
   ToolResponse,
   SessionConfig,
+  ANNOTATIONS,
 } from '../../common/types.js';
 
 type SchemeInput = 'dark' | 'light' | 'system' | 'no-preference';
@@ -36,6 +37,7 @@ export class SetColorSchemeTool extends BrowserToolBase {
     return {
       name: "set_color_scheme",
       description: "Set the browser color scheme that controls CSS prefers-color-scheme. Defaults to system appearance. Use before inspecting colors or taking screenshots. Options: system (clear override to follow OS/browser setting), dark, light, no-preference (simulate agents with no declared preference). Returns confirmation of the active scheme.",
+      annotations: ANNOTATIONS.internalState,
       inputSchema: {
         type: "object",
         properties: {

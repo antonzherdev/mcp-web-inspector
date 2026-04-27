@@ -1,5 +1,5 @@
 import { BrowserToolBase } from '../base.js';
-import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, createSuccessResponse, createErrorResponse } from '../../common/types.js';
+import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, ANNOTATIONS, createSuccessResponse, createErrorResponse } from '../../common/types.js';
 
 /**
  * Tool for comparing alignment of two elements
@@ -9,6 +9,7 @@ export class CompareElementAlignmentTool extends BrowserToolBase {
     return {
       name: "compare_element_alignment",
       description: "COMPARE TWO ELEMENTS: Get comprehensive alignment and dimension comparison in one call. Shows edge alignment (top, left, right, bottom), center alignment (horizontal, vertical), and dimensions (width, height). Perfect for debugging 'are these headers aligned?' or 'do these panels match?'. Returns all alignment info with ✓/✗ symbols and pixel differences. For parent-child centering, use inspect_dom() instead (automatically shows if children are centered in parent). More efficient than evaluate() with manual getBoundingClientRect() calculations.",
+      annotations: ANNOTATIONS.readOnly,
       outputs: [
         "Optional warnings when a selector matched multiple elements (uses first visible; suggests adding unique data-testid).",
         "Header: Alignment: <elem1> vs <elem2>",

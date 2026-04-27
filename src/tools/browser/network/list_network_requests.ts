@@ -1,4 +1,5 @@
 import type { ToolContext, ToolResponse, ToolMetadata, SessionConfig } from '../../common/types.js';
+import { ANNOTATIONS } from '../../common/types.js';
 import { BrowserToolBase } from '../base.js';
 
 interface ListNetworkRequestsArgs {
@@ -11,6 +12,7 @@ export class ListNetworkRequestsTool extends BrowserToolBase {
     return {
       name: "list_network_requests",
       description: "List recent network requests captured by the browser. Returns compact text format with method, URL, status, resource type, timing, and size. Essential for debugging API calls and performance issues. Use get_request_details() to inspect full headers and body for specific requests.",
+      annotations: ANNOTATIONS.readOnly,
       inputSchema: {
         type: "object",
         properties: {

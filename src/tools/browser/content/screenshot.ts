@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import * as path from 'node:path';
 import type { Page } from 'playwright';
 import { BrowserToolBase } from '../base.js';
-import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, createSuccessResponse } from '../../common/types.js';
+import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, ANNOTATIONS, createSuccessResponse } from '../../common/types.js';
 import { makeConfirmPreview } from '../../common/confirm_output.js';
 
 /**
@@ -15,7 +15,7 @@ export class ScreenshotTool extends BrowserToolBase {
     const screenshotsDir = sessionConfig?.screenshotsDir || './.mcp-web-inspector/screenshots';
 
     const description = [
-      '📸 VISUAL OUTPUT TOOL - Captures page/element appearance and saves to file. Essential for: visual regression testing, sharing with humans, confirming UI appearance (colors/fonts/images).',
+      '[may return preview+token] 📸 VISUAL OUTPUT TOOL - Captures page/element appearance and saves to file. Essential for: visual regression testing, sharing with humans, confirming UI appearance (colors/fonts/images).',
       '',
       '❌ WRONG: "Take screenshot to debug button alignment"',
       '✅ RIGHT: "Use compare_element_alignment() - alignment in <100 tokens"',
@@ -38,6 +38,7 @@ export class ScreenshotTool extends BrowserToolBase {
     return {
       name: "visual_screenshot_for_humans",
       description,
+      annotations: ANNOTATIONS.readOnly,
       inputSchema: {
         type: "object",
         properties: {

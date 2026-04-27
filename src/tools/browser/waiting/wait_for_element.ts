@@ -1,5 +1,5 @@
 import { BrowserToolBase } from '../base.js';
-import { ToolContext, ToolResponse, ToolMetadata, SessionConfig } from '../../common/types.js';
+import { ToolContext, ToolResponse, ToolMetadata, SessionConfig, ANNOTATIONS } from '../../common/types.js';
 
 export interface WaitForElementArgs {
   selector: string;
@@ -12,6 +12,7 @@ export class WaitForElementTool extends BrowserToolBase {
     return {
       name: "wait_for_element",
       description: "Wait for an element to reach a specific state (visible, hidden, attached, detached). Better than sleep() for waiting on dynamic content. Returns duration and current element status. Supports testid shortcuts (e.g., 'testid:submit-button').",
+      annotations: ANNOTATIONS.readOnly,
       inputSchema: {
         type: "object",
         properties: {
