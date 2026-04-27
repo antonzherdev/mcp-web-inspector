@@ -1,8 +1,7 @@
 import type { Browser, Page } from 'playwright';
 import { chromium, firefox, webkit, devices } from 'playwright';
 import { spawnSync } from 'node:child_process';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import type { ToolContext, SessionConfig } from './tools/common/types.js';
+import type { ToolContext, SessionConfig, ToolResponse } from './tools/common/types.js';
 import { getToolInstance, isBrowserTool, executeTool } from './tools/common/registry.js';
 import { ScreenshotTool } from './tools/browser/content/screenshot.js';
 import { GetConsoleLogsTool } from './tools/browser/console/get_console_logs.js';
@@ -788,7 +787,7 @@ export async function handleToolCall(
   name: string,
   args: any,
   server: any
-): Promise<CallToolResult> {
+): Promise<ToolResponse> {
   try {
 
     // Special case for browser close to ensure it always works

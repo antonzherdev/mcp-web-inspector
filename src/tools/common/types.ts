@@ -1,5 +1,18 @@
-import type { CallToolResult, TextContent, ImageContent, Tool, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult, Tool, ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
 import type { Page, Browser, APIRequestContext } from 'playwright';
+
+// Loosened content item type used in ToolResponse.
+// MCP SDK ≥1.22 types CallToolResult.content as a discriminated union
+// (TextContent | ImageContent | ...), which forces narrowing before any
+// property access. Our tools and tests overwhelmingly read `.text`, so we
+// keep a single shape with optional fields to avoid a 489-call refactor.
+export interface ToolContentItem {
+  type: 'text' | 'image' | string;
+  text?: string;
+  data?: string;
+  mimeType?: string;
+  [k: string]: unknown;
+}
 
 // MCP ToolAnnotations presets. Hints to the client about a tool's behavior:
 //   readOnlyHint   — tool does not modify environment (DOM, browser state, files)
@@ -43,8 +56,8 @@ export interface ToolContext {
 }
 
 // Standard response format for all tools
-export interface ToolResponse extends CallToolResult {
-  content: (TextContent | ImageContent)[];
+export interface ToolResponse extends Omit<CallToolResult, 'content'> {
+  content: ToolContentItem[];
   isError: boolean;
 }
 
