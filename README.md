@@ -962,10 +962,10 @@ Drag an element to a target location
   - targetSelector (string, required): CSS selector for the target location
 
 #### `fill`
-fill out an input field
+fill an input/textarea/contenteditable; if the selector matches a wrapper, descends up to 4 levels to a unique fillable descendant (errors if zero or multiple)
 
 - Parameters:
-  - selector (string, required): CSS selector for input field
+  - selector (string, required): CSS selector for input field or its wrapper
   - value (string, required): Value to fill
 
 #### `hover`

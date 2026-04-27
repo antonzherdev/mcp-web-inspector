@@ -1,5 +1,5 @@
 import { ClickTool } from '../click.js';
-import { FillTool } from '../fill.js';
+import { FillTool, BOUNDED_FILLABLE_DESCENDANT_SELECTOR } from '../fill.js';
 import { SelectTool } from '../select.js';
 import { HoverTool } from '../hover.js';
 import { UploadFileTool } from '../upload_file.js';
@@ -169,6 +169,8 @@ describe('Browser Interaction Tools', () => {
 
       const mockElement = {
         fill: jest.fn(async () => {}),
+        evaluate: jest.fn(async () => ({ isFillable: true, tag: 'input' })),
+        locator: jest.fn(),
       };
       const selectSpy = jest
         .spyOn(fillTool as any, 'selectPreferredLocator')
@@ -179,9 +181,130 @@ describe('Browser Interaction Tools', () => {
 
       expect(mockPageLocator).toHaveBeenCalledWith('#test-input');
       expect(mockElement.fill).toHaveBeenCalledWith('test value');
+      expect(mockElement.locator).not.toHaveBeenCalled();
       expect(result.isError).toBe(false);
       expect(result.content[0].text).toContain('Filled');
       selectSpy.mockRestore();
+    });
+
+    test('should descend from a wrapper to a unique fillable descendant', async () => {
+      const args = {
+        selector: 'testid:email-field',
+        value: 'foo@bar.com',
+      };
+
+      const targetEl = {
+        fill: jest.fn(async () => {}),
+        evaluate: jest.fn(async () => '<input type="email">'),
+      };
+      const descendantsLocator = {
+        count: jest.fn(async () => 1),
+        first: jest.fn(() => targetEl),
+        nth: jest.fn(),
+      };
+      const wrapper = {
+        fill: jest.fn(async () => {}),
+        evaluate: jest.fn(async () => ({ isFillable: false, tag: 'div' })),
+        locator: jest.fn(() => descendantsLocator),
+      };
+
+      const selectSpy = jest
+        .spyOn(fillTool as any, 'selectPreferredLocator')
+        .mockResolvedValue({ element: wrapper, elementIndex: 0, totalCount: 1 });
+      mockPageLocator.mockImplementation(() => ({}));
+
+      const result = await fillTool.execute(args, mockContext);
+
+      expect(wrapper.locator).toHaveBeenCalledWith(BOUNDED_FILLABLE_DESCENDANT_SELECTOR);
+      expect(descendantsLocator.count).toHaveBeenCalled();
+      expect(targetEl.fill).toHaveBeenCalledWith('foo@bar.com');
+      expect(wrapper.fill).not.toHaveBeenCalled();
+      expect(result.isError).toBe(false);
+      expect(result.content[0].text).toContain('Filled testid:email-field with: foo@bar.com');
+      expect(result.content[0].text).toContain('descended into <input type="email">');
+      selectSpy.mockRestore();
+    });
+
+    test('should error when wrapper has no fillable descendants', async () => {
+      const args = { selector: '#empty-wrapper', value: 'x' };
+
+      const descendantsLocator = {
+        count: jest.fn(async () => 0),
+        first: jest.fn(),
+        nth: jest.fn(),
+      };
+      const wrapper = {
+        fill: jest.fn(async () => {}),
+        evaluate: jest.fn(async () => ({ isFillable: false, tag: 'section' })),
+        locator: jest.fn(() => descendantsLocator),
+      };
+
+      const selectSpy = jest
+        .spyOn(fillTool as any, 'selectPreferredLocator')
+        .mockResolvedValue({ element: wrapper, elementIndex: 0, totalCount: 1 });
+      mockPageLocator.mockImplementation(() => ({}));
+
+      const result = await fillTool.execute(args, mockContext);
+
+      expect(wrapper.fill).not.toHaveBeenCalled();
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain('no fillable descendants within 4 levels');
+      expect(result.content[0].text).toContain('<section>');
+      selectSpy.mockRestore();
+    });
+
+    test('should error when wrapper has multiple fillable descendants', async () => {
+      const args = { selector: 'testid:form', value: 'x' };
+
+      const candidateInfos = [
+        { tag: 'input', type: 'text', name: 'first', id: null, placeholder: 'First name', ariaLabel: null, testid: null },
+        { tag: 'input', type: 'text', name: 'last', id: null, placeholder: 'Last name', ariaLabel: null, testid: null },
+      ];
+      const candidateNodes = candidateInfos.map((info) => ({
+        evaluate: jest.fn(async () => info),
+      }));
+      const descendantsLocator = {
+        count: jest.fn(async () => candidateInfos.length),
+        first: jest.fn(),
+        nth: jest.fn((i: number) => candidateNodes[i]),
+      };
+      const wrapper = {
+        fill: jest.fn(async () => {}),
+        evaluate: jest.fn(async () => ({ isFillable: false, tag: 'form' })),
+        locator: jest.fn(() => descendantsLocator),
+      };
+
+      const selectSpy = jest
+        .spyOn(fillTool as any, 'selectPreferredLocator')
+        .mockResolvedValue({ element: wrapper, elementIndex: 0, totalCount: 1 });
+      mockPageLocator.mockImplementation(() => ({}));
+
+      const result = await fillTool.execute(args, mockContext);
+
+      expect(wrapper.fill).not.toHaveBeenCalled();
+      expect(result.isError).toBe(true);
+      const text = result.content[0].text;
+      expect(text).toContain('2 fillable descendants');
+      expect(text).toContain('name="first"');
+      expect(text).toContain('name="last"');
+      expect(text).toContain('placeholder="First name"');
+      selectSpy.mockRestore();
+    });
+
+    test('BOUNDED_FILLABLE_DESCENDANT_SELECTOR covers depths 1..4 with all fillable forms', () => {
+      // depth 1 direct children, plus depths 2..4 reached through `* >`
+      expect(BOUNDED_FILLABLE_DESCENDANT_SELECTOR).toContain(':scope > input');
+      expect(BOUNDED_FILLABLE_DESCENDANT_SELECTOR).toContain(':scope > textarea');
+      expect(BOUNDED_FILLABLE_DESCENDANT_SELECTOR).toContain(':scope > [contenteditable=""]');
+      expect(BOUNDED_FILLABLE_DESCENDANT_SELECTOR).toContain(':scope > [contenteditable="true"]');
+      expect(BOUNDED_FILLABLE_DESCENDANT_SELECTOR).toContain(':scope > * > textarea');
+      expect(BOUNDED_FILLABLE_DESCENDANT_SELECTOR).toContain(':scope > * > * > textarea');
+      expect(BOUNDED_FILLABLE_DESCENDANT_SELECTOR).toContain(':scope > * > * > * > textarea');
+      // does not extend past 4 levels
+      expect(BOUNDED_FILLABLE_DESCENDANT_SELECTOR).not.toContain(':scope > * > * > * > * > textarea');
+      // excludes non-fillable input types
+      expect(BOUNDED_FILLABLE_DESCENDANT_SELECTOR).toContain(':not([type="checkbox"])');
+      expect(BOUNDED_FILLABLE_DESCENDANT_SELECTOR).toContain(':not([type="hidden"])');
     });
   });
 
