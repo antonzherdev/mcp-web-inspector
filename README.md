@@ -929,7 +929,7 @@ Navigate to a URL. Browser sessions (cookies, localStorage, sessionStorage) are 
   - height (number, optional): Viewport height in pixels. If not specified, automatically matches screen height. Ignored if device is specified.
   - timeout (number, optional): Navigation timeout in milliseconds
   - waitUntil (string, optional): Navigation wait condition
-  - headless (boolean, optional): Run browser in headless mode (default: true - no window shown)
+  - headless (boolean, optional): Run browser in headless mode (no visible window). Defaults to visible on desktop, headless on Linux without a display or when --headless is passed.
 
 #### `scroll_by`
 Scroll a container (or page) by a specific number of pixels. Auto-detects scroll direction when only one is available. Essential for: testing sticky headers/footers, triggering infinite scroll, carousel navigation, precise scroll position testing. Use 'html' or 'body' for page scrolling. Positive pixels = down/right, negative = up/left. Outputs: ✓ success summary with axis position and percent of max scroll; ⚠️ boundary notice when movement is limited; ⚠️ ambiguous-direction guidance when both axes scroll; ⚠️ not-scrollable report with ancestor suggestions; 💡 follow-up tips matching the detected scenario.

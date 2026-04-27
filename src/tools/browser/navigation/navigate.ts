@@ -19,7 +19,6 @@ export class NavigateTool extends BrowserToolBase {
   static getMetadata(sessionConfig?: SessionConfig): ToolMetadata {
     const sessionEnabled = sessionConfig?.saveSession ?? true;
     const userDataDir = sessionConfig?.userDataDir || './.mcp-web-inspector/user-data';
-    const headlessDefault = sessionConfig?.headlessDefault ?? false;
 
     const description = sessionEnabled
       ? `Navigate to a URL. Browser sessions (cookies, localStorage, sessionStorage) are automatically saved in ${userDataDir} directory and persist across restarts. To clear saved sessions, delete the directory.`
@@ -47,7 +46,7 @@ export class NavigateTool extends BrowserToolBase {
           height: { type: "number", description: "Viewport height in pixels. If not specified, automatically matches screen height. Ignored if device is specified." },
           timeout: { type: "number", description: "Navigation timeout in milliseconds" },
           waitUntil: { type: "string", description: "Navigation wait condition" },
-          headless: { type: "boolean", description: `Run browser in headless mode (default: ${headlessDefault ? 'true - no window shown' : 'false - browser window visible'})` }
+          headless: { type: "boolean", description: "Run browser in headless mode (no visible window). Defaults to visible on desktop, headless on Linux without a display or when --headless is passed." }
         },
         required: ["url"],
       },
