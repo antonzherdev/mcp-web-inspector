@@ -10,6 +10,7 @@ import { setSessionConfig } from "./toolHandler.js";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { createServer } from "node:net";
 
 // Get package.json version
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -45,6 +46,9 @@ const { values } = parseArgs({
       type: 'boolean',
       default: false,
     },
+    'cdp-port': {
+      type: 'string',
+    },
     'print-tools-json': {
       type: 'boolean',
       default: false,
@@ -57,18 +61,52 @@ const { values } = parseArgs({
   strict: false,
 });
 
+// Probe localhost:port; resolve true if free, false if in use.
+function isPortFree(port: number): Promise<boolean> {
+  return new Promise(resolve => {
+    const srv = createServer();
+    srv.once('error', () => resolve(false));
+    srv.once('listening', () => srv.close(() => resolve(true)));
+    srv.listen(port, '127.0.0.1');
+  });
+}
+
+// First free port in [start, start+span). Throws if none.
+async function findFreePort(start: number, span: number): Promise<number> {
+  for (let p = start; p < start + span; p++) {
+    if (await isPortFree(p)) return p;
+  }
+  throw new Error(`No free CDP port in ${start}..${start + span - 1}`);
+}
+
+// Resolve --cdp-port: 0 disables; explicit value used as-is; unset auto-picks from 9222 upward.
+async function resolveCdpPort(raw: string | undefined): Promise<number> {
+  if (raw === undefined) return findFreePort(9222, 100);
+  const n = Number.parseInt(raw, 10);
+  if (!Number.isInteger(n) || n < 0 || n > 65535) {
+    console.error(`Invalid --cdp-port value: ${raw}. Must be an integer in 0..65535 (0 disables).`);
+    process.exit(1);
+  }
+  return n;
+}
+
 // Configure session settings (session saving is enabled by default)
 const baseDir = String(values['user-data-dir'] || './.mcp-web-inspector');
-const sessionConfig = {
-  saveSession: !Boolean(values['no-save-session']),
-  userDataDir: `${baseDir}/user-data`,
-  screenshotsDir: `${baseDir}/screenshots`,
-  headlessDefault: Boolean(values['headless']) || (process.platform === 'linux' && !process.env.DISPLAY && !process.env.WAYLAND_DISPLAY),
-  exposeSensitiveNetworkData: Boolean(values['expose-sensitive-network-data']),
-};
-setSessionConfig(sessionConfig);
 
 async function runServer() {
+  // Skip port resolution when only printing metadata — no browser will launch.
+  const printOnly = Boolean(values['print-tools-json'] || values['print-tools-md']);
+  const cdpPort = printOnly ? 0 : await resolveCdpPort(values['cdp-port'] as string | undefined);
+  const sessionConfig = {
+    saveSession: !Boolean(values['no-save-session']),
+    userDataDir: `${baseDir}/user-data`,
+    screenshotsDir: `${baseDir}/screenshots`,
+    headlessDefault: Boolean(values['headless']) || (process.platform === 'linux' && !process.env.DISPLAY && !process.env.WAYLAND_DISPLAY),
+    exposeSensitiveNetworkData: Boolean(values['expose-sensitive-network-data']),
+    cdpPort,
+  };
+  setSessionConfig(sessionConfig);
+
   // Create tool definitions with session config
   const TOOLS = createToolDefinitions(sessionConfig);
 
@@ -86,6 +124,10 @@ async function runServer() {
 
   console.error(`Starting mcp-web-inspector v${VERSION}`);
 
+  const cdpInstruction = sessionConfig.cdpPort > 0
+    ? `External Playwright clients can attach to this browser via Chrome DevTools Protocol at http://localhost:${sessionConfig.cdpPort} — pass that URL to chromium.connectOverCDP() to share cookies, localStorage, and the open page set with this server.`
+    : undefined;
+
   const server = new Server(
     {
       name: "mcp-web-inspector",
@@ -96,6 +138,7 @@ async function runServer() {
         resources: {},
         tools: {},
       },
+      ...(cdpInstruction ? { instructions: cdpInstruction } : {}),
     }
   );
 

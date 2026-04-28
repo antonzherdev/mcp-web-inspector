@@ -39,6 +39,7 @@ let sessionConfig: SessionConfig = {
   screenshotsDir: './.mcp-web-inspector/screenshots',
   headlessDefault: false,
   exposeSensitiveNetworkData: false,
+  cdpPort: 0,
 };
 
 type ColorSchemeOverride = 'light' | 'dark' | 'no-preference';
@@ -480,10 +481,14 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
       // internal network but the app is served from a public CDN.
 
       // Prepare context options
+      const launchArgs = ['--disable-features=LocalNetworkAccessChecks'];
+      if (sessionConfig.cdpPort && sessionConfig.cdpPort > 0) {
+        launchArgs.push(`--remote-debugging-port=${sessionConfig.cdpPort}`);
+      }
       const contextOptions: any = {
         headless,
         executablePath: executablePath,
-        args: ['--disable-features=LocalNetworkAccessChecks'],
+        args: launchArgs,
       };
 
       // If device config exists, use it; otherwise use manual viewport/userAgent
@@ -523,7 +528,10 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
       } else {
         browser = await browserInstance.launch({
           headless,
-          executablePath: executablePath
+          executablePath: executablePath,
+          args: sessionConfig.cdpPort && sessionConfig.cdpPort > 0
+            ? [`--remote-debugging-port=${sessionConfig.cdpPort}`]
+            : [],
         });
 
         currentBrowserType = browserType;
@@ -701,10 +709,14 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
     }
 
     // Prepare context options
+    const retryLaunchArgs = ['--disable-features=LocalNetworkAccessChecks'];
+    if (sessionConfig.cdpPort && sessionConfig.cdpPort > 0) {
+      retryLaunchArgs.push(`--remote-debugging-port=${sessionConfig.cdpPort}`);
+    }
     const retryContextOptions: any = {
       headless,
       executablePath: executablePath,
-      args: ['--disable-features=LocalNetworkAccessChecks'],
+      args: retryLaunchArgs,
     };
 
     // If device config exists, use it; otherwise use manual viewport/userAgent
@@ -741,7 +753,10 @@ export async function ensureBrowser(browserSettings?: BrowserSettings) {
     } else {
       browser = await browserInstance.launch({
         headless,
-        executablePath: executablePath
+        executablePath: executablePath,
+        args: sessionConfig.cdpPort && sessionConfig.cdpPort > 0
+          ? [`--remote-debugging-port=${sessionConfig.cdpPort}`]
+          : [],
       });
       currentBrowserType = browserType;
 

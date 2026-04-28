@@ -18,6 +18,7 @@ Server name: `playwright-mcp` (important for tool name length constraints - some
 
 - `--no-save-session` - Disable session persistence (start fresh each time)
 - `--user-data-dir <path>` - Customize where session data is stored (default: `./.mcp-web-inspector`)
+- `--cdp-port <number>` - Chromium remote-debugging port. **Default:** auto-pick the first free port starting at `9222` (so multiple parallel instances don't collide). Pass an explicit number to pin a port, or `0` to disable CDP entirely. When enabled, external Playwright clients can attach to the same browser via `chromium.connectOverCDP("http://localhost:<port>")` — useful for seed/login scripts that share cookies and the open page set with the MCP server. The resolved URL is surfaced via the MCP `Server` `instructions` field at the initialize handshake. **Security:** the port has no authentication; anyone with local access to the machine can drive the browser. Disable on shared/multi-tenant hosts with `--cdp-port 0`.
 
 **Examples:**
 

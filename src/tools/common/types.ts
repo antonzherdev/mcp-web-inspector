@@ -45,6 +45,8 @@ export interface SessionConfig {
   // When true, network tools may show more sensitive data (e.g., partial auth headers).
   // Defaults to false for safety; configured via CLI/session, not per-tool params.
   exposeSensitiveNetworkData?: boolean;
+  // Chromium remote-debugging-port. 0 disables CDP exposure.
+  cdpPort?: number;
 }
 
 // Context for tool execution
