@@ -40,10 +40,24 @@ let sessionConfig: SessionConfig = {
   headlessDefault: false,
   exposeSensitiveNetworkData: false,
   cdpPort: 0,
+  warmupBrowser: false,
 };
 
 type ColorSchemeOverride = 'light' | 'dark' | 'no-preference';
 let colorSchemeOverride: ColorSchemeOverride | null = null;
+
+// Session-scoped flag: the verbose "matched multiple elements" nth-selector
+// guidance is only emitted once per browser session. After the first emit,
+// tools surface only the short ⚠ warning to keep agent context lean.
+let nthHintShown = false;
+
+export function hasShownNthHint(): boolean {
+  return nthHintShown;
+}
+
+export function markNthHintShown(): void {
+  nthHintShown = true;
+}
 
 /**
  * Sets the session configuration
@@ -83,6 +97,7 @@ export function resetBrowserState() {
   currentBrowserType = 'chromium';
   currentDevice = undefined;
   networkLog = [];
+  nthHintShown = false;
   clearConsoleLogs();
 }
 

@@ -53,8 +53,7 @@ export class CheckVisibilityTool extends BrowserToolBase {
    */
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
     return this.safeExecute(context, async (page) => {
-      const selector = this.normalizeSelector(args.selector);
-      const locator = page.locator(selector);
+      const locator = await this.createScopedLocator(page, args.selector);
 
       try {
         // Use standard element selection with visibility preference
@@ -63,7 +62,7 @@ export class CheckVisibilityTool extends BrowserToolBase {
         });
 
         // Format selection warning if multiple elements matched
-        const multipleMatchWarning = this.formatElementSelectionInfo(
+        const multipleMatchWarning = await this.formatElementSelectionInfo(
           args.selector,
           elementIndex,
           totalCount

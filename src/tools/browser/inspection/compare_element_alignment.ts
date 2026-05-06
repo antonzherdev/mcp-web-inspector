@@ -52,13 +52,10 @@ export class CompareElementAlignmentTool extends BrowserToolBase {
    */
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
     return this.safeExecute(context, async (page) => {
-      const selector1 = this.normalizeSelector(args.selector1);
-      const selector2 = this.normalizeSelector(args.selector2);
-
       try {
         // Build locators for both elements
-        const locator1 = page.locator(selector1);
-        const locator2 = page.locator(selector2);
+        const locator1 = await this.createScopedLocator(page, args.selector1);
+        const locator2 = await this.createScopedLocator(page, args.selector2);
 
         // Check existence first to preserve legacy error messages expected by tests
         const count1 = await locator1.count();
@@ -82,7 +79,7 @@ export class CompareElementAlignmentTool extends BrowserToolBase {
           const sel1 = await this.selectPreferredLocator(locator1, {
             originalSelector: args.selector1,
           });
-          selectionWarning1 = this.formatElementSelectionInfo(
+          selectionWarning1 = await this.formatElementSelectionInfo(
             args.selector1,
             sel1.elementIndex,
             sel1.totalCount,
@@ -90,7 +87,7 @@ export class CompareElementAlignmentTool extends BrowserToolBase {
           targetLocator1 = sel1.element;
         } catch {
           // Fallback to first() when visibility checks are unavailable (tests/mocks)
-          selectionWarning1 = this.formatElementSelectionInfo(
+          selectionWarning1 = await this.formatElementSelectionInfo(
             args.selector1,
             0,
             count1,
@@ -101,14 +98,14 @@ export class CompareElementAlignmentTool extends BrowserToolBase {
           const sel2 = await this.selectPreferredLocator(locator2, {
             originalSelector: args.selector2,
           });
-          selectionWarning2 = this.formatElementSelectionInfo(
+          selectionWarning2 = await this.formatElementSelectionInfo(
             args.selector2,
             sel2.elementIndex,
             sel2.totalCount,
           );
           targetLocator2 = sel2.element;
         } catch {
-          selectionWarning2 = this.formatElementSelectionInfo(
+          selectionWarning2 = await this.formatElementSelectionInfo(
             args.selector2,
             0,
             count2,

@@ -723,7 +723,7 @@ Issues:
 Test a selector and return detailed information about all matched elements. Essential for selector debugging and finding the right element to interact with. Returns compact text format with element tag, position, text content, visibility status, and interaction capability. Shows why elements are hidden (display:none, opacity:0, zero size). Supports testid shortcuts (e.g., 'testid:submit-button'). Use limit parameter to control how many matches to show (default: 10). NEW: Use onlyVisible parameter to filter results (true=visible only, false=hidden only, undefined=all).
 
 - Parameters:
-  - selector (string, required): CSS selector, text selector, or testid shorthand to test (e.g., 'button.submit', 'testid:login-form', 'text=Sign In')
+  - selector (string, required): CSS selector, text selector, or testid shorthand to test (e.g., 'button.submit', 'testid:login-form', 'text=Sign In', 'dialog::button' to scope the lookup to the topmost open dialog/sheet)
   - limit (number, optional): Maximum number of elements to return detailed info for (default: 10, recommended max: 50)
   - onlyVisible (boolean, optional): Filter results by visibility: true = show only visible elements, false = show only hidden elements, undefined/not specified = show all elements (default: undefined)
   - showAttributes (string, optional): Comma-separated list of HTML attributes to display for each element (e.g., 'id,name,aria-label,href,type'). If not specified, attributes are not shown.
@@ -952,7 +952,7 @@ Scroll an element into view. Automatically handles scrolling within the nearest 
 Click an element on the page
 
 - Parameters:
-  - selector (string, required): CSS selector for the element to click
+  - selector (string, required): CSS selector for the element to click. Supports 'testid:NAME' and 'dialog::SELECTOR' (scopes the lookup to the topmost open dialog/sheet, e.g. 'dialog::testid:confirm').
 
 #### `drag`
 Drag an element to a target location
@@ -965,7 +965,7 @@ Drag an element to a target location
 fill an input/textarea/contenteditable; if the selector matches a wrapper, descends up to 4 levels to a unique fillable descendant (errors if zero or multiple)
 
 - Parameters:
-  - selector (string, required): CSS selector for input field or its wrapper
+  - selector (string, required): CSS selector for input field or its wrapper. Supports 'testid:NAME' and 'dialog::SELECTOR' (scopes to the topmost open dialog/sheet).
   - value (string, required): Value to fill
 
 #### `hover`
@@ -1006,10 +1006,10 @@ Upload a file to an input[type='file'] element on the page
   - maxLength (number, optional): Maximum number of characters to return (default: 20000)
 
 #### `get_text`
-[may return preview+token] ⚠️ RARELY NEEDED: Get ALL visible text content from the entire page (no structure, just raw text). Most tasks need structured inspection instead. ONLY use get_text for: (1) extracting text for content analysis (word count, language detection), (2) searching for text when location is completely unknown, (3) text-only snapshots for comparison. For structured tasks, use: inspect_dom() to understand page structure, find_by_text() to locate specific text with context, query_selector() to find elements. Auto-returns text if <2000 chars (small elements); if larger, returns a preview and a one-time token to fetch the full output via confirm_output. Supports testid shortcuts.
+[may return preview+token] ⚠️ RARELY NEEDED: Get ALL visible text content from the entire page (no structure, just raw text). Most tasks need structured inspection instead. ONLY use get_text for: (1) extracting text for content analysis (word count, language detection), (2) searching for text when location is completely unknown, (3) text-only snapshots for comparison. For structured tasks, use: inspect_dom() to understand page structure, find_by_text() to locate specific text with context, query_selector() to find elements. Auto-returns text if <2000 chars (small elements); if larger, returns a preview and a one-time token to fetch the full output via confirm_output. Supports testid shortcuts and the `dialog::SELECTOR` scope to read inside the topmost open dialog/sheet.
 
 - Parameters:
-  - selector (string, optional): CSS selector, text selector, or testid shorthand to limit text extraction to a specific container. Omit to get text from entire page. Example: 'testid:article-body' or '#main-content'
+  - selector (string, optional): CSS selector, text selector, or testid shorthand to limit text extraction to a specific container. Omit to get text from entire page. Examples: 'testid:article-body', '#main-content', 'dialog::section' (scopes lookup to the topmost open dialog/sheet — useful when a sheet covers ambiguous page chrome). Use bare 'dialog::' for the whole topmost dialog.
   - maxLength (number, optional): Maximum number of characters to return (default: 20000)
 
 #### `visual_screenshot_for_humans`

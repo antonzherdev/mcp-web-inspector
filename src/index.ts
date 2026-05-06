@@ -6,7 +6,7 @@ import { createToolDefinitions } from "./tools/common/registry.js";
 import type { ToolMetadata } from "./tools/common/types.js";
 import { setupRequestHandlers } from "./requestHandler.js";
 import { parseArgs } from "node:util";
-import { setSessionConfig } from "./toolHandler.js";
+import { setSessionConfig, ensureBrowser } from "./toolHandler.js";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -48,6 +48,10 @@ const { values } = parseArgs({
     },
     'cdp-port': {
       type: 'string',
+    },
+    'warmup-browser': {
+      type: 'boolean',
+      default: false,
     },
     'print-tools-json': {
       type: 'boolean',
@@ -104,6 +108,7 @@ async function runServer() {
     headlessDefault: Boolean(values['headless']) || (process.platform === 'linux' && !process.env.DISPLAY && !process.env.WAYLAND_DISPLAY),
     exposeSensitiveNetworkData: Boolean(values['expose-sensitive-network-data']),
     cdpPort,
+    warmupBrowser: Boolean(values['warmup-browser']),
   };
   setSessionConfig(sessionConfig);
 
@@ -161,6 +166,16 @@ async function runServer() {
   // Create transport and connect
   const transport = new StdioServerTransport();
   await server.connect(transport);
+
+  // Optional eager browser launch. Off by default — sessions that never invoke
+  // an MCP tool shouldn't pay for Chromium startup. Useful when external
+  // clients (e.g. CDP seed/login scripts) need the browser up before any tool
+  // call. Non-blocking — failures surface on the first tool call.
+  if (sessionConfig.warmupBrowser) {
+    ensureBrowser({ headless: sessionConfig.headlessDefault }).catch(err => {
+      console.error("Eager browser warmup failed (will retry on first tool call):", err);
+    });
+  }
 }
 
 runServer().catch((error) => {

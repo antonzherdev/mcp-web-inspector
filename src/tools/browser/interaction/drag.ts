@@ -24,17 +24,14 @@ export class DragTool extends BrowserToolBase {
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
     this.recordInteraction();
     return this.safeExecute(context, async (page) => {
-      const normalizedSource = this.normalizeSelector(args.sourceSelector);
-      const normalizedTarget = this.normalizeSelector(args.targetSelector);
-
       // Use standard element selection with error on multiple matches
-      const sourceLocator = page.locator(normalizedSource);
+      const sourceLocator = await this.createScopedLocator(page, args.sourceSelector);
       const { element: sourceElement } = await this.selectPreferredLocator(sourceLocator, {
         errorOnMultiple: true,
         originalSelector: args.sourceSelector,
       });
 
-      const targetLocator = page.locator(normalizedTarget);
+      const targetLocator = await this.createScopedLocator(page, args.targetSelector);
       const { element: targetElement } = await this.selectPreferredLocator(targetLocator, {
         errorOnMultiple: true,
         originalSelector: args.targetSelector,

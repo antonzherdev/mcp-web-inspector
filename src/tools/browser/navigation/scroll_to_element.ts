@@ -31,11 +31,10 @@ export class ScrollToElementTool extends BrowserToolBase {
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
     this.recordInteraction();
     return this.safeExecute(context, async (page) => {
-      const selector = this.normalizeSelector(args.selector);
       const position = args.position || 'start';
 
       // Use Playwright's built-in scrollIntoViewIfNeeded which handles scrollable containers
-      const locator = page.locator(selector);
+      const locator = await this.createScopedLocator(page, args.selector);
 
       // First check if element exists
       const count = await locator.count();

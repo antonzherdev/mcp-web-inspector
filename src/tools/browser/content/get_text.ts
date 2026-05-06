@@ -17,14 +17,14 @@ export class GetTextTool extends BrowserToolBase {
   static getMetadata(sessionConfig?: SessionConfig): ToolMetadata {
     return {
       name: "get_text",
-      description: "[may return preview+token] ⚠️ RARELY NEEDED: Get ALL visible text content from the entire page (no structure, just raw text). Most tasks need structured inspection instead. ONLY use get_text for: (1) extracting text for content analysis (word count, language detection), (2) searching for text when location is completely unknown, (3) text-only snapshots for comparison. For structured tasks, use: inspect_dom() to understand page structure, find_by_text() to locate specific text with context, query_selector() to find elements. Auto-returns text if <2000 chars (small elements); if larger, returns a preview and a one-time token to fetch the full output via confirm_output. Supports testid shortcuts.",
+      description: "[may return preview+token] ⚠️ RARELY NEEDED: Get ALL visible text content from the entire page (no structure, just raw text). Most tasks need structured inspection instead. ONLY use get_text for: (1) extracting text for content analysis (word count, language detection), (2) searching for text when location is completely unknown, (3) text-only snapshots for comparison. For structured tasks, use: inspect_dom() to understand page structure, find_by_text() to locate specific text with context, query_selector() to find elements. Auto-returns text if <2000 chars (small elements); if larger, returns a preview and a one-time token to fetch the full output via confirm_output. Supports testid shortcuts and the `dialog::SELECTOR` scope to read inside the topmost open dialog/sheet.",
       annotations: ANNOTATIONS.readOnly,
       inputSchema: {
         type: "object",
         properties: {
           selector: {
             type: "string",
-            description: "CSS selector, text selector, or testid shorthand to limit text extraction to a specific container. Omit to get text from entire page. Example: 'testid:article-body' or '#main-content'"
+            description: "CSS selector, text selector, or testid shorthand to limit text extraction to a specific container. Omit to get text from entire page. Examples: 'testid:article-body', '#main-content', 'dialog::section' (scopes lookup to the topmost open dialog/sheet — useful when a sheet covers ambiguous page chrome). Use bare 'dialog::' for the whole topmost dialog."
           },
           maxLength: {
             type: "number",
@@ -57,23 +57,41 @@ export class GetTextTool extends BrowserToolBase {
 
     return this.safeExecute(context, async (page) => {
       try {
-        const hasSelector = typeof args.selector === 'string' && args.selector.length > 0;
-        const scopeLabel = hasSelector ? ` (from "${args.selector}")` : ' (entire page)';
+        let effectiveSelector: string | undefined =
+          typeof args.selector === 'string' && args.selector.length > 0 ? args.selector : undefined;
+
+        // Auto-scope to the topmost open modal when no selector was given —
+        // this matches what a human sees: when a sheet covers the page, only
+        // the sheet's content is reachable. Reading the whole page would
+        // hand the LLM mostly inert content behind the backdrop.
+        let autoScopeNotice = '';
+        if (!effectiveSelector) {
+          const modal = await this.detectActiveModal(page);
+          if (modal) {
+            effectiveSelector = 'dialog::';
+            autoScopeNotice =
+              `🪟 Auto-scoped to open modal: ${modal.descriptor}. ` +
+              `Pass an explicit selector to override (e.g. selector: 'body' for the full page).`;
+          }
+        }
+
+        const hasSelector = !!effectiveSelector;
+        const scopeLabel = hasSelector ? ` (from "${effectiveSelector}")` : ' (entire page)';
         const lines: string[] = [`Visible text content${scopeLabel}`];
+        if (autoScopeNotice) lines.push(autoScopeNotice);
 
         let selectionWarning = '';
         let textContent = '';
 
         if (hasSelector) {
-          const normalizedSelector = this.normalizeSelector(args.selector);
-          const locator = page.locator(normalizedSelector);
+          const locator = await this.createScopedLocator(page, effectiveSelector!);
 
           const { element, elementIndex, totalCount } = await this.selectPreferredLocator(locator, {
-            originalSelector: args.selector,
+            originalSelector: effectiveSelector!,
           });
 
-          selectionWarning = this.formatElementSelectionInfo(
-            args.selector,
+          selectionWarning = await this.formatElementSelectionInfo(
+            effectiveSelector!,
             elementIndex,
             totalCount,
             true

@@ -97,10 +97,9 @@ export class InspectAncestorsTool extends BrowserToolBase {
   }, context: ToolContext): Promise<ToolResponse> {
     return this.safeExecute(context, async (page) => {
       const limit = Math.min(args.limit ?? 10, 15); // Default 10, max 15
-      const normalizedSelector = this.normalizeSelector(args.selector);
 
       // Use consistent element selection (Playwright's visibility detection)
-      const locator = page.locator(normalizedSelector);
+      const locator = await this.createScopedLocator(page, args.selector);
       const count = await locator.count();
 
       if (count === 0) {
@@ -194,7 +193,7 @@ export class InspectAncestorsTool extends BrowserToolBase {
         content: [
           {
             type: "text",
-            text: this.formatAncestorChain(
+            text: await this.formatAncestorChain(
               ancestors,
               args.selector,
               elementIndex,
@@ -207,16 +206,16 @@ export class InspectAncestorsTool extends BrowserToolBase {
     });
   }
 
-  private formatAncestorChain(
+  private async formatAncestorChain(
     ancestors: AncestorData[],
     originalSelector: string,
     elementIndex: number = 0,
     totalCount: number = 1
-  ): string {
+  ): Promise<string> {
     const lines: string[] = [];
 
     // Header with selector info
-    const selectionInfo = this.formatElementSelectionInfo(
+    const selectionInfo = await this.formatElementSelectionInfo(
       originalSelector,
       elementIndex,
       totalCount,

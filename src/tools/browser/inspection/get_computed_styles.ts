@@ -51,21 +51,19 @@ export class GetComputedStylesTool extends BrowserToolBase implements ToolHandle
 
   async execute(args: { selector: string; properties?: string }, context: ToolContext): Promise<ToolResponse> {
     return this.safeExecute(context, async (page) => {
-      const normalizedSelector = this.normalizeSelector(args.selector);
-
       // Parse properties parameter
       const properties = args.properties
         ? args.properties.split(',').map(p => p.trim())
         : this.DEFAULT_PROPERTIES;
 
       // Use standard element selection with visibility preference
-      const locator = page.locator(normalizedSelector);
+      const locator = await this.createScopedLocator(page, args.selector);
       const { element, elementIndex, totalCount } = await this.selectPreferredLocator(locator, {
         originalSelector: args.selector,
       });
 
       // Format selection warning if multiple elements matched
-      const warning = this.formatElementSelectionInfo(
+      const warning = await this.formatElementSelectionInfo(
         args.selector,
         elementIndex,
         totalCount

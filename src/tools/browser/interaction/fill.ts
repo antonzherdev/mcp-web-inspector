@@ -32,7 +32,7 @@ export class FillTool extends BrowserToolBase {
       inputSchema: {
         type: "object",
         properties: {
-          selector: { type: "string", description: "CSS selector for input field or its wrapper" },
+          selector: { type: "string", description: "CSS selector for input field or its wrapper. Supports 'testid:NAME' and 'dialog::SELECTOR' (scopes to the topmost open dialog/sheet)." },
           value: { type: "string", description: "Value to fill" },
         },
         required: ["selector", "value"],
@@ -43,9 +43,7 @@ export class FillTool extends BrowserToolBase {
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
     this.recordInteraction();
     return this.safeExecute(context, async (page) => {
-      const normalizedSelector = this.normalizeSelector(args.selector);
-
-      const locator = page.locator(normalizedSelector);
+      const locator = await this.createScopedLocator(page, args.selector);
       const { element } = await this.selectPreferredLocator(locator, {
         errorOnMultiple: true,
         originalSelector: args.selector,

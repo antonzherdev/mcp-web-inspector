@@ -41,9 +41,7 @@ export class ElementExistsTool extends BrowserToolBase implements ToolHandler {
 
   async execute(args: ElementExistsArgs, context: ToolContext): Promise<ToolResponse> {
     return this.safeExecute(context, async (page) => {
-      const normalizedSelector = this.normalizeSelector(args.selector);
-
-      const locator = page.locator(normalizedSelector);
+      const locator = await this.createScopedLocator(page, args.selector);
       const count = await locator.count();
 
       if (count === 0) {

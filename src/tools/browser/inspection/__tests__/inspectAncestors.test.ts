@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from '@jest/globals';
 import { chromium, Browser, Page } from 'playwright';
 import { InspectAncestorsTool } from '../inspect_ancestors.js';
 import { browserAvailable } from '../../../../__tests__/helpers/browserSetup.js';
+import { resetBrowserState } from '../../../../toolHandler.js';
 
 const d = browserAvailable ? describe : describe.skip;
 
@@ -19,6 +20,12 @@ d('InspectAncestorsTool', () => {
 
   afterAll(async () => {
     await browser.close();
+  });
+
+  beforeEach(() => {
+    // The verbose nth-selector hint is rate-limited to once per session.
+    // Reset the flag before each test so per-test hint assertions are stable.
+    resetBrowserState();
   });
 
   it('should show ancestor chain with layout properties', async () => {

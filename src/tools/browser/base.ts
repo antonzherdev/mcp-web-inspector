@@ -1,4 +1,4 @@
-import type { Browser, Page } from 'playwright';
+import type { Browser, Locator, Page } from 'playwright';
 import { ToolHandler, ToolContext, ToolResponse, createErrorResponse } from '../common/types.js';
 
 /**
@@ -26,6 +26,11 @@ export abstract class BrowserToolBase implements ToolHandler {
    *     "#radix-\:rc\:-content-123" → "id=radix-:rc:-content-123"
    * - Remove unnecessary escapes for bracket characters only (\\[ and \\])
    *   DO NOT unescape colons globally — colons in class/ID names must stay escaped in CSS.
+   *
+   * Note: the `dialog::SELECTOR` scope shortcut (e.g., `dialog::section`,
+   * `dialog::testid:close`) is NOT handled here — it is a runtime scope
+   * resolved by `createScopedLocator()`, not a syntactic rewrite.
+   *
    * @param selector The selector string
    * @returns Normalized selector
    */
@@ -96,6 +101,207 @@ export abstract class BrowserToolBase implements ToolHandler {
     cleaned = cleaned.replace(/\\{2,}(?=\])/g, '\\');
     cleaned = cleaned.replace(/\\{2,}(?=:)/g, '\\');
     return cleaned;
+  }
+
+  /**
+   * Build a Playwright `Locator` honoring the `dialog::SELECTOR` scope shortcut.
+   *
+   * - `dialog::section`           → topmost open dialog/sheet, then `section` inside it
+   * - `dialog::testid:close`      → topmost open dialog, then `[data-testid="close"]` inside it
+   * - `dialog::`                  → the topmost open dialog itself
+   * - anything else               → `page.locator(normalizeSelector(rawSelector))`
+   *
+   * "Topmost" is determined by the highest effective z-index — for each
+   * candidate dialog, we walk up to the nearest positioned ancestor (almost
+   * always the backdrop/glass-screen wrapper, which is what stacking actually
+   * follows) and read its z-index. DOM order is the tiebreaker. This is more
+   * robust than picking `.last()` because portal frameworks don't always
+   * append in z-order, and modal stacking is driven by the backdrop's
+   * z-index, not the dialog content's.
+   */
+  protected async createScopedLocator(page: Page, rawSelector: string): Promise<Locator> {
+    const trimmed = (rawSelector ?? '').trim();
+    const DIALOG_PREFIX = 'dialog::';
+
+    if (!trimmed.startsWith(DIALOG_PREFIX)) {
+      return page.locator(this.normalizeSelector(trimmed));
+    }
+
+    const dialogRoots =
+      '[role="dialog"]:not([aria-hidden="true"]),' +
+      '[role="alertdialog"]:not([aria-hidden="true"]),' +
+      'dialog[open]';
+
+    // Match detectActiveModal: include only user-visible candidates and
+    // rank by effective z-index. Without the visibility filter, a hidden
+    // dialog left in the DOM (display:none) could be picked over an
+    // actually-open one.
+    const result = await page.evaluate((rootsSelector: string) => {
+      const isUserVisible = (el: Element): boolean => {
+        const cs = getComputedStyle(el);
+        if (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) === 0) {
+          return false;
+        }
+        const rect = (el as HTMLElement).getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      };
+
+      const allCandidates = Array.from(document.querySelectorAll(rootsSelector));
+      const visibleIndices: number[] = [];
+      allCandidates.forEach((el, i) => {
+        if (isUserVisible(el)) visibleIndices.push(i);
+      });
+      if (visibleIndices.length === 0) return { topIndex: -1, hasVisible: false };
+      if (visibleIndices.length === 1) return { topIndex: visibleIndices[0], hasVisible: true };
+
+      const effectiveZ = (start: Element): number => {
+        let z = 0;
+        let node: Element | null = start;
+        while (node && node !== document.body) {
+          const cs = getComputedStyle(node);
+          if (cs.position !== 'static') {
+            const parsed = parseInt(cs.zIndex, 10);
+            if (!isNaN(parsed)) {
+              z = Math.max(z, parsed);
+            }
+          }
+          node = node.parentElement;
+        }
+        return z;
+      };
+
+      let bestIdx = visibleIndices[0];
+      let bestScore = -Infinity;
+      visibleIndices.forEach((i) => {
+        // Tiebreaker: DOM order — later element is on top.
+        const score = effectiveZ(allCandidates[i]) * 1_000_000 + i;
+        if (score > bestScore) {
+          bestScore = score;
+          bestIdx = i;
+        }
+      });
+      return { topIndex: bestIdx, hasVisible: true };
+    }, dialogRoots).catch(() => ({ topIndex: -1, hasVisible: false }));
+
+    // No visible dialog → return a never-matching locator so downstream
+    // callers see a clean "No elements found" instead of silently scoping
+    // to a hidden dialog left in the DOM.
+    if (!result.hasVisible) {
+      return page.locator('dialog-no-such-element-sentinel');
+    }
+
+    const topmostDialog = page.locator(dialogRoots).nth(result.topIndex);
+
+    const inner = trimmed.slice(DIALOG_PREFIX.length).trim();
+    if (!inner) {
+      return topmostDialog;
+    }
+
+    return topmostDialog.locator(this.normalizeSelector(inner));
+  }
+
+  /**
+   * Detect a "user-dominating" open modal — i.e. one that a human would
+   * visually focus on and interact with to the exclusion of the rest of the
+   * page. Used by inspect_dom / get_text / get_html to auto-scope when no
+   * selector is provided, so the LLM's view matches the human's view.
+   *
+   * Strict criterion: requires `aria-modal="true"` (or native `dialog[open]`)
+   * because non-modal `[role="dialog"]` includes things like side panels and
+   * tooltips that don't dominate the page.
+   *
+   * Returns null if no active modal is open. Otherwise returns the topmost
+   * one, ranked by the same z-index walk used by `createScopedLocator()`.
+   */
+  protected async detectActiveModal(page: Page): Promise<{
+    descriptor: string;
+    suggestion: string;
+  } | null> {
+    const ACTIVE_MODAL_SELECTOR =
+      '[role="dialog"][aria-modal="true"]:not([aria-hidden="true"]),' +
+      '[role="alertdialog"][aria-modal="true"]:not([aria-hidden="true"]),' +
+      'dialog[open]';
+
+    return await page.evaluate((rootsSelector: string) => {
+      const isUserVisible = (el: Element): boolean => {
+        const cs = getComputedStyle(el);
+        if (cs.display === 'none' || cs.visibility === 'hidden' || parseFloat(cs.opacity) === 0) {
+          return false;
+        }
+        const rect = (el as HTMLElement).getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      };
+
+      const candidates = Array.from(document.querySelectorAll(rootsSelector)).filter(isUserVisible);
+      if (candidates.length === 0) return null;
+
+      const effectiveZ = (start: Element): number => {
+        let z = 0;
+        let node: Element | null = start;
+        while (node && node !== document.body) {
+          const cs = getComputedStyle(node);
+          if (cs.position !== 'static') {
+            const parsed = parseInt(cs.zIndex, 10);
+            if (!isNaN(parsed)) {
+              z = Math.max(z, parsed);
+            }
+          }
+          node = node.parentElement;
+        }
+        return z;
+      };
+
+      let bestIdx = 0;
+      let bestScore = -Infinity;
+      candidates.forEach((el, i) => {
+        const score = effectiveZ(el) * 1_000_000 + i;
+        if (score > bestScore) {
+          bestScore = score;
+          bestIdx = i;
+        }
+      });
+      const top = candidates[bestIdx];
+
+      const tag = top.tagName.toLowerCase();
+      const role = top.getAttribute('role') || (tag === 'dialog' ? 'dialog' : '');
+      const testid =
+        top.getAttribute('data-testid') ||
+        top.getAttribute('data-test') ||
+        top.getAttribute('data-cy');
+      const id = (top as HTMLElement).id || null;
+      const ariaLabel = top.getAttribute('aria-label');
+      const ariaLabelledBy = top.getAttribute('aria-labelledby');
+      let labelText: string | null = null;
+      if (ariaLabelledBy) {
+        const labelEl = document.getElementById(ariaLabelledBy);
+        labelText = labelEl?.textContent?.trim() || null;
+      }
+
+      const parts = [`<${tag}`];
+      if (role) parts.push(`role="${role}"`);
+      if (testid) parts.push(`data-testid="${testid}"`);
+      else if (id) parts.push(`id="${id}"`);
+      if (ariaLabel) parts.push(`aria-label="${ariaLabel}"`);
+      else if (labelText) parts.push(`labelled="${labelText.slice(0, 60)}"`);
+      parts[parts.length - 1] += '>';
+
+      return {
+        descriptor: parts.join(' '),
+        suggestion: testid ? `dialog::testid:${testid}` : 'dialog::',
+      };
+    }, ACTIVE_MODAL_SELECTOR).then(
+      (result) => {
+        // Defensive: only treat as a real modal if the result is a
+        // properly-shaped object. Mocked test environments may return
+        // arbitrary values from page.evaluate() that should not trigger
+        // auto-scope.
+        if (result && typeof result === 'object' && typeof (result as any).descriptor === 'string') {
+          return result as { descriptor: string; suggestion: string };
+        }
+        return null;
+      },
+      () => null,
+    );
   }
 
   /**
@@ -305,26 +511,28 @@ export abstract class BrowserToolBase implements ToolHandler {
     // Check for multiple elements with errorOnMultiple flag
     if (options?.errorOnMultiple && count > 1) {
       const selector = options.originalSelector || 'selector';
-      const nthHint = ''.trimEnd();
-      const warning = ''.trimEnd();
-
       let message = `Selector "${selector}" matched ${count} elements. Please use a more specific selector.`;
-      if (nthHint) {
-        message += `\n${nthHint}`;
-      }
-      if (warning) {
-        message += `\n${warning}`;
-      }
 
-      {
+      // Verbose disambiguation guidance is rate-limited per session — useful
+      // once for the agent to learn the pattern, noise on every subsequent call.
+      // After the first emit, fall back to a one-line pointer.
+      const { hasShownNthHint, markNthHintShown } = await import('../../toolHandler.js');
+      if (!hasShownNthHint()) {
         const guidance = [
           `1) Preferred: add a unique data-testid and select it directly (e.g., testid:submit).`,
           `2) If you cannot change markup: append \`>> nth=<index>\` to target a specific match.`,
         ];
-        const matchesDetails = await this.describeMatchedElements(locator, selector, count);
-        message += `\n${guidance.join('\n')}\n\nMatches:\n${matchesDetails}`;
-        throw new Error(message);
+        message += `\n${guidance.join('\n')}`;
+        markNthHintShown();
+      } else {
+        message += `\nUse a more specific selector (e.g. testid:..., or '>> nth=<index>').`;
       }
+
+      // Per-call match details remain — they describe what's actually on the
+      // page, not generic advice.
+      const matchesDetails = await this.describeMatchedElements(locator, selector, count);
+      message += `\n\nMatches:\n${matchesDetails}`;
+      throw new Error(message);
     }
 
     // Handle explicit element index (1-based)
@@ -381,12 +589,12 @@ export abstract class BrowserToolBase implements ToolHandler {
    * @param preferredVisible Whether visibility preference was used
    * @returns Formatted string or empty if only one element
    */
-  protected formatElementSelectionInfo(
+  protected async formatElementSelectionInfo(
     selector: string,
     elementIndex: number,
     totalCount: number,
     preferredVisible: boolean = true
-  ): string {
+  ): Promise<string> {
     const usesNth = selector.includes('>> nth=');
     if (totalCount <= 1) {
       // Even when a single element is ultimately targeted, discourage nth usage
@@ -397,10 +605,25 @@ export abstract class BrowserToolBase implements ToolHandler {
       return '';
     }
 
-    const duplicateWarning = this.getDuplicateTestIdWarning(selector, totalCount).trimEnd();
-    const nthHint = this.buildNthSelectorHint(selector, totalCount).trimEnd();
     const avoidNth = usesNth ? "💡 Tip: Avoid relying on '>> nth='; add a unique data-testid instead." : '';
-    const extraHints = [duplicateWarning, nthHint, avoidNth].filter(Boolean).join('\n');
+
+    // Verbose nth-selector guidance is rate-limited to one emit per session.
+    // The short ⚠ warning still surfaces every call; the multi-line hint block
+    // (duplicate-testid tip + nth-selector workaround) appears only on the
+    // first multi-match of the session — it's reference material the agent
+    // only needs once.
+    let extraHints = '';
+    const { hasShownNthHint, markNthHintShown } = await import('../../toolHandler.js');
+    if (!hasShownNthHint()) {
+      const duplicateWarning = this.getDuplicateTestIdWarning(selector, totalCount).trimEnd();
+      const nthHint = this.buildNthSelectorHint(selector, totalCount).trimEnd();
+      extraHints = [duplicateWarning, nthHint, avoidNth].filter(Boolean).join('\n');
+      if (duplicateWarning || nthHint) {
+        markNthHintShown();
+      }
+    } else if (avoidNth) {
+      extraHints = avoidNth;
+    }
 
     const baseMessage = preferredVisible
       ? `⚠ Found ${totalCount} elements matching "${selector}", using element ${elementIndex + 1} (first visible)`

@@ -23,10 +23,8 @@ export class HoverTool extends BrowserToolBase {
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
     this.recordInteraction();
     return this.safeExecute(context, async (page) => {
-      const normalizedSelector = this.normalizeSelector(args.selector);
-
       // Use standard element selection with error on multiple matches
-      const locator = page.locator(normalizedSelector);
+      const locator = await this.createScopedLocator(page, args.selector);
       const { element } = await this.selectPreferredLocator(locator, {
         errorOnMultiple: true,
         originalSelector: args.selector,

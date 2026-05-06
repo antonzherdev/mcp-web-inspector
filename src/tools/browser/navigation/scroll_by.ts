@@ -155,7 +155,7 @@ export class ScrollByTool extends BrowserToolBase {
         return createSuccessResponse(messages);
       } else {
         // Scroll a specific element
-        const locator = page.locator(selector);
+        const locator = await this.createScopedLocator(page, args.selector);
 
         // Check if element exists
         const count = await locator.count();
