@@ -39,8 +39,7 @@ export class WaitForElementTool extends BrowserToolBase {
     return this.safeExecute(context, async (page) => {
       const { selector, state = 'visible', timeout = 10000 } = args;
 
-      const normalizedSelector = this.normalizeSelector(selector);
-      const locator = page.locator(normalizedSelector);
+      const locator = await this.createScopedLocator(page, selector);
 
       const startTime = Date.now();
 

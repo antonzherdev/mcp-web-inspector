@@ -54,7 +54,7 @@ export class QuerySelectorTool extends BrowserToolBase {
         properties: {
           selector: {
             type: "string",
-            description: "CSS selector, text selector, or testid shorthand to test (e.g., 'button.submit', 'testid:login-form', 'text=Sign In')"
+            description: "CSS selector, text selector, or testid shorthand to test (e.g., 'button.submit', 'testid:login-form', 'text=Sign In', 'dialog::button' to scope the lookup to the topmost open dialog/sheet)"
           },
           limit: {
             type: "number",
@@ -79,7 +79,6 @@ export class QuerySelectorTool extends BrowserToolBase {
    */
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
     return this.safeExecute(context, async (page) => {
-      const selector = this.normalizeSelector(args.selector);
       const limit = args.limit ?? 10;
       const onlyVisible = args.onlyVisible; // true = visible only, false = hidden only, undefined = all
       const showAttributes = args.showAttributes
@@ -88,7 +87,8 @@ export class QuerySelectorTool extends BrowserToolBase {
 
       try {
         // Query all elements matching the selector
-        const elements = await page.locator(selector).all();
+        const scopedLocator = await this.createScopedLocator(page, args.selector);
+        const elements = await scopedLocator.all();
         const totalMatches = elements.length;
 
         if (totalMatches === 0) {

@@ -40,6 +40,7 @@ describe('GetTextTool', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockEvaluate.mockReset();
     visibleTextTool = new GetTextTool(mockServer);
     // Reset mocks
     mockIsConnected.mockReturnValue(true);
@@ -104,6 +105,7 @@ describe('GetTextTool', () => {
   test('should handle evaluation errors', async () => {
     const args = {};
 
+    mockEvaluate.mockResolvedValueOnce(null); // detectActiveModal — no modal
     // Mock evaluation error
     mockEvaluate.mockImplementationOnce(() => Promise.reject(new Error('Evaluation failed')));
 
@@ -187,6 +189,7 @@ describe('GetTextTool', () => {
   test('should respect maxLength parameter', async () => {
     const args = { maxLength: 50 };
 
+    mockEvaluate.mockResolvedValueOnce(null); // detectActiveModal — no modal
     // Mock long text content
     const longText = 'A'.repeat(100);
     mockEvaluate.mockImplementationOnce(() => Promise.resolve(longText));
@@ -241,6 +244,7 @@ describe('GetHtmlTool', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockEvaluate.mockReset();
     visibleHtmlTool = new GetHtmlTool(mockServer);
     // Reset mocks
     mockIsConnected.mockReturnValue(true);
@@ -252,6 +256,7 @@ describe('GetHtmlTool', () => {
   test('should retrieve HTML content with scripts removed by default', async () => {
     const args = {};
 
+    mockEvaluate.mockResolvedValueOnce(null); // detectActiveModal — no modal
     // Mock evaluate to process HTML
     mockEvaluate.mockImplementationOnce(() => Promise.resolve('<html><body>Sample HTML content</body></html>'));
 
@@ -268,6 +273,7 @@ describe('GetHtmlTool', () => {
   test('should include guidance tip in response', async () => {
     const args = {};
 
+    mockEvaluate.mockResolvedValueOnce(null); // detectActiveModal — no modal
     mockEvaluate.mockImplementationOnce(() => Promise.resolve('<html><body>Content</body></html>'));
 
     const result = await visibleHtmlTool.execute(args, mockContext);
@@ -282,6 +288,7 @@ describe('GetHtmlTool', () => {
   test('should apply clean mode when clean=true', async () => {
     const args = { clean: true };
 
+    mockEvaluate.mockResolvedValueOnce(null); // detectActiveModal — no modal
     // Mock the page.evaluate to capture the clean parameter
     mockEvaluate.mockImplementationOnce((callback, params) => {
       expect(params).toEqual({
@@ -303,6 +310,7 @@ describe('GetHtmlTool', () => {
   test('should default to clean=false (scripts only)', async () => {
     const args = {};
 
+    mockEvaluate.mockResolvedValueOnce(null); // detectActiveModal — no modal
     mockEvaluate.mockImplementationOnce((callback, params: any) => {
       expect(params.clean).toBe(false);
       return Promise.resolve('<html><body>HTML with scripts removed</body></html>');
@@ -377,6 +385,7 @@ describe('GetHtmlTool', () => {
   });
 
   test('should handle empty HTML content', async () => {
+    mockEvaluate.mockResolvedValueOnce(null); // detectActiveModal — no modal
     const args = {};
 
     // Mock content to return empty HTML
@@ -390,6 +399,7 @@ describe('GetHtmlTool', () => {
   });
 
   test('should respect maxLength parameter for small HTML', async () => {
+    mockEvaluate.mockResolvedValueOnce(null); // detectActiveModal — no modal
     const args = { maxLength: 50 };
 
     // Small HTML that won't trigger preview threshold
@@ -405,6 +415,7 @@ describe('GetHtmlTool', () => {
   test('should show "entire page" when no selector provided', async () => {
     const args = {};
 
+    mockEvaluate.mockResolvedValueOnce(null); // detectActiveModal — no modal
     mockEvaluate.mockImplementationOnce(() => Promise.resolve('<html><body>Content</body></html>'));
 
     const result = await visibleHtmlTool.execute(args, mockContext);
@@ -486,6 +497,7 @@ describe('GetHtmlTool', () => {
   test('should handle content retrieval errors', async () => {
     const args = {};
 
+    mockEvaluate.mockResolvedValueOnce(null); // detectActiveModal — no modal
     // Mock content error
     mockContent.mockImplementationOnce(() => Promise.reject(new Error('Content retrieval failed')));
 
@@ -500,6 +512,7 @@ describe('GetHtmlTool', () => {
   test('should return preview with token for large HTML (≥2000 chars)', async () => {
     const args = {};
 
+    mockEvaluate.mockResolvedValueOnce(null); // detectActiveModal — no modal
     // Large HTML that exceeds preview threshold
     const largeHtml = '<div>' + 'X'.repeat(3000) + '</div>';
     mockEvaluate.mockImplementationOnce(() => Promise.resolve(largeHtml));
@@ -519,6 +532,7 @@ describe('GetHtmlTool', () => {
   test('should return full HTML with valid token via confirm_output', async () => {
     const args = {};
 
+    mockEvaluate.mockResolvedValueOnce(null); // detectActiveModal — no modal
     // Large HTML
     const largeHtml = '<div>' + 'Y'.repeat(3000) + '</div>';
     mockEvaluate.mockImplementation(() => Promise.resolve(largeHtml));
@@ -551,6 +565,7 @@ describe('GetHtmlTool', () => {
   test('should return small HTML directly without token requirement', async () => {
     const args = {};
 
+    mockEvaluate.mockResolvedValueOnce(null); // detectActiveModal — no modal
     // Small HTML below threshold
     const smallHtml = '<div>Small content with 1500 chars: ' + 'A'.repeat(1400) + '</div>';
     mockEvaluate.mockImplementationOnce(() => Promise.resolve(smallHtml));
@@ -567,6 +582,7 @@ describe('GetHtmlTool', () => {
   test('should consume token only once (one-time use)', async () => {
     const args = {};
 
+    mockEvaluate.mockResolvedValueOnce(null); // detectActiveModal — no modal
     // Large HTML
     const largeHtml = '<div>' + 'M'.repeat(3000) + '</div>';
     mockEvaluate.mockImplementation(() => Promise.resolve(largeHtml));

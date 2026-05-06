@@ -63,22 +63,37 @@ export class GetHtmlTool extends BrowserToolBase {
 
     return this.safeExecute(context, async (page) => {
       try {
-        const hasSelector = typeof args.selector === 'string' && args.selector.length > 0;
-        const scopeLabel = hasSelector ? ` (from "${args.selector}")` : ' (entire page)';
+        let effectiveSelector: string | undefined =
+          typeof args.selector === 'string' && args.selector.length > 0 ? args.selector : undefined;
+
+        // Auto-scope to active modal — see get_text for rationale.
+        let autoScopeNotice = '';
+        if (!effectiveSelector) {
+          const modal = await this.detectActiveModal(page);
+          if (modal) {
+            effectiveSelector = 'dialog::';
+            autoScopeNotice =
+              `🪟 Auto-scoped to open modal: ${modal.descriptor}. ` +
+              `Pass an explicit selector to override (e.g. selector: 'body' for the full page).`;
+          }
+        }
+
+        const hasSelector = !!effectiveSelector;
+        const scopeLabel = hasSelector ? ` (from "${effectiveSelector}")` : ' (entire page)';
         const lines: string[] = [`HTML content${scopeLabel}`];
+        if (autoScopeNotice) lines.push(autoScopeNotice);
         let selectionWarning = '';
         let rawHtml = '';
 
         if (hasSelector) {
-          const normalizedSelector = this.normalizeSelector(args.selector);
-          const locator = page.locator(normalizedSelector);
+          const locator = await this.createScopedLocator(page, effectiveSelector!);
 
           const { element, elementIndex, totalCount } = await this.selectPreferredLocator(locator, {
-            originalSelector: args.selector,
+            originalSelector: effectiveSelector!,
           });
 
-          selectionWarning = this.formatElementSelectionInfo(
-            args.selector,
+          selectionWarning = await this.formatElementSelectionInfo(
+            effectiveSelector!,
             elementIndex,
             totalCount,
             true

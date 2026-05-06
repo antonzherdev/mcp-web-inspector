@@ -47,6 +47,10 @@ export interface SessionConfig {
   exposeSensitiveNetworkData?: boolean;
   // Chromium remote-debugging-port. 0 disables CDP exposure.
   cdpPort?: number;
+  // Launch Chromium at server startup instead of lazily on first tool call.
+  // Useful when external clients (e.g. seed/login scripts via CDP) need the
+  // browser ready before any MCP tool has been invoked.
+  warmupBrowser?: boolean;
 }
 
 // Context for tool execution

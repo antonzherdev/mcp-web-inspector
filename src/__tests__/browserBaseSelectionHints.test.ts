@@ -16,7 +16,7 @@ class ExposedBrowserToolBase extends BrowserToolBase {
     return this.buildNthSelectorHint(selector, totalCount);
   }
 
-  public selectionInfo(selector: string, elementIndex: number, totalCount: number, preferredVisible = true): string {
+  public selectionInfo(selector: string, elementIndex: number, totalCount: number, preferredVisible = true): Promise<string> {
     return this.formatElementSelectionInfo(selector, elementIndex, totalCount, preferredVisible);
   }
 
@@ -27,6 +27,24 @@ class ExposedBrowserToolBase extends BrowserToolBase {
   public sanitize(msg: string): string {
     // @ts-ignore accessing protected for test via wrapper
     return this.sanitizeSelectorEngineMessage(msg);
+  }
+
+  // Exposes the errorOnMultiple branch of selectPreferredLocator so the
+  // rate-limited guidance text can be asserted without needing a real page.
+  public async runErrorOnMultiple(count: number, selector: string): Promise<string> {
+    const fakeLocator = {
+      count: () => Promise.resolve(count),
+      nth: (i: number) => ({
+        evaluate: () => Promise.resolve({ tag: 'div', text: `match ${i}`, testid: null, id: null, parentLabel: null }),
+      }),
+    };
+    try {
+      // @ts-ignore protected
+      await this.selectPreferredLocator(fakeLocator, { errorOnMultiple: true, originalSelector: selector });
+      return '';
+    } catch (e) {
+      return (e as Error).message;
+    }
   }
 }
 
@@ -44,16 +62,66 @@ describe('BrowserToolBase selection hints', () => {
     expect(hint).toBe('');
   });
 
-  test('formatElementSelectionInfo appends nth hint and duplicate warning', () => {
-    const info = tool.selectionInfo('testid:submit', 0, 2);
+  test('formatElementSelectionInfo appends nth hint and duplicate warning on first emit', async () => {
+    const { resetBrowserState } = await import('../toolHandler.js');
+    resetBrowserState();
+    const info = await tool.selectionInfo('testid:submit', 0, 2);
     expect(info).toContain('using element 1');
     expect(info).toContain('>> nth=0');
     expect(info).toContain('Test IDs should be unique');
   });
 
-  test('formatElementSelectionInfo omits extras when only one element matches', () => {
-    const info = tool.selectionInfo('text=Unique Button', 0, 1);
+  test('formatElementSelectionInfo suppresses verbose hint after first emit (rate-limit)', async () => {
+    const { resetBrowserState } = await import('../toolHandler.js');
+    resetBrowserState();
+    const first = await tool.selectionInfo('testid:submit', 0, 2);
+    expect(first).toContain('>> nth=0');
+    const second = await tool.selectionInfo('testid:cancel', 0, 3);
+    expect(second).toContain('using element 1');
+    expect(second).not.toContain('>> nth=0');
+    expect(second).not.toContain('Test IDs should be unique');
+  });
+
+  test('formatElementSelectionInfo verbose hint reappears after browser state reset', async () => {
+    const { resetBrowserState } = await import('../toolHandler.js');
+    resetBrowserState();
+    await tool.selectionInfo('testid:a', 0, 2);
+    resetBrowserState();
+    const after = await tool.selectionInfo('testid:b', 0, 2);
+    expect(after).toContain('>> nth=0');
+  });
+
+  test('formatElementSelectionInfo omits extras when only one element matches', async () => {
+    const info = await tool.selectionInfo('text=Unique Button', 0, 1);
     expect(info).toBe('');
+  });
+
+  test('selectPreferredLocator errorOnMultiple emits verbose guidance on first call only', async () => {
+    const { resetBrowserState } = await import('../toolHandler.js');
+    resetBrowserState();
+
+    const first = await tool.runErrorOnMultiple(3, 'testid:submit');
+    expect(first).toContain('matched 3 elements');
+    expect(first).toContain('Preferred: add a unique data-testid');
+    expect(first).toContain('append `>> nth=<index>`');
+    expect(first).toContain('Matches:');
+
+    const second = await tool.runErrorOnMultiple(2, 'testid:cancel');
+    expect(second).toContain('matched 2 elements');
+    // Verbose guidance suppressed — only one-line pointer remains.
+    expect(second).not.toContain('Preferred: add a unique data-testid');
+    expect(second).toContain("Use a more specific selector");
+    // Per-call match details still emitted.
+    expect(second).toContain('Matches:');
+  });
+
+  test('selectPreferredLocator errorOnMultiple verbose guidance reappears after browser reset', async () => {
+    const { resetBrowserState } = await import('../toolHandler.js');
+    resetBrowserState();
+    await tool.runErrorOnMultiple(2, 'testid:a');
+    resetBrowserState();
+    const after = await tool.runErrorOnMultiple(2, 'testid:b');
+    expect(after).toContain('Preferred: add a unique data-testid');
   });
 });
 

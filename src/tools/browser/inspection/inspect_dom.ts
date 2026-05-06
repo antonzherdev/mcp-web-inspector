@@ -120,17 +120,32 @@ NOTE: Dropdowns, listboxes, dialogs, and popovers (especially in react-aria/head
    */
   async execute(args: any, context: ToolContext): Promise<ToolResponse> {
     return this.safeExecute(context, async (page) => {
-      const selector = args.selector ? this.normalizeSelector(args.selector) : 'body';
       const includeHidden = args.includeHidden ?? false;
       const maxChildren = args.maxChildren ?? 20;
       const maxDepth = args.maxDepth ?? 5;
 
       try {
+        // Auto-scope to the topmost open modal when no selector was given —
+        // mirrors what a human focuses on when a sheet covers the page.
+        // Pass selector: 'body' explicitly to inspect the whole page anyway.
+        const noSelector = !args.selector || args.selector === '';
+        let effectiveSelector: string = noSelector ? 'body' : args.selector;
+        let autoScopeNotice = '';
+        if (noSelector) {
+          const modal = await this.detectActiveModal(page);
+          if (modal) {
+            effectiveSelector = 'dialog::';
+            autoScopeNotice =
+              `🪟 Auto-scoped to open modal: ${modal.descriptor}. ` +
+              `Pass selector: 'body' to inspect the whole page anyway.`;
+          }
+        }
+
         // Use consistent element selection (Playwright's visibility detection)
         // Delegate count + selector error handling to selectPreferredLocator()
-        const locator = page.locator(selector);
+        const locator = await this.createScopedLocator(page, effectiveSelector);
         const { element, elementIndex, totalCount } = await this.selectPreferredLocator(locator, {
-          originalSelector: args.selector || 'body',
+          originalSelector: effectiveSelector,
         });
 
         // Get the target element and its semantic children
@@ -547,6 +562,7 @@ NOTE: Dropdowns, listboxes, dialogs, and popovers (especially in react-aria/head
 
         // Format compact text output
         const lines: string[] = [];
+        if (autoScopeNotice) lines.push(autoScopeNotice);
         const {
           target,
           children,
@@ -560,8 +576,8 @@ NOTE: Dropdowns, listboxes, dialogs, and popovers (especially in react-aria/head
         } = result;
 
         // Add selection warning if multiple elements matched
-        const selectionWarning = this.formatElementSelectionInfo(
-          args.selector || 'body',
+        const selectionWarning = await this.formatElementSelectionInfo(
+          effectiveSelector,
           elementIndex,
           totalCount,
           true
