@@ -9,6 +9,8 @@ import { makeConfirmPreview } from '../../common/confirm_output.js';
  * Tool for taking screenshots of pages or elements
  */
 export class ScreenshotTool extends BrowserToolBase {
+  private static readonly MAX_STORED_SCREENSHOTS = 10;
+
   private screenshots = new Map<string, string>();
 
   static getMetadata(sessionConfig?: SessionConfig): ToolMetadata {
@@ -102,6 +104,7 @@ export class ScreenshotTool extends BrowserToolBase {
 
         if (args.storeBase64 !== false) {
           this.screenshots.set(args.name || 'screenshot', base64Screenshot);
+          this.evictOldestScreenshots();
           context.server.notification({ method: "notifications/resources/list_changed" });
           messages.push(`Screenshot also stored in memory with name: '${args.name || 'screenshot'}'`);
         }
@@ -135,6 +138,20 @@ export class ScreenshotTool extends BrowserToolBase {
       });
       return createSuccessResponse(preview.lines.join('\n'));
     });
+  }
+
+  /**
+   * Caps in-memory screenshots. Each is a full-page PNG held as base64, so a
+   * long session would otherwise accumulate megabytes. The files on disk are
+   * the durable copy; this map is only a convenience cache.
+   */
+  private evictOldestScreenshots(): void {
+    // Map iterates in insertion order, so the front is the oldest.
+    while (this.screenshots.size > ScreenshotTool.MAX_STORED_SCREENSHOTS) {
+      const oldest = this.screenshots.keys().next().value;
+      if (oldest === undefined) break;
+      this.screenshots.delete(oldest);
+    }
   }
 
   /**

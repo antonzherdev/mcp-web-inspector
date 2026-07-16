@@ -33,6 +33,15 @@ let currentBrowserType: 'chromium' | 'firefox' | 'webkit' = 'chromium';
 let currentDevice: string | undefined;
 let networkLog: NetworkRequest[] = [];
 
+// The network log is a rolling window: a long session on a polling SPA would
+// otherwise grow it without bound. Oldest entries are dropped first.
+const MAX_NETWORK_LOG_ENTRIES = 200;
+
+// Response bodies dominate the log's memory footprint. Only capture them for
+// the resource types worth inspecting, and cap each one.
+const MAX_RESPONSE_BODY_CHARS = 64 * 1024;
+const BODY_CAPTURE_RESOURCE_TYPES = new Set(['xhr', 'fetch', 'document']);
+
 let sessionConfig: SessionConfig = {
   saveSession: false,
   userDataDir: './.mcp-web-inspector/user-data',
@@ -241,6 +250,14 @@ const CUSTOM_DEVICE_CONFIGS: Record<string, any> = {
 /**
  * Register network event listeners
  */
+function trimNetworkLog(): void {
+  if (networkLog.length <= MAX_NETWORK_LOG_ENTRIES) return;
+  networkLog.splice(0, networkLog.length - MAX_NETWORK_LOG_ENTRIES);
+  // `index` is the caller-facing handle passed back to get_request_details,
+  // which resolves it as an array position — so it must track the position.
+  for (let i = 0; i < networkLog.length; i++) networkLog[i].index = i;
+}
+
 async function registerNetworkListeners(page) {
   page.on('request', (request) => {
     networkLog.push({
@@ -254,6 +271,7 @@ async function registerNetworkListeners(page) {
         postData: request.postData() || null
       }
     });
+    trimNetworkLog();
   });
 
   page.on('response', async (response) => {
@@ -270,13 +288,19 @@ async function registerNetworkListeners(page) {
         networkLog[i].statusText = response.statusText();
         networkLog[i].timing = Date.now() - networkLog[i].timestamp;
 
-        // Try to capture response body (may fail for some resource types)
+        // Only inspectable resource types get a body, and never an unbounded
+        // one — scripts, images and fonts would otherwise pin megabytes each.
         let responseBody: string | null = null;
-        try {
-          responseBody = await response.text();
-        } catch (e) {
-          // Ignore errors (e.g., image/binary responses)
-          responseBody = null;
+        if (BODY_CAPTURE_RESOURCE_TYPES.has(networkLog[i].resourceType)) {
+          try {
+            const text = await response.text();
+            responseBody = text.length > MAX_RESPONSE_BODY_CHARS
+              ? text.slice(0, MAX_RESPONSE_BODY_CHARS) + `\n...[body truncated at ${MAX_RESPONSE_BODY_CHARS} chars]`
+              : text;
+          } catch (e) {
+            // Ignore errors (e.g., image/binary responses)
+            responseBody = null;
+          }
         }
 
         networkLog[i].responseData = {
@@ -350,9 +374,10 @@ async function registerConsoleMessage(page) {
  * Gets the screen size using Playwright's API
  */
 async function getScreenSize(): Promise<{ width: number; height: number }> {
+  let tempBrowser: Browser | undefined;
   try {
     // Launch a temporary browser to get screen size
-    const tempBrowser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_EXECUTABLE_PATH || undefined });
+    tempBrowser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_EXECUTABLE_PATH || undefined });
     const tempContext = await tempBrowser.newContext();
     const tempPage = await tempContext.newPage();
 
@@ -362,8 +387,6 @@ async function getScreenSize(): Promise<{ width: number; height: number }> {
         height: window.screen.height
       };
     });
-
-    await tempBrowser.close();
 
     // Validate the screen size values
     if (!screenSize || typeof screenSize.width !== 'number' || typeof screenSize.height !== 'number') {
@@ -375,6 +398,32 @@ async function getScreenSize(): Promise<{ width: number; height: number }> {
   } catch (error) {
     console.warn('Failed to detect screen size, using defaults:', error);
     return { width: 1280, height: 720 };
+  } finally {
+    // Must run on the error path too: an evaluate() throw would otherwise
+    // strand this Chromium with no reference left to close it.
+    if (tempBrowser) {
+      await tempBrowser.close().catch(err => console.error('Error closing temp browser:', err));
+    }
+  }
+}
+
+/**
+ * Closes the current browser and clears global state.
+ *
+ * Prefer this over a bare resetBrowserState() anywhere the browser may still
+ * be alive: dropping the reference without closing strands the Chromium
+ * process for the lifetime of this server.
+ */
+export async function closeBrowser(): Promise<void> {
+  const current = browser;
+  // Reset first so a slow/hanging close can't be raced into by a concurrent
+  // tool call reusing the dying browser.
+  resetBrowserState();
+  if (!current) return;
+  try {
+    await current.close();
+  } catch (error) {
+    console.error('Error closing browser:', error);
   }
 }
 
@@ -910,8 +959,10 @@ export async function handleToolCall(
         errorMessage.includes("Protocol error") ||
         errorMessage.includes("Connection closed")
       ) {
-        // Reset browser state if it's a connection issue
-        resetBrowserState();
+        // A protocol/target error does not mean the browser process died — it
+        // often outlives the failed page. Close it rather than just dropping
+        // the reference, or it stays alive with nothing able to reach it.
+        await closeBrowser();
         return {
           content: [{
             type: "text",
@@ -992,4 +1043,4 @@ export function clearConsoleLogs(): void {
   consoleLogsTool?.clearConsoleLogs();
 }
 
-export { registerConsoleMessage };
+export { registerConsoleMessage, registerNetworkListeners };
