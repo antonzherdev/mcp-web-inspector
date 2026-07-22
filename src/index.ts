@@ -11,6 +11,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { createServer } from "node:net";
+import { installStdioSafety } from "./stdioSafety.js";
 
 // Get package.json version
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -159,9 +160,9 @@ async function runServer() {
   process.on('SIGINT', shutdown);
   process.on('SIGTERM', shutdown);
   process.on('exit', shutdown);
-  process.on('uncaughtException', (err) => {
-    console.error('Uncaught Exception:', err);
-  });
+
+  // Handles a dead client's severed stdio without looping on EPIPE.
+  installStdioSafety();
 
   // Create transport and connect
   const transport = new StdioServerTransport();
