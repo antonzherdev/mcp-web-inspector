@@ -300,6 +300,7 @@ Implementation checklist (future PR):
 ## Environment Variables
 
 - `CHROME_EXECUTABLE_PATH`: Custom path to Chrome/Chromium executable (optional)
+- `MCP_WEB_INSPECTOR_NO_WATCHDOG`: Set to disable the orphan watchdog (optional). The watchdog is a worker thread that SIGKILLs the server once its original parent dies; disable it only when a supervisor deliberately reparents the process and takes over its lifecycle.
 
 ## Contributing Notes
 

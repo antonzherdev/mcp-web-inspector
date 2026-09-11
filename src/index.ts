@@ -11,6 +11,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { createServer } from "node:net";
+import { startOrphanWatchdog } from "./watchdog.js";
 
 // Get package.json version
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -165,7 +166,40 @@ async function runServer() {
 
   // Create transport and connect
   const transport = new StdioServerTransport();
+
+  // A client that goes away must take the server with it.
+  //
+  // The SDK's stdio transport subscribes only to stdin's 'data' and 'error'
+  // events, so it never reports EOF: when the client dies, `transport.onclose`
+  // is never called and the server is simply left holding the line. That goes
+  // unnoticed most of the time because a server with an idle event loop exits
+  // on its own anyway — but once a browser is open Playwright keeps handles
+  // alive, the loop never drains, and the process stays resident for as long
+  // as the machine is up. So watch stdin ourselves.
+  let exiting = false;
+  const clientGone = (why: string) => {
+    if (exiting) return;
+    exiting = true;
+    console.error(`${why}, shutting down`);
+    // Best effort. If the event loop is healthy the exit below runs and this
+    // timer never fires; if it is already wedged neither one runs and the
+    // watchdog thread is what actually ends the process.
+    setTimeout(() => process.kill(process.pid, 'SIGKILL'), 2000).unref();
+    process.exit(0);
+  };
+
+  // Set before connect: the SDK chains onto any existing onclose, but assigning
+  // after connect would clobber its own bookkeeping.
+  transport.onclose = () => clientGone('Transport closed');
+
   await server.connect(transport);
+
+  process.stdin.on('end', () => clientGone('Client closed stdin'));
+  process.stdin.on('close', () => clientGone('Client closed stdin'));
+
+  // Last resort for what the graceful paths cannot reach: a wedged main thread
+  // that ignores every signal its client sends. Runs off-thread.
+  startOrphanWatchdog();
 
   // Optional eager browser launch. Off by default — sessions that never invoke
   // an MCP tool shouldn't pay for Chromium startup. Useful when external
