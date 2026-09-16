@@ -11,6 +11,8 @@ interface ConsoleLogEntry {
  * Tool for retrieving and filtering console logs from the browser
  */
 export class GetConsoleLogsTool extends BrowserToolBase {
+  private static readonly MAX_STORED_LOGS = 2000;
+
   // Stored logs and timestamps
   private consoleLogs: ConsoleLogEntry[] = [];
   private lastCallTimestamp: number = 0;
@@ -71,6 +73,11 @@ export class GetConsoleLogsTool extends BrowserToolBase {
       message: `[${type}] ${text}`
     };
     this.consoleLogs.push(logEntry);
+    // Rolling window: a page logging in a render loop would otherwise grow
+    // this without bound. Oldest entries go first; queries want recent ones.
+    if (this.consoleLogs.length > GetConsoleLogsTool.MAX_STORED_LOGS) {
+      this.consoleLogs.splice(0, this.consoleLogs.length - GetConsoleLogsTool.MAX_STORED_LOGS);
+    }
   }
 
   /**

@@ -6,7 +6,7 @@ import { createToolDefinitions } from "./tools/common/registry.js";
 import type { ToolMetadata } from "./tools/common/types.js";
 import { setupRequestHandlers } from "./requestHandler.js";
 import { parseArgs } from "node:util";
-import { setSessionConfig, ensureBrowser } from "./toolHandler.js";
+import { setSessionConfig, ensureBrowser, closeBrowser } from "./toolHandler.js";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -151,22 +151,44 @@ async function runServer() {
   // Setup request handlers
   setupRequestHandlers(server, TOOLS);
 
-  // Graceful shutdown logic
-  function shutdown() {
-    console.error('Shutdown signal received');
+  // Graceful shutdown logic. These handlers are registered before Playwright
+  // installs its own (it does so on first browser launch), and Node runs exit
+  // listeners in registration order — so exiting synchronously here would
+  // pre-empt Playwright's cleanup and strand the Chromium process. Close the
+  // browser ourselves, then exit.
+  let shuttingDown = false;
+  async function shutdown(reason: string) {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.error(`Shutdown: ${reason}`);
+
+    // Bound the wait: a wedged browser must not keep this process alive.
+    const timeout = new Promise<void>(resolve => setTimeout(resolve, 5000).unref());
+    try {
+      await Promise.race([closeBrowser(), timeout]);
+    } catch (err) {
+      console.error('Error closing browser during shutdown:', err);
+    }
     process.exit(0);
   }
 
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
-  process.on('exit', shutdown);
+  // No 'exit' listener: shutdown is async now, and nothing asynchronous can
+  // run from inside an 'exit' handler.
+  process.on('SIGINT', () => void shutdown('SIGINT'));
+  process.on('SIGTERM', () => void shutdown('SIGTERM'));
 
-  // Handles a dead client's severed stdio without looping on EPIPE.
+  // Replaces a bare uncaughtException handler: reporting a severed pipe by
+  // writing to that same pipe is what looped and burned a core (#17).
   installStdioSafety();
 
   // Create transport and connect
   const transport = new StdioServerTransport();
   await server.connect(transport);
+
+  // A client that dies without signalling (crash, killed parent) just closes
+  // the pipe. Without this the server would linger, holding a browser open.
+  process.stdin.on('close', () => void shutdown('stdin closed'));
+  transport.onclose = () => void shutdown('transport closed');
 
   // Optional eager browser launch. Off by default — sessions that never invoke
   // an MCP tool shouldn't pay for Chromium startup. Useful when external
