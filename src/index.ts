@@ -12,6 +12,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { createServer } from "node:net";
 import { installStdioSafety } from "./stdioSafety.js";
+import { startOrphanWatchdog } from "./watchdog.js";
 
 // Get package.json version
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -183,12 +184,26 @@ async function runServer() {
 
   // Create transport and connect
   const transport = new StdioServerTransport();
+
+  // Set before connect: connect() captures any existing onclose and wraps it,
+  // so assigning afterwards would replace the SDK's own bookkeeping instead of
+  // chaining onto it.
+  transport.onclose = () => void shutdown('transport closed');
+
   await server.connect(transport);
 
   // A client that dies without signalling (crash, killed parent) just closes
-  // the pipe. Without this the server would linger, holding a browser open.
-  process.stdin.on('close', () => void shutdown('stdin closed'));
-  transport.onclose = () => void shutdown('transport closed');
+  // the pipe. The SDK's stdio transport subscribes only to stdin's 'data' and
+  // 'error', so it never reports EOF and onclose above would never fire on its
+  // own — watch stdin directly. 'end' is the peer closing, 'close' the
+  // descriptor going away; whichever arrives first wins, shutdown is idempotent.
+  process.stdin.on('close', () => void shutdown('client closed stdin'));
+
+  // Last resort for what none of the above reaches: a main thread wedged in a
+  // synchronous loop runs no handler at all, and a client can die while stdin
+  // stays open on an inherited descriptor, so no EOF ever arrives. The watchdog
+  // runs off-thread and watches the parent instead.
+  startOrphanWatchdog();
 
   // Optional eager browser launch. Off by default — sessions that never invoke
   // an MCP tool shouldn't pay for Chromium startup. Useful when external
