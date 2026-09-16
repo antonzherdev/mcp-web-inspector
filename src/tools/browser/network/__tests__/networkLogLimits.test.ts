@@ -45,6 +45,45 @@ describe('network log limits', () => {
     clearNetworkLog();
   });
 
+  // Regression guard for the interaction between trimming and the awaited
+  // response body. The handler resolves its entry before `await response.text()`
+  // yields; if it wrote back by array position instead, a trim landing during
+  // that await would shift every index and attach the body to another request.
+  test('attributes a body to its own request even when a trim lands mid-await', async () => {
+    const { handlers } = fakePage();
+
+    const target = 'https://x.test/target';
+    handlers.request!(fakeRequest(target));
+
+    let release: (body: string) => void;
+    const pending = new Promise<string>(resolve => { release = resolve; });
+    const request = fakeRequest(target);
+    const response = {
+      url: () => target,
+      request: () => request,
+      status: () => 200,
+      statusText: () => 'OK',
+      headers: () => ({}),
+      text: () => pending,
+    };
+
+    const inFlight = handlers.response!(response);
+    // Enough traffic while the body is outstanding to push the target out of
+    // its original slot.
+    for (let i = 0; i < MAX_ENTRIES + 50; i++) {
+      handlers.request!(fakeRequest(`https://x.test/filler-${i}`));
+    }
+    release!('target-body');
+    await inFlight;
+
+    const carriers = getNetworkLog().filter(e => e.responseData?.body === 'target-body');
+    // The target itself may have been trimmed away, which is fine — but no
+    // other request may be left holding its body.
+    for (const carrier of carriers) {
+      expect(carrier.url).toBe(target);
+    }
+  });
+
   test('keeps only the most recent entries once the cap is reached', () => {
     const { handlers } = fakePage();
     for (let i = 0; i < MAX_ENTRIES + 60; i++) {

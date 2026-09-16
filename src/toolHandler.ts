@@ -284,14 +284,19 @@ async function registerNetworkListeners(page) {
           networkLog[i].method === method &&
           !networkLog[i].status) {
 
-        networkLog[i].status = response.status();
-        networkLog[i].statusText = response.statusText();
-        networkLog[i].timing = Date.now() - networkLog[i].timestamp;
+        // Hold the entry itself rather than its position. Awaiting the body
+        // below yields, and a trim in the meantime shifts every index left —
+        // writing back by index would land the body on another request.
+        const entry = networkLog[i];
+
+        entry.status = response.status();
+        entry.statusText = response.statusText();
+        entry.timing = Date.now() - entry.timestamp;
 
         // Only inspectable resource types get a body, and never an unbounded
         // one — scripts, images and fonts would otherwise pin megabytes each.
         let responseBody: string | null = null;
-        if (BODY_CAPTURE_RESOURCE_TYPES.has(networkLog[i].resourceType)) {
+        if (BODY_CAPTURE_RESOURCE_TYPES.has(entry.resourceType)) {
           try {
             const text = await response.text();
             responseBody = text.length > MAX_RESPONSE_BODY_CHARS
@@ -303,7 +308,7 @@ async function registerNetworkListeners(page) {
           }
         }
 
-        networkLog[i].responseData = {
+        entry.responseData = {
           headers: response.headers(),
           body: responseBody
         };
